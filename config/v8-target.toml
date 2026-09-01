@@ -2,11 +2,13 @@ schema_version = 1
 milestone = 152
 channel = "stable"
 platform = "linux"
-resolution_status = "pending"
+resolution_status = "resolved"
 source = "official_chromium_release_metadata"
-
-# Filled by the release resolver before the first build:
-# chrome_version = ""
-# chromium_revision = ""
-# v8_revision = ""
-# resolved_at = ""
+chrome_version = "152.0.7977.75"
+chrome_release_timestamp = "2026-09-01T20:46:20.842000Z"
+chromium_main_branch_position = 1669021
+chromium_revision = "4999cc1efed37c4d91dc4ce6ec4b0a50e2a9a8cb"
+v8_revision = "3de6ffffbfdcf265e9f11a5c9d1cfb4d486d7550"
+resolved_at = "2026-09-01T22:12:33Z"
+chromiumdash_query = "channel=Stable&platform=Linux&milestone=152"
+v8_commit_verified = true

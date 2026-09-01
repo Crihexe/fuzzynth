@@ -25,6 +25,17 @@ PYTHONPATH=src python3 -m fuzzynth doctor
 `doctor` validates the external dual-provider credential boundary without making
 network calls or displaying endpoint/key values.
 
+A single capped live capability request requires the explicit `--live` flag:
+
+```bash
+PYTHONPATH=src python3 -m fuzzynth probe \
+  --live --provider alternate --model gpt-5.3-codex-spark
+```
+
+Optional parameters are omitted unless explicitly supplied. Probe output contains
+only capability, latency, model identity, parameter-presence, and usage metadata;
+generated response text is not printed.
+
 ## Development notifications
 
 The owner has authorized a minimal Telegram development notifier:

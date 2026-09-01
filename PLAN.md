@@ -158,6 +158,13 @@ latency and reasoning-token cost. Compare `text.verbosity` at `low`, `medium`,
 and `high`; high verbosity is a hypothesis for richer program structure, not a
 guarantee, and may instead increase prose/fence failures in raw mode.
 
+Initial capability probes refine this matrix: the alternate endpoint accepts a
+requested `none` but reports effective effort `low`, reports temperature `1.0`
+when the parameter is omitted, and reflects requested verbosity. The official
+Luna endpoint preserves tested temperature, `none`, and verbosity values. Every
+case must store requested and effective parameters; HTTP success alone is not a
+capability assertion.
+
 Context lifetime policies:
 
 - `fresh`: one program, then a new conversation;

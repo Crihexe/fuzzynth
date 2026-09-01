@@ -192,6 +192,24 @@ This is the living operational memory for the project. Read it together with
   script.
 - Added five credential-boundary unit tests and a local test script.
 
+### 2026-09-01 — Chrome 152 resolution and provider probes
+
+- Resolved latest Linux Stable Chrome 152 as `152.0.7977.75` through official
+  Chromium release metadata.
+- Pinned Chromium revision `4999cc1efed37c4d91dc4ce6ec4b0a50e2a9a8cb`
+  and V8 revision `3de6ffffbfdcf265e9f11a5c9d1cfb4d486d7550`.
+- Verified the pinned V8 commit exists in the official upstream repository.
+- Added a bounded Responses API transport and explicit `--live` probe CLI that
+  never prints generated text, keys, or endpoint values.
+- Confirmed exact Spark and Luna model IDs on the alternate endpoint and Luna on
+  the official endpoint.
+- Observed alternate-provider coercion from requested reasoning `none` to
+  effective `low`, default effective temperature `1.0` when omitted, and
+  reflected high verbosity.
+- Observed official Luna preserve temperature `1.3`, reasoning `none`, and high
+  verbosity.
+- Recorded initial redacted capability and usage observations under `docs/`.
+
 ## Verification performed
 
 - No secret values were printed or added to the repository.
@@ -204,6 +222,9 @@ This is the living operational memory for the project. Read it together with
   configured chat ID.
 - Credential tests pass and `fuzzynth doctor` validates both providers without
   making network calls or displaying endpoint/key values.
+- Eight unit tests pass after adding request omission/serialization checks.
+- All live probe output was restricted to capability, latency, effective
+  parameters, response state, and usage metadata.
 
 ## Waiting on owner
 
