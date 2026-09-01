@@ -167,6 +167,15 @@ This is the living operational memory for the project. Read it together with
 - Why: raw streams may not be valid text, duplicate programs should not waste
   storage, and later replay must use the exact bytes originally observed.
 
+### D-018 — Strict stream assembly
+
+- Status: accepted by implementation authorization.
+- Decision: preserve raw SSE bytes independently, decode events incrementally
+  across arbitrary transport chunks, and assemble the canonical program only
+  from explicit `response.output_text.delta` strings.
+- Why: transport chunk boundaries are not token or JavaScript boundaries, and
+  protocol metadata must never be executed as part of the generated program.
+
 ## Work completed
 
 ### 2026-09-01 — Planning bootstrap
@@ -269,6 +278,9 @@ This is the living operational memory for the project. Read it together with
   and added a reviewable build identity report under `docs/builds/`.
 - Added a concurrency-safe, content-addressed exact-byte artifact store with
   deduplication, private modes, canonical references, and tamper detection.
+- Added incremental SSE decoding and strict Responses stream assembly, including
+  split-chunk, CRLF, Unicode, malformed-delta, incomplete-tail, and terminal-event
+  tests. HTTP streaming/capture integration remains next.
 
 ## Verification performed
 
@@ -284,8 +296,8 @@ This is the living operational memory for the project. Read it together with
   configured chat ID.
 - Credential tests pass and `fuzzynth doctor` validates both providers without
   making network calls or displaying endpoint/key values.
-- Twenty-one unit tests pass after adding request omission/serialization, process
-  outcome classification, and artifact integrity checks.
+- Twenty-eight unit tests pass after adding request omission/serialization,
+  process outcome classification, artifact integrity, and stream protocol checks.
 - All live probe output was restricted to capability, latency, effective
   parameters, response state, and usage metadata.
 
