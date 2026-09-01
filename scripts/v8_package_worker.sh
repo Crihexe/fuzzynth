@@ -54,6 +54,17 @@ trap cleanup EXIT
 rootfs="$staging/rootfs"
 install -d -m 0755 "$rootfs/opt/fuzzynth" "$rootfs/work"
 install -m 0755 "$binary" "$rootfs/opt/fuzzynth/d8"
+runtime_binaries=("$binary")
+
+if [[ "$profile" == asan ]]; then
+  symbolizer="$v8_root/third_party/llvm-build/Release+Asserts/bin/llvm-symbolizer"
+  if [[ ! -x "$symbolizer" ]]; then
+    printf 'ASAN profile requires llvm-symbolizer: %s\n' "$symbolizer" >&2
+    exit 1
+  fi
+  install -m 0755 "$symbolizer" "$rootfs/opt/fuzzynth/llvm-symbolizer"
+  runtime_binaries+=("$symbolizer")
+fi
 
 for data_file in icudtl.dat snapshot_blob.bin; do
   if [[ -f "$(dirname "$binary")/$data_file" ]]; then
@@ -64,7 +75,9 @@ for data_file in icudtl.dat snapshot_blob.bin; do
 done
 
 mapfile -t libraries < <(
-  ldd "$binary" |
+  for runtime_binary in "${runtime_binaries[@]}"; do
+    ldd "$runtime_binary"
+  done |
     awk '/=> \// {print $3} /^[[:space:]]*\// {print $1}' |
     sort -u
 )
