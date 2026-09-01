@@ -176,6 +176,16 @@ This is the living operational memory for the project. Read it together with
 - Why: transport chunk boundaries are not token or JavaScript boundaries, and
   protocol metadata must never be executed as part of the generated program.
 
+### D-019 — Fail-closed cost accounting
+
+- Status: accepted by implementation authorization.
+- Decision: prices are versioned per provider/model and never guessed; missing
+  primary usage or pricing pauses work. Costs use provider-reported total output
+  tokens without adding reasoning tokens a second time, and reservations must fit
+  every active hard-budget window.
+- Why: alternate-provider token behavior already diverged from the requested cap,
+  and optimistic accounting would allow an unattended campaign to overspend.
+
 ## Work completed
 
 ### 2026-09-01 — Planning bootstrap
@@ -284,6 +294,10 @@ This is the living operational memory for the project. Read it together with
 - Added bounded HTTP streaming integration with an explicit `stream=True` gate,
   separate raw-SSE/canonical-output capture, optional raw-chunk persistence hook,
   provider timeout, and a local hard byte cap independent of provider token caps.
+- Added provider-neutral exact-decimal token accounting, conservative handling of
+  missing cached-token counts, hard-window reservations, and a zero-budget default
+  configuration that keeps sustained campaigns disabled until prices and limits
+  are explicitly set.
 
 ## Verification performed
 
@@ -299,9 +313,9 @@ This is the living operational memory for the project. Read it together with
   configured chat ID.
 - Credential tests pass and `fuzzynth doctor` validates both providers without
   making network calls or displaying endpoint/key values.
-- Thirty-one unit tests pass after adding request omission/serialization, process
-  outcome classification, artifact integrity, stream protocol, and bounded HTTP
-  streaming checks.
+- Thirty-seven unit tests pass after adding request omission/serialization,
+  process outcome classification, artifact integrity, stream protocol, bounded
+  HTTP streaming, and cost/budget checks.
 - All live probe output was restricted to capability, latency, effective
   parameters, response state, and usage metadata.
 

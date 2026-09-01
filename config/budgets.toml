@@ -1,0 +1,24 @@
+schema_version = 1
+
+[gate]
+sustained_campaigns_enabled = false
+unknown_usage_policy = "pause"
+unknown_pricing_policy = "pause"
+
+# Zero is intentionally fail-closed until the owner selects real limits.
+[global]
+hard_hourly_microusd = 0
+hard_daily_microusd = 0
+hard_total_microusd = 0
+
+[request_caps]
+wall_seconds = 60
+idle_seconds = 20
+max_stream_bytes = 4194304
+max_program_bytes = 2097152
+
+# Provider/model prices are not guessed. Add versioned schedules only after
+# confirming the billing semantics and rates for each endpoint.
+[pricing]
+alternate_status = "required_before_campaign"
+official_status = "required_before_campaign"
