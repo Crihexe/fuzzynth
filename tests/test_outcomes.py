@@ -75,6 +75,18 @@ class OutcomeClassificationTests(unittest.TestCase):
         self.assertFalse(oom.bug_candidate)
         self.assertFalse(timeout.bug_candidate)
 
+    def test_output_limit_is_not_a_native_crash(self) -> None:
+        outcome = classify(
+            ProcessObservation(
+                exit_code=137,
+                stdout=b"x" * 10,
+                output_truncated=True,
+            )
+        )
+
+        self.assertEqual(outcome.kind, OutcomeKind.OUTPUT_LIMIT)
+        self.assertFalse(outcome.bug_candidate)
+
     def test_negative_exit_code_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "signal"):
             ProcessObservation(exit_code=-11)

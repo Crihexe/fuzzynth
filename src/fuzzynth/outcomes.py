@@ -14,6 +14,7 @@ class OutcomeKind(StrEnum):
     NONZERO_EXIT = "nonzero_exit"
     TIMEOUT = "timeout"
     OOM = "oom"
+    OUTPUT_LIMIT = "output_limit"
     SIGNAL = "signal"
     V8_FATAL = "v8_fatal"
     SANITIZER = "sanitizer"
@@ -138,6 +139,14 @@ def classify(observation: ProcessObservation) -> ExecutionOutcome:
             bug_candidate=False,
             signal_name=None,
             markers=("wall_timeout",),
+        )
+
+    if observation.output_truncated:
+        return ExecutionOutcome(
+            kind=OutcomeKind.OUTPUT_LIMIT,
+            bug_candidate=False,
+            signal_name=None,
+            markers=("output_limit",),
         )
 
     if observation.exit_code == 0:

@@ -196,6 +196,15 @@ This is the living operational memory for the project. Read it together with
   can start before generated output is accepted, or infrastructure aborts will be
   misclassified as engine findings.
 
+### D-021 — Docker state is authoritative for resource termination
+
+- Status: accepted by implementation authorization.
+- Decision: execute only by immutable image ID, stream stdout/stderr under a
+  controller byte cap, enforce an external wall deadline, then combine Docker's
+  exit/OOM state with captured V8 signal text for classification.
+- Why: exit code 137 alone cannot distinguish OOM from a controller kill, and an
+  output-flooding process must not deadlock the same controller preserving it.
+
 ## Work completed
 
 ### 2026-09-01 — Planning bootstrap
@@ -314,6 +323,13 @@ This is the living operational memory for the project. Read it together with
 - Identified 32 PIDs as an invalid V8 startup envelope (`Check failed: Start()`,
   `SIGABRT`); 48 passed and the standard profile now reserves 64. This is an
   infrastructure baseline failure, not a candidate bug.
+- Added the first real isolated executor: immutable image identity, network off,
+  read-only root, no capabilities, no-new-privileges, PID/RAM/CPU/core limits,
+  read-only program mount, tmpfs, wall timeout, total output cap, Docker state
+  inspection, V8 signal extraction, and best-effort disposable cleanup.
+- Integration-tested normal Wasm execution (`ok`), an infinite loop (`timeout`,
+  624 ms under a 500 ms deadline), an output flood (`output_limit`, exactly 1024
+  bytes retained), and the known invalid 32-PID profile (`v8_fatal`, signal 6).
 
 ## Verification performed
 
@@ -329,9 +345,9 @@ This is the living operational memory for the project. Read it together with
   configured chat ID.
 - Credential tests pass and `fuzzynth doctor` validates both providers without
   making network calls or displaying endpoint/key values.
-- Thirty-seven unit tests pass after adding request omission/serialization,
-  process outcome classification, artifact integrity, stream protocol, bounded
-  HTTP streaming, and cost/budget checks.
+- Forty-two unit tests pass after adding request omission/serialization, process
+  outcome classification, artifact integrity, stream protocol, bounded HTTP
+  streaming, cost/budget, and executor isolation checks.
 - All live probe output was restricted to capability, latency, effective
   parameters, response state, and usage metadata.
 
