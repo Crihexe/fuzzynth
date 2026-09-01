@@ -25,6 +25,23 @@ PYTHONPATH=src python3 -m fuzzynth doctor
 `doctor` validates the external dual-provider credential boundary without making
 network calls or displaying endpoint/key values.
 
+## Pinned V8 build
+
+The target is resolved in `config/v8-target.toml`; build profiles live in
+`config/v8-builds.toml`. Runtime checkouts, binaries, and manifests stay under
+ignored `.local/` storage.
+
+```bash
+./scripts/v8_checkout.sh
+./scripts/v8_install_deps.sh
+FUZZYNTH_BUILD_JOBS="$(nproc)" ./scripts/v8_build.sh release_symbolized
+./scripts/v8_smoke.py release_symbolized
+```
+
+The build refuses to run if checkout `HEAD` differs from the configured V8
+revision. `optdebug` and `asan` are independent profiles for confirmation and
+triage rather than silent changes to the throughput binary.
+
 A single capped live capability request requires the explicit `--live` flag:
 
 ```bash

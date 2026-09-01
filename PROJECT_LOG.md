@@ -149,6 +149,15 @@ This is the living operational memory for the project. Read it together with
 - Why: throughput, invariant checks, and memory-safety instrumentation serve
   different roles; exact GN args and binary hashes make findings reproducible.
 
+### D-016 — Deterministic outcome classification
+
+- Status: accepted by implementation authorization.
+- Decision: classify captured process facts locally with strong-signal priority
+  (`sanitizer`, V8 fatal/check, native signal), never by asking the model whether
+  its own program found a bug.
+- Why: ordinary exceptions, Wasm traps, timeouts, and OOM kills must not inflate
+  crash counts, while raw stdout/stderr and termination facts remain preserved.
+
 ## Work completed
 
 ### 2026-09-01 — Planning bootstrap
@@ -232,6 +241,11 @@ This is the living operational memory for the project. Read it together with
   prerequisite check first identified and then used the missing `file` package.
 - Added reproducible release-symbolized, optdebug, and ASAN build definitions and
   a revision-verifying build/manifest script. Fuzzilli remains absent.
+- Added a fixed smoke suite for JavaScript, WebAssembly, and natives syntax plus
+  binary/help hashes; it will run after the in-progress link completes.
+- Added the deterministic first-pass outcome classifier and tests covering normal
+  exits, JS exceptions, Wasm traps, timeout, OOM, signals, V8 checks, and
+  sanitizer diagnostics.
 
 ## Verification performed
 
@@ -247,7 +261,8 @@ This is the living operational memory for the project. Read it together with
   configured chat ID.
 - Credential tests pass and `fuzzynth doctor` validates both providers without
   making network calls or displaying endpoint/key values.
-- Eight unit tests pass after adding request omission/serialization checks.
+- Sixteen unit tests pass after adding request omission/serialization and process
+  outcome classification checks.
 - All live probe output was restricted to capability, latency, effective
   parameters, response state, and usage metadata.
 

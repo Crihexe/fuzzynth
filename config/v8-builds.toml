@@ -3,7 +3,7 @@ schema_version = 1
 # Profiles are deliberately separate: throughput findings must be replayed on
 # invariant- and memory-safety-oriented builds before triage.
 [profiles.release_symbolized]
-description = "Optimized throughput build with line-table symbols and V8 heap verification"
+description = "Optimized throughput build with line-table symbols"
 base_builder = "x64.release"
 output_dir = "fuzzynth-x64.release-symbolized"
 target = "d8"
