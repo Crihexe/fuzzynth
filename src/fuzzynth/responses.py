@@ -5,10 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import http.client
 import json
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urlsplit
 
 from fuzzynth.credentials import ProviderCredentials
+from fuzzynth.sse import ResponsesStreamAssembler, SSEDecoder, StreamProtocolError
 
 
 class ResponsesError(RuntimeError):
@@ -57,9 +58,100 @@ class GenerationRequest:
 
 
 @dataclass(frozen=True, slots=True)
+class StreamResult:
+    raw_sse: bytes
+    output: bytes
+    terminal_type: str
+    response: dict[str, Any] | None
+
+
+@dataclass(frozen=True, slots=True)
 class ResponsesClient:
     provider: ProviderCredentials = field(repr=False)
     timeout: float = 30.0
+
+    def stream(
+        self,
+        request: GenerationRequest,
+        *,
+        max_stream_bytes: int = 4 * 1024 * 1024,
+        on_raw_chunk: Callable[[bytes], None] | None = None,
+    ) -> StreamResult:
+        if not request.stream:
+            raise ValueError("streaming requires GenerationRequest(stream=True)")
+        if max_stream_bytes < 1:
+            raise ValueError("max_stream_bytes must be positive")
+        parsed = urlsplit(self.provider.base_url)
+        if parsed.scheme != "https" or not parsed.hostname:
+            raise ResponsesError("provider base URL is not a valid HTTPS endpoint")
+
+        endpoint_path = f"{parsed.path.rstrip('/')}/responses"
+        payload = json.dumps(request.to_payload()).encode("utf-8")
+        connection = http.client.HTTPSConnection(
+            parsed.hostname,
+            port=parsed.port,
+            timeout=self.timeout,
+        )
+        decoder = SSEDecoder()
+        assembler = ResponsesStreamAssembler()
+        raw = bytearray()
+
+        try:
+            connection.request(
+                "POST",
+                endpoint_path,
+                body=payload,
+                headers={
+                    "Authorization": f"Bearer {self.provider.api_key}",
+                    "Content-Type": "application/json",
+                    "Accept": "text/event-stream",
+                    "User-Agent": "fuzzynth-stream/0.1",
+                },
+            )
+            response = connection.getresponse()
+            if response.status < 200 or response.status >= 300:
+                response.read(max_stream_bytes)
+                raise ResponsesError(
+                    f"provider rejected stream request (HTTP {response.status})",
+                    status=response.status,
+                    code="http_error",
+                )
+
+            while chunk := response.read1(64 * 1024):
+                if len(raw) + len(chunk) > max_stream_bytes:
+                    raise ResponsesError(
+                        "provider stream exceeded local byte limit",
+                        status=response.status,
+                        code="stream_too_large",
+                    )
+                raw.extend(chunk)
+                if on_raw_chunk is not None:
+                    on_raw_chunk(chunk)
+                for event in decoder.feed(chunk):
+                    assembler.accept(event)
+            decoder.finish()
+            assembled = assembler.finish()
+        except ResponsesError:
+            raise
+        except StreamProtocolError as exc:
+            raise ResponsesError(
+                f"provider stream protocol failed ({exc})",
+                code="stream_protocol_error",
+            ) from exc
+        except (OSError, http.client.HTTPException) as exc:
+            raise ResponsesError(
+                f"provider stream failed ({type(exc).__name__})",
+                code="network_error",
+            ) from exc
+        finally:
+            connection.close()
+
+        return StreamResult(
+            raw_sse=bytes(raw),
+            output=assembled.output,
+            terminal_type=assembled.terminal_type or "",
+            response=assembled.response,
+        )
 
     def create(self, request: GenerationRequest) -> dict[str, Any]:
         parsed = urlsplit(self.provider.base_url)

@@ -280,7 +280,10 @@ This is the living operational memory for the project. Read it together with
   deduplication, private modes, canonical references, and tamper detection.
 - Added incremental SSE decoding and strict Responses stream assembly, including
   split-chunk, CRLF, Unicode, malformed-delta, incomplete-tail, and terminal-event
-  tests. HTTP streaming/capture integration remains next.
+  tests.
+- Added bounded HTTP streaming integration with an explicit `stream=True` gate,
+  separate raw-SSE/canonical-output capture, optional raw-chunk persistence hook,
+  provider timeout, and a local hard byte cap independent of provider token caps.
 
 ## Verification performed
 
@@ -296,8 +299,9 @@ This is the living operational memory for the project. Read it together with
   configured chat ID.
 - Credential tests pass and `fuzzynth doctor` validates both providers without
   making network calls or displaying endpoint/key values.
-- Twenty-eight unit tests pass after adding request omission/serialization,
-  process outcome classification, artifact integrity, and stream protocol checks.
+- Thirty-one unit tests pass after adding request omission/serialization, process
+  outcome classification, artifact integrity, stream protocol, and bounded HTTP
+  streaming checks.
 - All live probe output was restricted to capability, latency, effective
   parameters, response state, and usage metadata.
 
