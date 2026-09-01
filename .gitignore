@@ -22,6 +22,7 @@ crashes/
 generated/
 corpus/private/
 datasets/
+poc_dataset/
 vendor/
 depot_tools/
 out/

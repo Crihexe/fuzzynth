@@ -5,11 +5,12 @@ This is the living operational memory for the project. Read it together with
 
 ## Current state
 
-- Phase: M1 setup and M2 V8 checkout/build preparation.
+- Phase: M2 pinned V8 build.
 - Implementation authorization: granted by owner on 2026-09-01.
 - Repository: initialized from `git@github.com:Crihexe/fuzzynth.git`.
-- Provider calls made: none.
-- V8 source: official `depot_tools`/`fetch v8` checkout started; build pending.
+- Provider calls made: three bounded, redacted capability probes.
+- V8 source: exact Chrome 152 V8 revision checked out with dependencies; first
+  symbolized release build is running with all 16 host CPUs at owner request.
 - Fuzzing campaigns running: none.
 - Telegram development notifier: configured and tested; command/control bot not
   implemented.
@@ -23,6 +24,8 @@ This is the living operational memory for the project. Read it together with
 - Provider credentials live outside the repository at
   `/root/fuzzynth_openai_credentials` and must not be logged or committed.
 - Git pushes use the dedicated repository deploy key.
+- `poc_dataset/` is concurrent owner-managed work and must not be read, edited,
+  staged, or committed without a later explicit request.
 
 ## Decision records
 
@@ -137,6 +140,15 @@ This is the living operational memory for the project. Read it together with
 - Why: fixes a reportable real-world browser-engine baseline while retaining an
   exact revision for reproduction.
 
+### D-015 — Reproducible V8 build profiles
+
+- Status: accepted by implementation authorization.
+- Decision: configure independent symbolized release, optdebug, and ASAN `d8`
+  builds from versioned profiles, always verifying checkout revision first and
+  recording a local machine-readable manifest after each build.
+- Why: throughput, invariant checks, and memory-safety instrumentation serve
+  different roles; exact GN args and binary hashes make findings reproducible.
+
 ## Work completed
 
 ### 2026-09-01 — Planning bootstrap
@@ -210,10 +222,23 @@ This is the living operational memory for the project. Read it together with
   verbosity.
 - Recorded initial redacted capability and usage observations under `docs/`.
 
+### 2026-09-01 — Exact V8 checkout and build dependencies
+
+- Completed a shallow official V8 dependency sync at revision
+  `3de6ffffbfdcf265e9f11a5c9d1cfb4d486d7550`; verified checkout `HEAD` exactly.
+- Worked around repeatable Git HTTP/2 transport failures by scoping HTTP/1.1 to
+  the checkout command rather than changing global Git configuration.
+- Installed dependencies through V8's upstream `install-build-deps.sh`; its
+  prerequisite check first identified and then used the missing `file` package.
+- Added reproducible release-symbolized, optdebug, and ASAN build definitions and
+  a revision-verifying build/manifest script. Fuzzilli remains absent.
+
 ## Verification performed
 
 - No secret values were printed or added to the repository.
-- No model-provider request was made.
+- Three explicitly capped model-provider requests were made; generated text was
+  neither printed nor stored, and only redacted capability/usage metadata was
+  retained.
 - Official V8 checkout/build state is tracked separately under `.local/`, which
   is ignored by Git.
 - No file under `/root/red-sailor` was modified.
@@ -237,9 +262,8 @@ This is the living operational memory for the project. Read it together with
 
 ## Next work
 
-1. Complete official V8 checkout, install upstream build dependencies, and pin
-   exact revisions.
-2. Create the minimal project skeleton and test harness.
-3. Add fail-closed dual-provider credential loading and endpoint separation.
-4. Run strictly capped provider capability probes and record redacted results.
-5. Build and smoke-test the first symbolized `d8`, then commit/push manifests.
+1. Build and smoke-test the first symbolized `d8`, then record its manifest.
+2. Build the optdebug and ASAN variants as disk/time budgets permit.
+3. Implement the isolated executor and deterministic outcome classifier.
+4. Add the durable evidence store and hard cost/usage gates.
+5. Start only bounded smoke campaigns after those gates pass.

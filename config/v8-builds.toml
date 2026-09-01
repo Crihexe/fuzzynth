@@ -1,0 +1,29 @@
+schema_version = 1
+
+# Profiles are deliberately separate: throughput findings must be replayed on
+# invariant- and memory-safety-oriented builds before triage.
+[profiles.release_symbolized]
+description = "Optimized throughput build with line-table symbols and V8 heap verification"
+base_builder = "x64.release"
+output_dir = "fuzzynth-x64.release-symbolized"
+target = "d8"
+extra_gn_args = [
+  "symbol_level=1",
+]
+
+[profiles.optdebug]
+description = "Optimized debug build with checks, backtraces, and heap verification"
+base_builder = "x64.optdebug"
+output_dir = "fuzzynth-x64.optdebug"
+target = "d8"
+extra_gn_args = []
+
+[profiles.asan]
+description = "Optimized AddressSanitizer build with symbols"
+base_builder = "x64.release"
+output_dir = "fuzzynth-x64.asan"
+target = "d8"
+extra_gn_args = [
+  "is_asan=true",
+  "symbol_level=1",
+]
