@@ -9,8 +9,8 @@ This is the living operational memory for the project. Read it together with
 - Implementation authorization: granted by owner on 2026-09-01.
 - Repository: initialized from `git@github.com:Crihexe/fuzzynth.git`.
 - Provider calls made: three bounded, redacted capability probes.
-- V8 source: exact Chrome 152 V8 revision checked out with dependencies; the
-  symbolized release `d8` is built and smoke-tested, with optdebug next.
+- V8 source: exact Chrome 152 V8 revision checked out with dependencies; release
+  and optdebug are built, smoke-tested, and packaged; ASAN is building.
 - Fuzzing campaigns running: none.
 - Telegram development notifier: configured and tested; command/control bot not
   implemented.
@@ -305,6 +305,17 @@ This is the living operational memory for the project. Read it together with
   intrinsic smoke checks.
 - Stored full local machine-readable manifests under ignored `.local/` storage
   and added a reviewable build identity report under `docs/builds/`.
+
+### 2026-09-01 — Optdebug `d8` binary
+
+- Built optdebug on all 16 host CPUs: 2507 steps in 16m59s with 15.4x reported
+  parallelism.
+- Verified V8 `15.2.124.19`, binary SHA-256
+  `07b8d1fea242ea7acc0df3770f6e4a9db921f41511bca386f8f43e8f2ea69d31`,
+  slow checks, backtraces, optimized-debug mode, component build, and full symbols.
+- Passed local and isolated-worker JS, Wasm, and natives-syntax smoke tests.
+- Packaged worker image
+  `sha256:a55c538d94e0ff92485c8d6cded2a0804d20a839a25a1189fa18f99a23020570`.
 - Added a concurrency-safe, content-addressed exact-byte artifact store with
   deduplication, private modes, canonical references, and tamper detection.
 - Added incremental SSE decoding and strict Responses stream assembly, including
