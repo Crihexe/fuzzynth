@@ -11,7 +11,8 @@ This is the living operational memory for the project. Read it together with
 - Provider calls made: none.
 - V8 source downloaded or built: no.
 - Fuzzing campaigns running: none.
-- Telegram configured: no; credentials pending from owner.
+- Telegram development notifier: configured and tested; command/control bot not
+  implemented.
 - Historical PoC dataset available: no; owner is preparing it.
 - Remote status: planning commit `0be3174` published to `origin/main`.
 
@@ -89,6 +90,14 @@ This is the living operational memory for the project. Read it together with
 - Why: avoids secret exposure, oversized history, and accidental publication of
   security-sensitive findings.
 
+### D-009 — M0 development notifier exception
+
+- Status: accepted by owner.
+- Decision: permit a one-way Telegram notification script during M0 while all
+  campaign/provider/V8 implementation remains gated on plan approval.
+- Why: gives the owner lightweight progress visibility without broadening the
+  current development authorization.
+
 ## Work completed
 
 ### 2026-09-01 — Planning bootstrap
@@ -106,19 +115,34 @@ This is the living operational memory for the project. Read it together with
   Telegram scope, milestones, and review questions.
 - Committed and pushed the initial planning baseline as `0be3174`.
 
+### 2026-09-01 — Telegram development notifier
+
+- Received the external Telegram credentials file from the owner and restricted
+  it to owner-only permissions (`0600`).
+- Added `scripts/notify_telegram.py` with safe dotenv parsing, permission checks,
+  a message-length limit, dry-run support, bounded network timeout, and redacted
+  failures.
+- Performed a successful dry-run and sent the requested live test message;
+  Telegram returned message ID `7`.
+- Documented the narrowly scoped M0 authorization and notifier usage.
+
 ## Verification performed
 
 - No secret values were printed or added to the repository.
 - No model-provider request was made.
 - No V8 source or build dependency was downloaded.
 - No file under `/root/red-sailor` was modified.
+- Telegram notifier passed Python bytecode compilation and dry-run validation.
+- Live Telegram `sendMessage` test succeeded without printing credentials or the
+  configured chat ID.
 
 ## Waiting on owner
 
 - Review and amend `instruction.md`, `PLAN.md`, and the proposed decisions above.
 - Explicit approval before M1 implementation.
 - Historical V8 PoC dataset when ready.
-- Telegram bot token and allowlisted chat/user identity at a later milestone.
+- Telegram command/control policy and allowlisted actor validation at a later
+  milestone; the one-way development notifier is already configured.
 - Answers to the open decisions in `PLAN.md` when convenient; reasonable defaults
   can be proposed during review.
 

@@ -123,6 +123,13 @@ source-code analysis.
 - Fail closed or pause according to policy if usage accounting becomes unknown.
 - Add Telegram notifications and authenticated commands after the owner supplies
   bot credentials and an allowed chat ID.
+- Telegram credentials are now available at
+  `/root/fuzzynth_telegram_credentials` as `TELEGRAM_BOT_TOKEN` and
+  `TELEGRAM_CHAT_ID`; keep that external file owner-readable only and never print
+  or commit either value.
+- The owner explicitly authorizes `scripts/notify_telegram.py` during M0 solely
+  for concise development progress/test notifications. This exception does not
+  authorize the campaign control plane or other implementation before approval.
 - Telegram must eventually expose status, costs, pause/resume/stop, worker state,
   and recent crash summaries without accepting arbitrary shell commands.
 - Once Telegram is configured, development helper scripts may send concise
