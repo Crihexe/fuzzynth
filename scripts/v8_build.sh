@@ -149,6 +149,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -179,6 +180,16 @@ with binary.open("rb") as stream:
     for chunk in iter(lambda: stream.read(1024 * 1024), b""):
         digest.update(chunk)
 
+help_result = subprocess.run(
+    [str(binary), "--help"],
+    check=True,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+)
+elf_notes = capture(["readelf", "-n", str(binary)])
+build_id_match = re.search(r"Build ID:\s*([0-9a-fA-F]+)", elf_notes)
+gn_args = (Path(out_path) / "args.gn").read_text(encoding="utf-8")
+
 clang = Path(out_path).parents[1] / "third_party/llvm-build/Release+Asserts/bin/clang"
 if not clang.exists():
     clang = Path(out_path).parents[2] / "third_party/llvm-build/Release+Asserts/bin/clang"
@@ -196,8 +207,13 @@ manifest = {
     "binary": str(binary),
     "binary_sha256": digest.hexdigest(),
     "binary_size": binary.stat().st_size,
+    "elf_build_id": build_id_match.group(1) if build_id_match else None,
     "d8_version": capture([str(binary), "--version"]),
-    "gn_args": (Path(out_path) / "args.gn").read_text(encoding="utf-8"),
+    "help_sha256": hashlib.sha256(
+        help_result.stdout + b"\0stderr\0" + help_result.stderr
+    ).hexdigest(),
+    "gn_args": gn_args,
+    "gn_args_sha256": hashlib.sha256(gn_args.encode("utf-8")).hexdigest(),
 }
 if clang.exists():
     manifest["compiler"] = capture([str(clang), "--version"]).splitlines()[0]

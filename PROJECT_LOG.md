@@ -5,12 +5,12 @@ This is the living operational memory for the project. Read it together with
 
 ## Current state
 
-- Phase: M2 pinned V8 build.
+- Phase: M2 pinned V8 build variants and executor foundation.
 - Implementation authorization: granted by owner on 2026-09-01.
 - Repository: initialized from `git@github.com:Crihexe/fuzzynth.git`.
 - Provider calls made: three bounded, redacted capability probes.
-- V8 source: exact Chrome 152 V8 revision checked out with dependencies; first
-  symbolized release build is running with all 16 host CPUs at owner request.
+- V8 source: exact Chrome 152 V8 revision checked out with dependencies; the
+  symbolized release `d8` is built and smoke-tested, with optdebug next.
 - Fuzzing campaigns running: none.
 - Telegram development notifier: configured and tested; command/control bot not
   implemented.
@@ -247,6 +247,18 @@ This is the living operational memory for the project. Read it together with
   exits, JS exceptions, Wasm traps, timeout, OOM, signals, V8 checks, and
   sanitizer diagnostics.
 
+### 2026-09-01 — First pinned `d8` binary
+
+- Built the `release_symbolized` profile on all 16 host CPUs: 2313 steps in
+  12m45s with 15.6x effective parallelism.
+- Produced `d8` reporting V8 `15.2.124.19`; recorded binary SHA-256
+  `c220e42e5720a58a422a85889fa178ef7c20e8a720f5ba2d294b3a238ff56a73`
+  and ELF build ID `69cdc77e20e564db`.
+- Passed fixed JavaScript, WebAssembly, and `--allow-natives-syntax` optimization
+  intrinsic smoke checks.
+- Stored full local machine-readable manifests under ignored `.local/` storage
+  and added a reviewable build identity report under `docs/builds/`.
+
 ## Verification performed
 
 - No secret values were printed or added to the repository.
@@ -277,8 +289,8 @@ This is the living operational memory for the project. Read it together with
 
 ## Next work
 
-1. Build and smoke-test the first symbolized `d8`, then record its manifest.
-2. Build the optdebug and ASAN variants as disk/time budgets permit.
-3. Implement the isolated executor and deterministic outcome classifier.
-4. Add the durable evidence store and hard cost/usage gates.
+1. Build and smoke-test the optdebug and ASAN variants.
+2. Implement the isolated executor around the deterministic classifier.
+3. Add the durable evidence store and hard cost/usage gates.
+4. Package immutable, networkless `d8` worker images.
 5. Start only bounded smoke campaigns after those gates pass.

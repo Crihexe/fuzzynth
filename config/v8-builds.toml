@@ -12,7 +12,7 @@ extra_gn_args = [
 ]
 
 [profiles.optdebug]
-description = "Optimized debug build with checks, backtraces, and heap verification"
+description = "Optimized debug build with slow checks, backtraces, and full symbols"
 base_builder = "x64.optdebug"
 output_dir = "fuzzynth-x64.optdebug"
 target = "d8"
