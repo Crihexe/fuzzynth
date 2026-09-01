@@ -355,6 +355,14 @@ This is the living operational memory for the project. Read it together with
   full synchronization, foreign keys, canonical parameter/flag JSON, generation
   usage and cost, exact build/image identities, execution termination facts, and
   aggregate generation/execution/candidate/cost status.
+- Added `fuzzynth execute` as the first end-to-end evidence path: it resolves and
+  verifies pinned build/image manifests, content-addresses the exact program,
+  executes under a versioned worker profile, archives bounded output, records the
+  execution transactionally, and returns only safe metadata.
+- The first end-to-end smoke exposed that mode-0600 artifacts cannot be read by
+  UID 65532 through a bind mount. The service now keeps artifacts private at rest
+  and mounts a short-lived exact read-only copy from a mode-0700 directory; the
+  repeated test completed `ok` and left no staging directory.
 
 ## Verification performed
 
@@ -370,7 +378,7 @@ This is the living operational memory for the project. Read it together with
   configured chat ID.
 - Credential tests pass and `fuzzynth doctor` validates both providers without
   making network calls or displaying endpoint/key values.
-- Forty-six unit tests pass after adding request omission/serialization, process
+- Forty-nine unit tests pass after adding request omission/serialization, process
   outcome classification, artifact integrity, stream protocol, bounded HTTP
   streaming, cost/budget, executor isolation, and catalog integrity checks.
 - All live probe output was restricted to capability, latency, effective

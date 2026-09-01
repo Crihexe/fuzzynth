@@ -53,6 +53,24 @@ Optional parameters are omitted unless explicitly supplied. Probe output contain
 only capability, latency, model identity, parameter-presence, and usage metadata;
 generated response text is not printed.
 
+## Evidence-preserving execution
+
+After packaging a profile, one local JS file can be run through the same isolated
+worker path intended for generated programs:
+
+```bash
+PYTHONPATH=src python3 -m fuzzynth execute \
+  --program sample.js \
+  --profile release_symbolized \
+  --worker-profile standard \
+  --flag=--allow-natives-syntax
+```
+
+The command resolves the tag to the image ID pinned in the local worker manifest,
+captures bounded stdout/stderr as content-addressed artifacts, records termination
+and build identity in the SQLite catalog, and prints metadata rather than program
+output. Runtime evidence stays under ignored `state/` storage.
+
 ## Development notifications
 
 The owner has authorized a minimal Telegram development notifier:
