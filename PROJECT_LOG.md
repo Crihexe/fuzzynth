@@ -186,6 +186,16 @@ This is the living operational memory for the project. Read it together with
 - Why: alternate-provider token behavior already diverged from the requested cap,
   and optimistic accounting would allow an unattended campaign to overspend.
 
+### D-020 — Self-tested minimal worker envelope
+
+- Status: accepted by implementation authorization.
+- Decision: package each `d8` build into a `scratch` image containing only the
+  binary and resolved runtime libraries, then require a networkless, read-only,
+  non-root, capability-free startup smoke under the selected resource profile.
+- Why: resource limits can themselves induce V8 checks; a worker must prove it
+  can start before generated output is accepted, or infrastructure aborts will be
+  misclassified as engine findings.
+
 ## Work completed
 
 ### 2026-09-01 — Planning bootstrap
@@ -298,6 +308,12 @@ This is the living operational memory for the project. Read it together with
   missing cached-token counts, hard-window reservations, and a zero-budget default
   configuration that keeps sustained campaigns disabled until prices and limits
   are explicitly set.
+- Packaged the release `d8` into a 42,477,934-byte `scratch` worker image running
+  as UID/GID 65532, with no shell. Networkless/read-only/capability-free JS, Wasm,
+  and natives-syntax smoke checks passed.
+- Identified 32 PIDs as an invalid V8 startup envelope (`Check failed: Start()`,
+  `SIGABRT`); 48 passed and the standard profile now reserves 64. This is an
+  infrastructure baseline failure, not a candidate bug.
 
 ## Verification performed
 

@@ -48,6 +48,23 @@ No Fuzzilli integration or sanitizer was enabled in this throughput profile.
 - WebAssembly module compilation, instantiation, and execution: passed
 - `--allow-natives-syntax` with optimization intrinsics: passed
 
+## Minimal worker image
+
+- Base: `scratch` (no shell or package manager)
+- Runtime user: `65532:65532`
+- Image ID:
+  `sha256:285a33ff964e3770be2bbb348d24b7c7f0e6499c1f5488e346297458b9e1858b`
+- Docker-reported size: `42477934` bytes
+- Networkless/read-only/capability-free JavaScript smoke: passed
+- Networkless/read-only/capability-free WebAssembly smoke: passed
+- Networkless/read-only/capability-free natives-syntax smoke: passed
+
+A 32-PID experimental limit was too small for V8's startup worker threads and
+reliably produced `Check failed: Start()` followed by `SIGABRT`. Raising the
+limit to 48 passed; the versioned standard worker profile uses 64 as headroom.
+This infrastructure-induced abort is retained as a classifier/worker-baseline
+test case, not treated as a V8 bug candidate.
+
 The full machine-readable build and smoke manifests remain under ignored
 `.local/build-manifests/` so operational paths do not enter Git. The hashes and
 source/build identities required to match the binary are retained above.
