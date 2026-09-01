@@ -158,6 +158,15 @@ This is the living operational memory for the project. Read it together with
 - Why: ordinary exceptions, Wasm traps, timeouts, and OOM kills must not inflate
   crash counts, while raw stdout/stderr and termination facts remain preserved.
 
+### D-017 — Content-addressed exact evidence bytes
+
+- Status: accepted by implementation authorization.
+- Decision: store generated programs, raw provider events, stdout, stderr, and
+  other byte artifacts by SHA-256 with private file permissions and integrity
+  verification; metadata refers to immutable artifact identities.
+- Why: raw streams may not be valid text, duplicate programs should not waste
+  storage, and later replay must use the exact bytes originally observed.
+
 ## Work completed
 
 ### 2026-09-01 — Planning bootstrap
@@ -258,6 +267,8 @@ This is the living operational memory for the project. Read it together with
   intrinsic smoke checks.
 - Stored full local machine-readable manifests under ignored `.local/` storage
   and added a reviewable build identity report under `docs/builds/`.
+- Added a concurrency-safe, content-addressed exact-byte artifact store with
+  deduplication, private modes, canonical references, and tamper detection.
 
 ## Verification performed
 
@@ -273,8 +284,8 @@ This is the living operational memory for the project. Read it together with
   configured chat ID.
 - Credential tests pass and `fuzzynth doctor` validates both providers without
   making network calls or displaying endpoint/key values.
-- Sixteen unit tests pass after adding request omission/serialization and process
-  outcome classification checks.
+- Twenty-one unit tests pass after adding request omission/serialization, process
+  outcome classification, and artifact integrity checks.
 - All live probe output was restricted to capability, latency, effective
   parameters, response state, and usage metadata.
 
