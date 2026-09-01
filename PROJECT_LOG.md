@@ -5,17 +5,18 @@ This is the living operational memory for the project. Read it together with
 
 ## Current state
 
-- Phase: M2 pinned V8 build variants and executor foundation.
+- Phase: M2 pinned V8 builds and first end-to-end executor are complete.
 - Implementation authorization: granted by owner on 2026-09-01.
 - Repository: initialized from `git@github.com:Crihexe/fuzzynth.git`.
 - Provider calls made: three bounded, redacted capability probes.
-- V8 source: exact Chrome 152 V8 revision checked out with dependencies; release
-  and optdebug are built, smoke-tested, and packaged; ASAN is building.
+- V8 source: exact Chrome 152 V8 revision checked out with dependencies; release,
+  optdebug, and ASAN are built, smoke-tested, and packaged as isolated workers.
 - Fuzzing campaigns running: none.
 - Telegram development notifier: configured and tested; command/control bot not
   implemented.
 - Historical PoC dataset available: no; owner is preparing it.
-- Remote status: notifier commit `128cdf2` published to `origin/main`.
+- Remote status: implementation checkpoints are pushed frequently to
+  `origin/main`; verify the exact head at each resume.
 
 ## Protected boundaries
 
@@ -369,6 +370,22 @@ This is the living operational memory for the project. Read it together with
   the whole response executable and do not encode historical exploit techniques;
   later corpus windows provide the requested style conditioning.
 
+### 2026-09-01 — ASAN `d8` binary and complete build matrix
+
+- Built ASAN on all 16 host CPUs: 2481 steps in 14m40s with 14.8x reported
+  parallelism.
+- Verified V8 `15.2.124.19`, binary SHA-256
+  `f85fdcb890214faf077d73ada858be94da067a38ea0bda6a06c2f7ab983c22b5`,
+  and ELF build ID `244d899009cf3a1e`.
+- Passed fixed local JavaScript, WebAssembly, and natives-syntax smoke tests.
+- Packaged a symbolizing ASAN worker image
+  `sha256:35a808af5f3fd8ecad5946032a846c174ffd74dd82b6b3a2a967776db09a7899`
+  with the checkout-pinned `llvm-symbolizer` and `abort_on_error=1`.
+- Verified the symbolizer inside the shell-free image and passed an end-to-end
+  isolated JavaScript/WebAssembly execution through the evidence pipeline.
+- Completed the three intended Chrome 152 worker variants: throughput-oriented
+  release-symbolized, invariant-oriented optdebug, and memory-safety ASAN.
+
 ## Verification performed
 
 - No secret values were printed or added to the repository.
@@ -386,6 +403,7 @@ This is the living operational memory for the project. Read it together with
 - Forty-nine unit tests pass after adding request omission/serialization, process
   outcome classification, artifact integrity, stream protocol, bounded HTTP
   streaming, cost/budget, executor isolation, and catalog integrity checks.
+- All three pinned worker profiles pass local and isolated smoke verification.
 - All live probe output was restricted to capability, latency, effective
   parameters, response state, and usage metadata.
 
@@ -400,8 +418,12 @@ This is the living operational memory for the project. Read it together with
 
 ## Next work
 
-1. Build and smoke-test the optdebug and ASAN variants.
-2. Implement the isolated executor around the deterministic classifier.
-3. Add the durable evidence store and hard cost/usage gates.
-4. Package immutable, networkless `d8` worker images.
-5. Start only bounded smoke campaigns after those gates pass.
+1. Connect the bounded provider stream directly to generation persistence and
+   one-shot worker execution in a restartable campaign scheduler.
+2. Add Telegram crash/cost/status alerts, then an allowlisted command poller for
+   status, pause, resume, and stop.
+3. Fill reviewed provider prices and explicit hard budget windows; zero-budget
+   defaults continue to prohibit sustained campaigns.
+4. Add replay/triage across release, optdebug, and ASAN with duplicate reduction.
+5. Integrate bounded randomized dataset windows only after the owner finishes and
+   explicitly releases `poc_dataset/` for use.
