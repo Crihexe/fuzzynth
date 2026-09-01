@@ -1,0 +1,32 @@
+# Secrets
+.env
+.env.*
+!.env.example
+fuzzynth_openai_credentials
+*api_key*
+*telegram*credentials*
+
+# Python and tooling caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+
+# Project-owned runtime and build data
+.local/
+state/
+artifacts/
+crashes/
+generated/
+corpus/private/
+datasets/
+vendor/
+depot_tools/
+out/
+
+# Editor and OS noise
+.DS_Store
+*.swp
+*.tmp
