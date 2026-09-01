@@ -205,6 +205,16 @@ This is the living operational memory for the project. Read it together with
 - Why: exit code 137 alone cannot distinguish OOM from a controller kill, and an
   output-flooding process must not deadlock the same controller preserving it.
 
+### D-022 — Transactional evidence links
+
+- Status: accepted by implementation authorization.
+- Decision: keep large exact bytes in the content-addressed artifact store and
+  link them from a private SQLite WAL catalog containing immutable generation,
+  usage/cost, binary, flags, execution, termination, and classification metadata.
+- Why: crashes must remain queryable across restarts without duplicating raw data,
+  while foreign keys prevent a metadata record from silently losing its program,
+  request, stream, stdout, or stderr identity.
+
 ## Work completed
 
 ### 2026-09-01 — Planning bootstrap
@@ -341,6 +351,10 @@ This is the living operational memory for the project. Read it together with
 - Integration-tested normal Wasm execution (`ok`), an infinite loop (`timeout`,
   624 ms under a 500 ms deadline), an output flood (`output_limit`, exactly 1024
   bytes retained), and the known invalid 32-PID profile (`v8_fatal`, signal 6).
+- Added the first transactional evidence catalog with private permissions, WAL +
+  full synchronization, foreign keys, canonical parameter/flag JSON, generation
+  usage and cost, exact build/image identities, execution termination facts, and
+  aggregate generation/execution/candidate/cost status.
 
 ## Verification performed
 
@@ -356,9 +370,9 @@ This is the living operational memory for the project. Read it together with
   configured chat ID.
 - Credential tests pass and `fuzzynth doctor` validates both providers without
   making network calls or displaying endpoint/key values.
-- Forty-two unit tests pass after adding request omission/serialization, process
+- Forty-six unit tests pass after adding request omission/serialization, process
   outcome classification, artifact integrity, stream protocol, bounded HTTP
-  streaming, cost/budget, and executor isolation checks.
+  streaming, cost/budget, executor isolation, and catalog integrity checks.
 - All live probe output was restricted to capability, latency, effective
   parameters, response state, and usage metadata.
 
