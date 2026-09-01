@@ -363,6 +363,11 @@ This is the living operational memory for the project. Read it together with
   UID 65532 through a bind mount. The service now keeps artifacts private at rest
   and mounts a short-lived exact read-only copy from a mode-0700 directory; the
   repeated test completed `ok` and left no staging directory.
+- Added versioned raw JavaScript and JavaScript-transported Wasm prompt baselines
+  plus disabled campaign definitions for Spark/Luna, fresh/adaptive/short context,
+  alternate/official providers, and official-temperature experiments. They keep
+  the whole response executable and do not encode historical exploit techniques;
+  later corpus windows provide the requested style conditioning.
 
 ## Verification performed
 
