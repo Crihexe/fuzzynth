@@ -13,6 +13,7 @@ This is the living operational memory for the project. Read it together with
 - Fuzzing campaigns running: none.
 - Telegram configured: no; credentials pending from owner.
 - Historical PoC dataset available: no; owner is preparing it.
+- Remote status: planning commit `0be3174` published to `origin/main`.
 
 ## Protected boundaries
 
@@ -103,6 +104,7 @@ This is the living operational memory for the project. Read it together with
 - Drafted project instructions, architecture, campaigns, stream semantics,
   dataset conditioning, V8 build profiles, evidence capture, cost controls,
   Telegram scope, milestones, and review questions.
+- Committed and pushed the initial planning baseline as `0be3174`.
 
 ## Verification performed
 

@@ -1,6 +1,7 @@
 # Fuzzynth implementation and experiment plan
 
-Status: proposed for owner review  
+Status: proposed for owner review
+
 Date: 2026-09-01
 
 ## 1. Experiment statement
