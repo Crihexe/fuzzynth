@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fuzzynth"
+version = "0.1.0"
+description = "LLM-driven JavaScript and WebAssembly fuzzing laboratory for V8"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Proprietary" }
+authors = [
+  { name = "Cristian Di Nicola", email = "cristiann.di.nicola@gmail.com" },
+]
+dependencies = []
+
+[project.scripts]
+fuzzynth = "fuzzynth.cli:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]

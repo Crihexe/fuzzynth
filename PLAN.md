@@ -73,19 +73,20 @@ controller holds provider/Telegram secrets; `d8` workers never receive them.
 
 ## 3. Campaign matrix
 
-Weights will be configuration, not constants. An initial experiment allocation
-for discussion is:
+Weights will be configuration, not constants. The initial matrix deliberately
+separates provider effects from model and generation effects:
 
-| Campaign | Initial share | Generator | Feedback |
-|---|---:|---|---|
-| Raw JS stream | 30% | `gpt-5.3-codex-spark` | next-turn compact result |
-| Raw Wasm-via-JS stream | 15% | `gpt-5.3-codex-spark` | next-turn compact result |
-| Independent raw turns | 10% | Spark and Luna controls | none or corpus seed only |
-| Tool-driven JS | 15% | GPT-5.6 Luna | typed execution tools |
-| Tool-driven Wasm | 10% | GPT-5.6 Luna | typed execution tools |
-| Mutation/recombination | 10% | configurable | selected corpus parents |
-| Replay/differential triage | 5% | deterministic first | variant results |
-| Minimization/investigation | 5% | Luna plus deterministic reducer | crash signature |
+| Campaign | Provider | Generator | Temperature | Primary comparison |
+|---|---|---|---|---|
+| Raw JS/Wasm stream | alternate | `gpt-5.3-codex-spark` | omitted | maximum throughput |
+| Raw JS/Wasm stream | alternate | GPT-5.6 Luna | omitted | model comparison |
+| Raw JS/Wasm stream | official | GPT-5.6 Luna | varied | sampling comparison |
+| Independent raw turns | all supported | Spark/Luna | provider-valid | fresh-context control |
+| Stateful raw turns | all supported | Spark/Luna | provider-valid | context lifetime |
+| Tool-driven JS/Wasm | alternate/official | GPT-5.6 Luna | provider-valid | agent feedback |
+| Mutation/recombination | configurable | Spark/Luna | provider-valid | selected parents |
+| Replay/differential triage | local | deterministic first | n/a | reproducibility |
+| Minimization/investigation | configurable | Luna + reducer | provider-valid | crash signature |
 
 The scheduler must be able to set a campaign to zero, pause it, or cap it without
 affecting the others. Parallelism is bounded separately for API requests, normal
@@ -143,6 +144,32 @@ and treat direct PTY feed as a research lane rather than the authoritative path.
   feedback is enabled.
 - Run A/B controls with identical prompts but no feedback to measure whether
   stateful history helps or causes mode collapse.
+
+### 4.4 Parameter and context experiments
+
+Provider capability is part of each experiment identity. The alternate endpoint
+must omit `temperature`; the official Luna endpoint may test a bounded set of
+temperature values. Unsupported parameters are never sent merely to make rows
+look uniform.
+
+For Luna, compare `reasoning.effort` at `none`, `low`, and `medium` first. Add
+`high` or above only if measured novelty or validity improves enough to justify
+latency and reasoning-token cost. Compare `text.verbosity` at `low`, `medium`,
+and `high`; high verbosity is a hypothesis for richer program structure, not a
+guarantee, and may instead increase prose/fence failures in raw mode.
+
+Context lifetime policies:
+
+- `fresh`: one program, then a new conversation;
+- `short`: reset after a small randomized number of programs;
+- `medium`: retain a bounded session and rotate dataset windows periodically;
+- `long`: rarely reset, but enforce a hard input-token ceiling;
+- `adaptive`: reset on mode collapse, repetition, or cost threshold.
+
+Dataset windows are independently sampled and versioned. Experiments compare
+frequent versus rare conversation resets at equal generated-token and execution
+budgets. Archive full histories, but never resend the entire archived history by
+default.
 
 ## 5. JavaScript and WebAssembly output formats
 
@@ -205,16 +232,20 @@ After plan approval:
 
 1. Fetch official `depot_tools` and V8 source inside ignored project-owned work
    paths under `/root/fuzzynth`.
-2. Pin the V8 Git revision, dependency revisions, compiler/toolchain identity,
-   GN args, and build command in a machine-readable build manifest.
-3. Produce at least:
+2. Resolve the latest stable Linux Chrome 152 release through official Chromium
+   release metadata, read its pinned V8 revision, and check out that exact commit.
+   Do not build moving V8 `main` as the experiment target.
+3. Pin Chrome version, Chromium/V8 revisions, dependency revisions,
+   compiler/toolchain identity, GN args, and build command in a machine-readable
+   build manifest.
+4. Produce at least:
    - a symbolized release build for throughput;
    - a debug or slow-check build for invariant failures;
    - an ASAN build, with UBSAN or another sanitizer build evaluated separately.
-4. Package only required runtime/build-identification assets into immutable worker
+5. Package only required runtime/build-identification assets into immutable worker
    images. Keep source available read-only to an explicitly authorized inspection
    path, not to normal worker execution unless a campaign requires it.
-5. Smoke-test every binary and archive `d8 --version`, `d8 --help`, hashes, build
+6. Smoke-test every binary and archive `d8 --version`, `d8 --help`, hashes, build
    IDs, and symbolizer compatibility.
 
 Proposed flag profiles are names whose exact flags will be resolved and tested
@@ -345,18 +376,20 @@ PoCs and must not make campaign correctness depend on Telegram availability.
 
 ## 13. Milestones and acceptance gates
 
-### M0 — Plan and review (current)
+### M0 — Plan and review (complete)
 
 - Planning, instructions, and project log committed and pushed.
 - No provider calls, V8 download/build, or implementation.
-- Gate: explicit owner approval.
+- Gate: owner approval received on 2026-09-01.
 
 ### M1 — Skeleton and provider capability probe
 
 - Configuration/secrets boundary, database skeleton, CLI, logging, and tests.
-- Probe exact custom-provider support for `gpt-5.3-codex-spark`, Luna, Responses,
-  streaming event shape, cancellation, usage, temperature, reasoning controls,
-  and prompt caching without exposing credentials.
+- Probe exact alternate-provider support for `gpt-5.3-codex-spark`, Luna,
+  Responses, streaming event shape, cancellation, usage, reasoning controls,
+  verbosity, and prompt caching without exposing credentials. Record that
+  alternate temperature is unsupported and omit it from requests.
+- Probe official Luna separately, including a bounded temperature matrix.
 - Gate: recorded capability matrix and bounded-cost smoke test.
 
 ### M2 — Reproducible V8 build supply chain
@@ -423,7 +456,8 @@ PoCs and must not make campaign correctness depend on Telegram availability.
 
 ## 15. Open decisions for owner review
 
-1. First pinned V8 target: current main, a current stable revision, or both.
+1. Whether to add V8 `main` later as a secondary target; the primary target is
+   now the latest stable Chrome 152 V8 revision.
 2. Whether the first long run prioritizes sanitizer yield or release throughput.
 3. Whether source inspection is exposed only to investigators or also to raw
    campaigns through `d8` file helpers.
@@ -435,9 +469,10 @@ PoCs and must not make campaign correctness depend on Telegram availability.
    artifacts.
 8. Telegram confirmation policy for global stop/resume and replay commands.
 
-## 16. Immediate next action after approval
+## 16. Immediate implementation action
 
-Implement M1 as a small, tested vertical slice. Do not start an unbounded campaign.
-The first provider call will be a capped capability probe using the custom base URL,
-and the result will be committed only as redacted capability metadata. V8 build
-work begins at M2 after that probe is reviewed.
+M1 and the long-running checkout/build portion of M2 may proceed in parallel.
+Implement a tested secrets/provider boundary and capped capability probe while
+official V8 source and dependencies are fetched into ignored project storage.
+Commit only redacted capability metadata and pinned V8 build manifests. Do not
+start an unbounded campaign until M3 evidence capture and budget gates pass.

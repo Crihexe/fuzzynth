@@ -20,14 +20,17 @@ source-code analysis.
 
 ## Current work boundary
 
-- The current phase is planning and documentation only.
-- Do not begin implementation, download V8, build `d8`, call the model provider,
-  or start a fuzzing campaign until the owner reviews and approves the plan.
-- After approval, work only under `/root/fuzzynth` and project-owned containers.
+- The owner authorized implementation, official V8 checkout/build, bounded
+  provider capability probes, and repository setup on 2026-09-01.
+- Do not start an unbounded or sustained-cost fuzzing campaign until the runner,
+  crash evidence path, and hard budget limits have passed their milestone gates.
+- Work only under `/root/fuzzynth` and project-owned containers.
 - Do not modify, move, build inside, or otherwise disturb `/root/red-sailor` or
   any of its files, containers, volumes, configuration, or processes.
 - Commit coherent changes frequently and push them to `origin/main` so the owner
   can review progress continuously.
+- Attribute new commits to
+  `Cristian Di Nicola <cristiann.di.nicola@gmail.com>`.
 
 ## Repository and credentials
 
@@ -35,9 +38,11 @@ source-code analysis.
 - Use the repository-specific GitHub deploy key at
   `/root/.ssh/fuzzynth_github_deploy_ed25519`.
 - Load provider credentials from `/root/fuzzynth_openai_credentials`.
-- The credentials file contains `OPENAI_API_KEY` and `OPENAI_BASE_URL`.
-- Always use the custom `OPENAI_BASE_URL`. Never silently fall back to the
-  default OpenAI endpoint.
+- The credentials file contains `ALTERNATE_OPENAI_API_KEY`,
+  `ALTERNATE_OPENAI_BASE_URL`, and `OPENAI_API_KEY`.
+- Use the alternate key only with `ALTERNATE_OPENAI_BASE_URL`.
+- Use `OPENAI_API_KEY` only with the fixed official OpenAI API endpoint. Never
+  route one provider's key to the other endpoint and never silently fall back.
 - Never print, log, commit, bake into an image, or pass provider credentials to
   a `d8` worker.
 - The provider must be accessed through an adapter because OpenAI-compatible
@@ -64,6 +69,15 @@ source-code analysis.
   `d8` input do not have the same semantics as executing a sealed file.
 - Retain tool-based campaigns with file execution, batch execution, replay, and
   an optional persistent `d8` console.
+- Run Spark and Luna through the alternate endpoint with `temperature` omitted,
+  because that provider does not support setting it.
+- Run Luna through the official OpenAI endpoint in separate campaigns that can
+  vary `temperature`.
+- Treat parameter support as provider-specific and probe it before scheduling.
+  Omission is distinct from sending a default-valued parameter.
+- Experiment with Luna `reasoning.effort` and `text.verbosity`. Measure valid
+  code, novelty, crash yield, output/reasoning tokens, throughput, and cost; do
+  not assume that higher effort or verbosity is better.
 
 ## Dataset conditioning
 
@@ -76,13 +90,21 @@ source-code analysis.
 - Support multiple conditioning policies, including large-context windows,
   rotating/retrieved windows, and unconditioned controls, so effectiveness and
   memorization can be measured.
+- Keep normal contexts deliberately bounded. Randomize dataset windows and test
+  short, medium, and long conversation lifetimes plus stateless fresh turns.
+- Compare frequent resets against rare resets: long-lived context may encourage
+  novelty through accumulated feedback, but may also increase cost and mode
+  collapse.
 - Detect exact and near replay of historical PoCs. Replays remain useful
   regression tests but are not new findings.
 
 ## `d8`, flags, and source
 
-- After approval, obtain V8 and its build tooling from official upstream sources
-  and pin exact revisions and build arguments.
+- Obtain V8 and its build tooling from official upstream sources and pin exact
+  revisions and build arguments. This work is now authorized.
+- Target the V8 revision embedded in the latest stable Chrome 152 release, not
+  V8 `main`. Resolve and record the exact Chrome version, Chromium revision, V8
+  revision, platform/channel source, and lookup timestamp before building.
 - Build or otherwise provide symbolized release, debug/slow-check, and sanitizer
   variants suitable for crash discovery and reproduction.
 - Make the V8 checkout available read-only for optional, explicit inspection;
@@ -132,6 +154,9 @@ source-code analysis.
   authorize the campaign control plane or other implementation before approval.
 - Telegram must eventually expose status, costs, pause/resume/stop, worker state,
   and recent crash summaries without accepting arbitrary shell commands.
+- Send an immediate concise Telegram alert when a worker produces a native
+  signal, V8 fatal/check failure, sanitizer finding, or confirmed differential
+  mismatch. Do not include the full potentially sensitive PoC in the alert.
 - Once Telegram is configured, development helper scripts may send concise
   progress updates to the owner, without secrets or sensitive PoC bodies.
 

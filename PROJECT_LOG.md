@@ -5,16 +5,16 @@ This is the living operational memory for the project. Read it together with
 
 ## Current state
 
-- Phase: M0 — plan and review.
-- Implementation authorization: not yet granted.
+- Phase: M1 setup and M2 V8 checkout/build preparation.
+- Implementation authorization: granted by owner on 2026-09-01.
 - Repository: initialized from `git@github.com:Crihexe/fuzzynth.git`.
 - Provider calls made: none.
-- V8 source downloaded or built: no.
+- V8 source: official `depot_tools`/`fetch v8` checkout started; build pending.
 - Fuzzing campaigns running: none.
 - Telegram development notifier: configured and tested; command/control bot not
   implemented.
 - Historical PoC dataset available: no; owner is preparing it.
-- Remote status: planning commit `0be3174` published to `origin/main`.
+- Remote status: notifier commit `128cdf2` published to `origin/main`.
 
 ## Protected boundaries
 
@@ -98,6 +98,45 @@ This is the living operational memory for the project. Read it together with
 - Why: gives the owner lightweight progress visibility without broadening the
   current development authorization.
 
+### D-010 — Dual provider boundary
+
+- Status: accepted by owner.
+- Decision: run Spark and Luna through the alternate endpoint, and Luna through
+  the official OpenAI endpoint, with separate keys and no implicit fallback.
+- Why: enables low-cost throughput experiments and an official control that can
+  vary temperature.
+
+### D-011 — Provider-valid parameter matrices
+
+- Status: accepted by owner.
+- Decision: omit temperature on the alternate endpoint; vary it only where
+  supported. Test Luna reasoning effort and text verbosity as independent factors.
+- Why: unsupported parameters must not block alternate runs, and higher reasoning
+  or verbosity may trade speed/cost for useful structural diversity.
+
+### D-012 — Context lifetime is an experiment factor
+
+- Status: accepted by owner.
+- Decision: randomize bounded dataset windows and compare fresh, short, medium,
+  long, and adaptive conversation-reset policies.
+- Why: frequent resets reduce context cost and mode lock-in, while long sessions
+  may use accumulated feedback to push the model toward new cases.
+
+### D-013 — Development gate lifted
+
+- Status: accepted by owner.
+- Decision: begin repository setup, bounded provider probes, and official V8
+  checkout/build. Sustained fuzzing remains gated on evidence and budget controls.
+- Why: the owner reviewed the initial direction and explicitly authorized work.
+
+### D-014 — Chrome 152 V8 target
+
+- Status: accepted by owner.
+- Decision: build the exact V8 revision embedded in the latest stable Chrome 152
+  release rather than moving V8 `main`.
+- Why: fixes a reportable real-world browser-engine baseline while retaining an
+  exact revision for reproduction.
+
 ## Work completed
 
 ### 2026-09-01 — Planning bootstrap
@@ -126,30 +165,60 @@ This is the living operational memory for the project. Read it together with
   Telegram returned message ID `7`.
 - Documented the narrowly scoped M0 authorization and notifier usage.
 
+### 2026-09-01 — Development authorization and dual credentials
+
+- Owner authorized implementation and official V8 checkout/build.
+- Verified, without printing values, non-empty alternate key/base URL and
+  official OpenAI key fields in the external credentials file.
+- Restricted the credentials file to owner-only permissions (`0600`).
+- Configured future repository commits as
+  `Cristian Di Nicola <cristiann.di.nicola@gmail.com>`.
+- Started the official `depot_tools` plus `fetch v8` workflow under ignored
+  project storage; `/root/red-sailor` remains untouched.
+- Owner selected the latest stable Chrome 152 V8 revision as the build target;
+  exact release and commit resolution is pending completion of official lookup.
+- Sent Telegram development update message ID `8`.
+
+### 2026-09-01 — Initial controller and experiment configuration
+
+- Added a dependency-free Python package/CLI skeleton and project metadata.
+- Added fail-closed, permission-checked loading for the alternate and official
+  provider credentials with fixed official endpoint and no cross-provider
+  fallback.
+- Added a redacted offline `fuzzynth doctor` command.
+- Added the first declarative model/provider/temperature/reasoning/verbosity and
+  context-lifetime experiment matrix; unbounded campaigns remain disabled.
+- Added the Chrome 152 V8 target placeholder and reproducible upstream checkout
+  script.
+- Added five credential-boundary unit tests and a local test script.
+
 ## Verification performed
 
 - No secret values were printed or added to the repository.
 - No model-provider request was made.
-- No V8 source or build dependency was downloaded.
+- Official V8 checkout/build state is tracked separately under `.local/`, which
+  is ignored by Git.
 - No file under `/root/red-sailor` was modified.
 - Telegram notifier passed Python bytecode compilation and dry-run validation.
 - Live Telegram `sendMessage` test succeeded without printing credentials or the
   configured chat ID.
+- Credential tests pass and `fuzzynth doctor` validates both providers without
+  making network calls or displaying endpoint/key values.
 
 ## Waiting on owner
 
 - Review and amend `instruction.md`, `PLAN.md`, and the proposed decisions above.
-- Explicit approval before M1 implementation.
 - Historical V8 PoC dataset when ready.
 - Telegram command/control policy and allowlisted actor validation at a later
   milestone; the one-way development notifier is already configured.
 - Answers to the open decisions in `PLAN.md` when convenient; reasonable defaults
   can be proposed during review.
 
-## Next work after approval
+## Next work
 
-1. Mark approved decisions accepted and record plan changes.
+1. Complete official V8 checkout, install upstream build dependencies, and pin
+   exact revisions.
 2. Create the minimal project skeleton and test harness.
-3. Add fail-closed external credential loading with custom-base enforcement.
-4. Run a strictly capped provider capability probe and record redacted results.
-5. Commit, test, and push that vertical slice before beginning the V8 build.
+3. Add fail-closed dual-provider credential loading and endpoint separation.
+4. Run strictly capped provider capability probes and record redacted results.
+5. Build and smoke-test the first symbolized `d8`, then commit/push manifests.

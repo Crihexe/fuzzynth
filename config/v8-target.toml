@@ -1,0 +1,12 @@
+schema_version = 1
+milestone = 152
+channel = "stable"
+platform = "linux"
+resolution_status = "pending"
+source = "official_chromium_release_metadata"
+
+# Filled by the release resolver before the first build:
+# chrome_version = ""
+# chromium_revision = ""
+# v8_revision = ""
+# resolved_at = ""
