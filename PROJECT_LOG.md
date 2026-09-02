@@ -764,3 +764,8 @@ This is the living operational memory for the project. Read it together with
   is now preserved, executed once, returned with factual d8 feedback, and does
   not pause solely for `max_output_tokens`. The regression suite now has 135
   passing tests.
+- Recovered that already-archived GPT-4o mini prefix from the immutable raw JSON
+  and executed it once under its original generation identity: d8 reported an
+  ordinary JavaScript exception in 173 ms, not a crash candidate. Resuming a
+  paused session whose attempted turn count already reached its target now
+  closes that session instead of dispatching an unintended extra turn.

@@ -297,7 +297,12 @@ class SessionLedger:
         with self.connection:
             cursor = self.connection.execute(
                 """
-                UPDATE session SET status = 'active', pause_reason = NULL,
+                UPDATE session SET
+                    status = CASE
+                        WHEN next_turn > target_turns THEN 'completed'
+                        ELSE 'active'
+                    END,
+                    pause_reason = NULL,
                                    updated_at = ?
                 WHERE id = ? AND status = 'paused'
                 """,

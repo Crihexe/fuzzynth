@@ -100,6 +100,22 @@ class SessionLedgerTests(unittest.TestCase):
         self.assertEqual(resumed.status, "active")
         self.assertEqual(resumed.next_turn, 2)
 
+    def test_resume_closes_a_paused_session_that_reached_its_turn_limit(self) -> None:
+        session = self.ledger.start(
+            self.worker,
+            SessionPlan(7, 1, "none", None),
+            corpus_window=None,
+        )
+        session = self.ledger.record_turn(
+            session.session_id,
+            self.result(1, pause_reason="incomplete_response"),
+        )
+
+        self.assertEqual(session.status, "paused")
+        resumed = self.ledger.resume(session.session_id)
+        self.assertEqual(resumed.status, "completed")
+        self.assertEqual(resumed.next_turn, 2)
+
     def test_bug_candidate_stops_without_replay(self) -> None:
         session = self.ledger.start(
             self.worker,
