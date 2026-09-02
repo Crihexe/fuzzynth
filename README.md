@@ -116,17 +116,18 @@ running isolated `d8` process. Install or refresh the hardened system service wi
 sudo ./scripts/install_telegram_control_service.sh
 ```
 
-## Supervised Spark campaign
+## Supervised v2 campaign
 
-The checked-in v2 canary service runs only the alternate Spark worker and the
-four explicitly reviewed JavaScript corpus files. It preserves every request,
+The checked-in v2 service runs independent Spark, custom Luna, and official Luna
+threads over the four explicitly reviewed JavaScript corpus files. A quota or
+provider failure pauses only its own worker; the other threads continue. It preserves every request,
 raw response, program, execution capture, and session transition under private
 `state/` storage while emitting only safe identifiers and metrics to journald.
 
 ```bash
-sudo ./scripts/install_spark_campaign_service.sh
-systemctl status fuzzynth-spark-campaign.service
-journalctl -u fuzzynth-spark-campaign.service
+sudo ./scripts/install_v2_campaign_service.sh
+systemctl status fuzzynth-v2-campaign.service
+journalctl -u fuzzynth-v2-campaign.service
 ```
 
 The service waits without retrying while its worker is paused. A native crash is

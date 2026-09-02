@@ -1,0 +1,40 @@
+[Unit]
+Description=Fuzzynth supervised multi-worker v2 V8 campaign
+After=network-online.target docker.service fuzzynth-telegram-control.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/root/fuzzynth
+Environment=PYTHONPATH=/root/fuzzynth/src
+ExecStart=/usr/bin/python3 -m fuzzynth campaign-run --live --repo-root /root/fuzzynth --state-root /root/fuzzynth/state --seed 20260902 --window-size 2 --worker spark-custom-iterative-js --worker luna-custom-low-iterative-js --worker luna-official-high-temperature-none-js --corpus-file /root/fuzzynth/.local/datasets/v8_wasm_poc_handout_v2/samples_trigger_only/secbench_41494611.js --corpus-file /root/fuzzynth/.local/datasets/v8_wasm_poc_handout_v2/samples_trigger_only/secbench_430572435.js --corpus-file /root/fuzzynth/.local/datasets/v8_wasm_poc_handout_v2/samples_trigger_only/secbench_439771269.js --corpus-file /root/fuzzynth/.local/datasets/v8_wasm_poc_handout_v2/samples_trigger_only/secbench_443875388.js
+Restart=on-failure
+RestartSec=10s
+TimeoutStopSec=330s
+UMask=0077
+SyslogIdentifier=fuzzynth-v2-campaign
+
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=read-only
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+ReadWritePaths=/root/fuzzynth/state
+InaccessiblePaths=/root/red-sailor
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target
