@@ -33,6 +33,7 @@ offline:
 PYTHONPATH=src python3 -m fuzzynth workers --seed 7
 PYTHONPATH=src python3 -m fuzzynth budget-status
 PYTHONPATH=src python3 -m fuzzynth session-status
+PYTHONPATH=src python3 -m fuzzynth control-status
 ```
 
 ## Pinned V8 build
@@ -93,3 +94,24 @@ python3 scripts/notify_telegram.py "Fuzzynth development update"
 It reads the external owner-only credentials file by default. A message can also
 be passed through standard input, and `--silent` suppresses notification sound.
 The script sends updates only; it does not accept Telegram commands.
+
+## Telegram control
+
+The long-polling control process loads only the external Telegram credential file;
+it does not load provider keys. It accepts commands only from the configured chat
+and owner identity and persists every state-changing action:
+
+```text
+/status  /workers  /sessions  /cost  /budget  /lastcrash
+/pause <worker|all>
+/resume <worker|all>
+/stop CONFIRM
+/start CONFIRM
+```
+
+Changes are enforced before the next model turn. They do not kill a currently
+running isolated `d8` process. Install or refresh the hardened system service with:
+
+```bash
+sudo ./scripts/install_telegram_control_service.sh
+```
