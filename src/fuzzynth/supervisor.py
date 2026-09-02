@@ -48,7 +48,11 @@ def json_event_sink(event: dict[str, object]) -> None:
 
 def _stable_seed(base_seed: int, worker_id: str, ordinal: int) -> int:
     material = f"{base_seed}:{worker_id}:{ordinal}".encode()
-    return int.from_bytes(hashlib.sha256(material).digest()[:8], "big")
+    # SQLite INTEGER is signed 64-bit. Keep the deterministic seed inside that
+    # portable range while retaining 63 bits of entropy.
+    return int.from_bytes(hashlib.sha256(material).digest()[:8], "big") & (
+        (1 << 63) - 1
+    )
 
 
 class CampaignSupervisor:
