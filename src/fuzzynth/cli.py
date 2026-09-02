@@ -8,12 +8,24 @@ from pathlib import Path
 import sys
 
 from fuzzynth import __version__
+from fuzzynth.artifacts import ArtifactStore
+from fuzzynth.budgets import (
+    BudgetConfigurationError,
+    BudgetLedger,
+    load_meter_policies,
+)
+from fuzzynth.campaign_config import (
+    CampaignConfigurationError,
+    choose_session_plan,
+    load_campaign_configuration,
+)
 from fuzzynth.catalog import CatalogError
 from fuzzynth.credentials import CredentialError, load_credentials
 from fuzzynth.docker_executor import DockerExecutionError
 from fuzzynth.execution_service import ExecutionServiceError, execute_file
 from fuzzynth.probe import PROBE_INPUT, PROBE_INSTRUCTIONS, run_probe
 from fuzzynth.responses import GenerationRequest
+from fuzzynth.sessions import SessionLedger, SessionStateError
 
 
 def _doctor(credentials_path: Path | None) -> int:
@@ -24,6 +36,82 @@ def _doctor(credentials_path: Path | None) -> int:
         "providers": credentials.safe_status(),
     }
     print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+
+def _workers(repo_root: Path, seed: int) -> int:
+    configuration = load_campaign_configuration(
+        repo_root / "config/campaign-workers.toml",
+        repo_root=repo_root,
+    )
+    workers = []
+    for worker in configuration.workers.values():
+        plan = choose_session_plan(worker, seed)
+        workers.append(
+            {
+                "id": worker.worker_id,
+                "enabled": worker.enabled,
+                "provider": worker.provider,
+                "model": worker.model,
+                "mode": worker.mode,
+                "meter": worker.meter,
+                "reasoning_efforts": worker.reasoning_efforts,
+                "verbosity": worker.verbosity,
+                "temperatures": worker.temperatures,
+                "turn_range": [
+                    worker.min_turns_per_session,
+                    worker.max_turns_per_session,
+                ],
+                "example_session_for_seed": {
+                    "reasoning_effort": plan.reasoning_effort,
+                    "temperature": plan.temperature,
+                    "target_turns": plan.target_turns,
+                },
+                "v8_build_profile": worker.v8_build_profile,
+                "v8_worker_profile": worker.v8_worker_profile,
+                "d8_flags": worker.d8_flags,
+            }
+        )
+    print(
+        json.dumps(
+            {
+                "dataset_enabled": configuration.context.dataset_enabled,
+                "seed": seed,
+                "workers": workers,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+def _budget_status(repo_root: Path, state_root: Path) -> int:
+    policies = load_meter_policies(repo_root / "config/budgets.toml")
+    with BudgetLedger(state_root / "budgets.sqlite3", policies) as ledger:
+        status = [ledger.status(meter_id) for meter_id in sorted(policies)]
+    print(json.dumps({"meters": status}, indent=2, sort_keys=True))
+    return 0
+
+
+def _session_status(state_root: Path) -> int:
+    store = ArtifactStore(state_root / "artifacts")
+    with SessionLedger(state_root / "sessions.sqlite3", store) as ledger:
+        sessions = [
+            {
+                "session_id": session.session_id,
+                "worker_id": session.worker_id,
+                "status": session.status,
+                "next_turn": session.next_turn,
+                "target_turns": session.target_turns,
+                "pause_reason": session.pause_reason,
+                "has_corpus": session.corpus is not None,
+                "reasoning_effort": session.reasoning_effort,
+                "temperature": session.temperature,
+            }
+            for session in ledger.list_sessions()
+        ]
+    print(json.dumps({"sessions": sessions}, indent=2, sort_keys=True))
     return 0
 
 
@@ -65,6 +153,23 @@ def build_parser() -> argparse.ArgumentParser:
     execute.add_argument("--worker-profile", default="standard")
     execute.add_argument("--flag", action="append", default=[])
     execute.add_argument("--state-root", type=Path, default=Path("state"))
+
+    workers = subparsers.add_parser(
+        "workers", help="show configured campaign workers without provider calls"
+    )
+    workers.add_argument("--seed", type=int, default=1)
+    workers.add_argument("--repo-root", type=Path, default=Path("."))
+
+    budgets = subparsers.add_parser(
+        "budget-status", help="show durable token/cost counters without provider calls"
+    )
+    budgets.add_argument("--state-root", type=Path, default=Path("state"))
+    budgets.add_argument("--repo-root", type=Path, default=Path("."))
+
+    sessions = subparsers.add_parser(
+        "session-status", help="show durable campaign session state"
+    )
+    sessions.add_argument("--state-root", type=Path, default=Path("state"))
     return parser
 
 
@@ -101,11 +206,23 @@ def main(argv: list[str] | None = None) -> int:
             )
             print(json.dumps(result.as_dict(), indent=2, sort_keys=True))
             return 1 if result.bug_candidate else 0
+        if args.command == "workers":
+            return _workers(args.repo_root.resolve(), args.seed)
+        if args.command == "budget-status":
+            return _budget_status(
+                args.repo_root.resolve(),
+                args.state_root.resolve(),
+            )
+        if args.command == "session-status":
+            return _session_status(args.state_root.resolve())
     except (
+        BudgetConfigurationError,
+        CampaignConfigurationError,
         CredentialError,
         CatalogError,
         DockerExecutionError,
         ExecutionServiceError,
+        SessionStateError,
         OSError,
         ValueError,
     ) as exc:
