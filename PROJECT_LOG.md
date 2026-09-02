@@ -657,6 +657,13 @@ This is the living operational memory for the project. Read it together with
   establishes two separate boundaries: SSE avoids Cloudflare's ~125-second 524,
   while the provider can still end exceptionally long generations near 535
   seconds.
+- Two subsequent controlled xhigh turns completed in 345.3 and 424.0 seconds.
+  Together they used 12,417 input and 42,567 output tokens, including 34,109
+  reasoning tokens, and accounted for 1.339095 credits. Their programs were
+  10,898 and 14,974 bytes and both produced ordinary JavaScript exceptions. The
+  observed complete-SSE xhigh sample is therefore three completions and one
+  provider `request_timeout`; xhigh was then owner-control paused with no active
+  reservation while lower-effort lanes continued.
 - Added a distinct custom Luna `none`/high-verbosity fallback lane managed by a
   local reconciler. It runs only while Spark has a supervisor-originated provider
   or quota pause and never overrides owner, crash, or provider control. Its first
