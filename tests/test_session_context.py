@@ -1,0 +1,115 @@
+from __future__ import annotations
+
+import json
+import unittest
+
+from fuzzynth.session_context import (
+    ExecutionFeedback,
+    SessionContextError,
+    TurnContext,
+    build_execution_feedback,
+    build_turn_input,
+)
+
+
+class ExecutionFeedbackTests(unittest.TestCase):
+    def test_feedback_is_canonical_bounded_and_factual(self) -> None:
+        encoded = build_execution_feedback(
+            ExecutionFeedback(
+                outcome="javascript_exception",
+                exit_code=1,
+                signal_name=None,
+                timed_out=False,
+                oom_killed=False,
+                output_truncated=False,
+                duration_ms=42,
+                stdout=b"x" * 20_000,
+                stderr=b"prefix\nTypeError: bad\n",
+            ),
+            max_feedback_bytes=512,
+        )
+
+        self.assertLessEqual(len(encoded), 512)
+        decoded = json.loads(encoded)
+        self.assertEqual(decoded["outcome"], "javascript_exception")
+        self.assertIn("TypeError", decoded["stderr_tail"])
+
+    def test_binary_output_is_representable(self) -> None:
+        encoded = build_execution_feedback(
+            ExecutionFeedback(
+                outcome="ok",
+                exit_code=0,
+                signal_name=None,
+                timed_out=False,
+                oom_killed=False,
+                output_truncated=False,
+                duration_ms=1,
+                stdout=b"\xff\xfe",
+                stderr=b"",
+            ),
+            max_feedback_bytes=512,
+        )
+
+        self.assertIn("\ufffd", encoded.decode())
+
+
+class TurnInputTests(unittest.TestCase):
+    @staticmethod
+    def turn(index: int, size: int = 20) -> TurnContext:
+        return TurnContext(
+            turn_index=index,
+            program=(f"// turn {index}\n" + "x" * size).encode(),
+            feedback=b'{"outcome":"ok"}',
+        )
+
+    def test_includes_only_configured_recent_turns(self) -> None:
+        result = build_turn_input(
+            turn_index=4,
+            history=(self.turn(1), self.turn(2), self.turn(3)),
+            history_turns=2,
+            corpus_window=None,
+            max_context_bytes=4096,
+        )
+
+        self.assertNotIn(b"// turn 1", result)
+        self.assertIn(b"// turn 2", result)
+        self.assertIn(b"// turn 3", result)
+
+    def test_drops_oldest_turns_to_fit_byte_limit(self) -> None:
+        result = build_turn_input(
+            turn_index=4,
+            history=(self.turn(1, 900), self.turn(2, 900), self.turn(3, 100)),
+            history_turns=3,
+            corpus_window=None,
+            max_context_bytes=1200,
+        )
+
+        self.assertNotIn(b"// turn 1", result)
+        self.assertNotIn(b"// turn 2", result)
+        self.assertIn(b"// turn 3", result)
+
+    def test_corpus_is_delimited_but_never_loaded_from_a_path(self) -> None:
+        result = build_turn_input(
+            turn_index=1,
+            history=(),
+            history_turns=4,
+            corpus_window=b"// public PoC example",
+            max_context_bytes=4096,
+        )
+
+        self.assertIn(b"<historical-poc-corpus-data>", result)
+        self.assertIn(b"// public PoC example", result)
+
+    def test_rejects_oversized_corpus_instead_of_silently_truncating(self) -> None:
+        with self.assertRaisesRegex(SessionContextError, "corpus"):
+            build_turn_input(
+                turn_index=1,
+                history=(),
+                history_turns=0,
+                corpus_window=b"x" * 4096,
+                max_context_bytes=1024,
+            )
+
+
+if __name__ == "__main__":
+    unittest.main()
