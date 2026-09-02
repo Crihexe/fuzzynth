@@ -153,7 +153,16 @@ class ResponsesClient:
             response=assembled.response,
         )
 
-    def create(self, request: GenerationRequest) -> dict[str, Any]:
+    def create(
+        self,
+        request: GenerationRequest,
+        *,
+        max_response_bytes: int = 4 * 1024 * 1024,
+    ) -> dict[str, Any]:
+        if request.stream:
+            raise ValueError("non-streaming create requires stream=False")
+        if max_response_bytes < 1:
+            raise ValueError("max_response_bytes must be positive")
         parsed = urlsplit(self.provider.base_url)
         if parsed.scheme != "https" or not parsed.hostname:
             raise ResponsesError("provider base URL is not a valid HTTPS endpoint")
@@ -178,7 +187,13 @@ class ResponsesClient:
                 },
             )
             response = connection.getresponse()
-            response_body = response.read()
+            response_body = response.read(max_response_bytes + 1)
+            if len(response_body) > max_response_bytes:
+                raise ResponsesError(
+                    "provider response exceeded local byte limit",
+                    status=response.status,
+                    code="response_too_large",
+                )
         except (OSError, http.client.HTTPException) as exc:
             raise ResponsesError(
                 f"provider request failed ({type(exc).__name__})",

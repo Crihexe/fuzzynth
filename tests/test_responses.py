@@ -143,5 +143,47 @@ class StreamingClientTests(unittest.TestCase):
             ResponsesClient(self.provider).stream(request)
 
 
+class CreateClientTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.provider = ProviderCredentials(
+            name="test",
+            base_url="https://provider.invalid/v1",
+            api_key="secret-test-key",
+        )
+
+    def request(self) -> GenerationRequest:
+        return GenerationRequest(
+            model="gpt-test",
+            instructions="code only",
+            input_text="generate",
+        )
+
+    def test_enforces_local_json_response_byte_limit(self) -> None:
+        connection = FakeConnection(FakeResponse([b'{"oversized":"value"}']))
+
+        with patch(
+            "fuzzynth.responses.http.client.HTTPSConnection",
+            return_value=connection,
+        ):
+            with self.assertRaises(ResponsesError) as raised:
+                ResponsesClient(self.provider).create(
+                    self.request(), max_response_bytes=4
+                )
+
+        self.assertEqual(raised.exception.code, "response_too_large")
+        self.assertTrue(connection.closed)
+
+    def test_rejects_stream_request(self) -> None:
+        request = GenerationRequest(
+            model="gpt-test",
+            instructions="code only",
+            input_text="generate",
+            stream=True,
+        )
+
+        with self.assertRaisesRegex(ValueError, "stream=False"):
+            ResponsesClient(self.provider).create(request)
+
+
 if __name__ == "__main__":
     unittest.main()
