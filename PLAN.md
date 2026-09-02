@@ -37,8 +37,9 @@ classification remains a triage decision, not a model decision.
 ## 2. System shape
 
 ```text
- alternate and official providers
-          | non-streaming Responses
+ alternate provider       official provider
+    | complete SSE         | complete JSON
+    +-----------+----------+
           v
   +-----------------------+       +----------------------+
   | controller            |<----->| Telegram control     |
@@ -78,24 +79,27 @@ separates provider effects from model and generation effects:
 
 | Worker | Provider/model | Parameters | Session turns | Status |
 |---|---|---|---|---|
-| `spark-custom-iterative-js` | alternate Spark | requested minimum reasoning, high verbosity, temperature omitted | randomized 8–16 | enabled after dataset gate |
-| `luna-custom-xhigh-iterative-js` | alternate GPT-5.6 Luna | `xhigh`, high verbosity, temperature omitted | randomized 4–8 | enabled after dataset gate |
-| `luna-official-high-temperature-js` | official GPT-5.6 Luna | `none`/`low`, high verbosity, temperature 1.2/1.5/1.8 per session | randomized 4–8 | enabled after dataset gate |
+| `spark-custom-iterative-js` | alternate Spark | `none`, high verbosity; unsupported controls omitted | randomized 8–16 | enabled; quota-paused independently |
+| `luna-custom-xhigh-iterative-js` | alternate GPT-5.6 Luna | `xhigh`, high verbosity; unsupported controls omitted | randomized 4–8 | enabled |
+| `luna-custom-low-iterative-js` | alternate GPT-5.6 Luna | `low`, high verbosity; unsupported controls omitted | randomized 4–8 | enabled baseline |
+| `luna-custom-none-spark-fallback-js` | alternate GPT-5.6 Luna | `none`, high verbosity; unsupported controls omitted | randomized 4–8 | managed fallback while Spark is paused |
+| `luna-official-high-temperature-none-js` | official GPT-5.6 Luna | `none`, high verbosity, temperature 1.2/1.5/1.8 per session | randomized 4–8 | enabled |
 | `terra-custom-xhigh-tool-investigator` | alternate GPT-5.6 Terra | `xhigh`, tool-driven | separately bounded | disabled/deferred |
 
 The scheduler must be able to set a campaign to zero, pause it, or cap it without
 affecting the others. Parallelism is bounded separately for API requests, normal
 executions, sanitizer executions, and triage replays.
 
-## 4. Iterative non-streaming design
+## 4. Iterative complete-response design
 
 ### 4.1 Turn lifecycle
 
 1. Select one bounded corpus window for the session and combine it with the
    stable JavaScript-only generation contract.
-2. Make one non-streaming Responses request. Persist the exact request JSON, raw
-   provider response JSON, and extracted semantic output as separate immutable
-   artifacts.
+2. Make one Responses request. Alternate workers use SSE and official workers use
+   complete JSON. Buffer through the terminal response, then persist the exact
+   request JSON, raw provider response/SSE, and extracted semantic output as
+   separate immutable artifacts.
 3. Treat the complete assistant output as the canonical program without repairing
    prose, fences, or syntax.
 4. Execute it immediately in a fresh isolated `d8` process and persist the exact
@@ -108,19 +112,22 @@ executions, sanitizer executions, and triage replays.
 
 ### 4.2 Session and context policy
 
-Spark sessions run for 8–16 turns; both Luna lanes run for 4–8 turns. The exact
-length and official Luna temperature/reasoning choice are sampled once per
-session and recorded. Recent history is bounded independently of the full
+Spark sessions run for 8–16 turns; Luna sessions run for 4–8 turns. The exact
+length and official Luna temperature choice are sampled once per session and
+recorded. Recent history is bounded independently of the full
 archived history. A new session receives a newly sampled corpus window.
 
-The first conditioned run remains gated on the owner releasing `poc_dataset/`.
-An explicit unconditioned control can bypass corpus selection, but there is no
-live campaign CLI yet, so no worker can start accidentally during integration.
+The first conditioned run uses four owner-approved examples selected from dataset
+v2. An explicit unconditioned control can bypass corpus selection. Every live
+campaign entry point requires `--live`, durable control permission, and a budget
+reservation before provider dispatch.
 
-Streaming is explicitly excluded from the initial experiment. Previously written
-SSE/streaming support remains dormant compatibility code and is not referenced by
-the scheduled worker matrix. It may be removed or reconsidered later, but is not
-part of the current comparison.
+Streaming is a transport property, not an incremental-execution strategy. Custom
+responses must reach `response.completed`, and their assembled deltas must equal
+the semantic terminal output, before any program can reach d8. The custom request
+omits `max_output_tokens`, `max_completion_tokens`, `temperature`, and `top_p`;
+local response/program byte limits and worst-case token reservations remain in
+force.
 
 ### 4.3 Evidence and resource safeguards
 
@@ -412,13 +419,14 @@ PoCs and must not make campaign correctness depend on Telegram availability.
   synthetic crash/timeout/exception tests.
 - Gate: evidence completeness audit and no secrets inside worker.
 
-### M4 — Iterative non-streaming campaign controller (offline complete)
+### M4 — Complete-response iterative campaign controller (complete)
 
 - Exact request/raw-response/program capture, bounded context feedback, fresh
   execution per turn, durable sessions, multidimensional budgets, crash/pause
   alerts, and offline status inspection are implemented.
-- Gate remaining: integrate reviewed corpus selection and expose an intentionally
-  bounded live start path; then run a controlled campaign with reconciled usage.
+- Alternate requests use complete SSE transport and official requests use
+  complete JSON responses. Reviewed v2 corpus selection, explicit live start,
+  reconciled usage, and the controlled canary all passed.
 
 ### M5 — Dataset ingestion and conditioning experiment
 
@@ -483,9 +491,9 @@ PoCs and must not make campaign correctness depend on Telegram availability.
 
 ## 16. Immediate implementation action
 
-Keep live campaign startup absent while the owner finishes the dataset. After an
-explicit dataset release, implement immutable corpus indexing and bounded random
-window selection, connect that selector to the existing session service, and add
-an owner-visible live scheduler lifecycle. Then run a synthetic incident drill
-before any sustained campaign. No additional provider calls are needed for this
-work.
+Keep the supervised v2 campaign running with independent provider-failure
+isolation, complete SSE capture for custom workers, hard cumulative budgets, and
+the managed Spark-to-Luna fallback. Inspect validity, novelty, usage, latency, and
+execution outcomes while the owner finishes dataset v3. Integrate that dataset
+immutably only after review; keep automatic replay/minimization and Terra
+disabled during this first-pass discovery run.

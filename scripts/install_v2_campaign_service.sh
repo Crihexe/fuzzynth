@@ -63,7 +63,14 @@ systemctl daemon-reload
 if [[ -e $legacy_target ]]; then
   systemctl disable --now fuzzynth-spark-campaign.service
 fi
-systemctl enable --now fuzzynth-v2-campaign.service
+systemctl enable fuzzynth-v2-campaign.service
+if systemctl is-active --quiet fuzzynth-v2-campaign.service; then
+  # Reload Python modules and the ExecStart worker matrix after an in-place
+  # upgrade. SIGTERM is handled cooperatively, so in-flight turns finish first.
+  systemctl restart fuzzynth-v2-campaign.service
+else
+  systemctl start fuzzynth-v2-campaign.service
+fi
 systemctl enable --now fuzzynth-spark-cooldown.timer
 systemctl enable --now fuzzynth-spark-fallback.timer
 systemctl --no-pager --full status fuzzynth-v2-campaign.service

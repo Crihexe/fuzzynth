@@ -34,11 +34,11 @@ class BudgetConfigurationTests(unittest.TestCase):
         )
         self.assertNotIn("terra_alternate", policies)
 
-    def test_loads_bounded_non_streaming_request_caps(self) -> None:
+    def test_loads_bounded_complete_response_request_caps(self) -> None:
         caps = load_request_caps(Path("config/budgets.toml"))
 
         self.assertEqual(caps.wall_seconds, 300)
-        self.assertEqual(caps.max_response_bytes, 2_097_152)
+        self.assertEqual(caps.max_response_bytes, 16_777_216)
         self.assertEqual(caps.max_program_bytes, 524_288)
         self.assertEqual(caps.max_context_bytes, 131_072)
 

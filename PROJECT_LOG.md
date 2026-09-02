@@ -631,3 +631,39 @@ This is the living operational memory for the project. Read it together with
 5. Replace the temporary four-file pool with the owner-provided v3 dataset only
    after explicit review and immutable ingestion. Keep replay/minimization and
    Terra deferred.
+
+### 2026-09-02 — complete-SSE custom transport and Spark fallback
+
+- The owner confirmed that the alternate gateway supports `xhigh`, but realistic
+  non-streaming requests take roughly 301–535 seconds and Cloudflare terminates
+  clients near 125 seconds. The endpoint also rejects `max_output_tokens`,
+  `max_completion_tokens`, `temperature`, and `top_p`.
+- Alternate workers now send `stream: true` solely as transport. Fuzzynth buffers
+  and archives the exact SSE bytes, requires `response.completed`, compares the
+  assembled output-text deltas with the terminal response, and only then records
+  and executes the program. Partial or mismatched streams are never executed.
+- A supervised custom Luna `xhigh` canary completed beyond the old gateway
+  boundary in about six minutes. Its request contained only `input`,
+  `instructions`, `model`, `reasoning`, `store`, `stream`, and `text`; all four
+  unsupported fields were absent. The 1,114,515-byte raw SSE and semantic program
+  were preserved separately. Usage was 1,356 input, 21,024 output including
+  18,295 reasoning tokens, accounting for 0.637500 custom credits. d8 produced an
+  ordinary JavaScript exception, not a candidate crash.
+- Added a distinct custom Luna `none`/high-verbosity fallback lane managed by a
+  local reconciler. It runs only while Spark has a supervisor-originated provider
+  or quota pause and never overrides owner, crash, or provider control. Its first
+  streamed turns completed successfully while Spark remained quota-paused.
+- Corrected both fallback and five-hour retry logic to recognize the precise
+  `provider_quota_or_rate_limit` state emitted for HTTP 429, in addition to the
+  generic provider-error state. Spark failures remain isolated from all Luna
+  lanes.
+- The deployed v2 service now includes Spark, custom Luna xhigh, custom Luna low,
+  managed custom Luna none, and official Luna. Both fallback and cooldown timers
+  are active. Service shutdown allows up to 660 seconds so a complete in-flight
+  xhigh stream can finish cooperatively.
+- Increased the raw response/SSE archive ceiling from 2 MiB to 16 MiB based on
+  the observed canary size. The separately enforced executable program ceiling
+  remains 512 KiB and every custom Luna request retains its 128k-token worst-case
+  budget reservation.
+- All 123 offline tests and systemd unit verification pass. No candidate crash
+  has been observed at this checkpoint.
