@@ -858,8 +858,9 @@ This is the living operational memory for the project. Read it together with
   evidence was unchanged; the canary completed in 211 ms as `js_exception` with
   `bug_candidate=false`, instead of the prior `v8_fatal` result.
 - The full offline suite passes with 145 tests. Commit `9e47134` was pushed and
-  deployed after a cooperative drain. The first four post-deploy executions span
-  official GPT-4.1 nano and custom Luna, all attest the exact flag vector
+  deployed after a cooperative drain. The first eleven post-deploy executions
+  span both official workers and all three active custom Luna lanes; all attest
+  the exact flag vector
   `--allow-natives-syntax`, `--expose-gc`, `--fuzzing`; they contain zero
   candidates and zero executions missing the mandatory flag. Campaign and
   Telegram services remain active.
