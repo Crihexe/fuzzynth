@@ -166,6 +166,54 @@ v8_build_profile = "release_symbolized"
 v8_worker_profile = "standard"
 d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
 
+# Bounded 100-generation audit experiment: 50 turns per lane with eight
+# identical random corpus examples per paired session. These workers are not
+# included in the long-running systemd unit and are disabled again after the
+# one-shot comparison completes.
+[[workers]]
+id = "luna-custom-low-current-rich-8ctx-js"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_v1.txt"
+prompt_variant = "current_rich"
+corpus_pair_id = "luna-custom-low-rich-vs-explicit-v1-8ctx"
+reasoning_efforts = ["low"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 5
+max_turns_per_session = 5
+history_turns = 4
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "release_symbolized"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
+
+[[workers]]
+id = "luna-custom-low-explicit-v1-8ctx-js"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_explicit_v1.txt"
+prompt_variant = "explicit_v1"
+corpus_pair_id = "luna-custom-low-rich-vs-explicit-v1-8ctx"
+reasoning_efforts = ["low"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 5
+max_turns_per_session = 5
+history_turns = 4
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "release_symbolized"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
+
 # Managed replacement capacity while Spark is provider/quota paused. A local
 # reconciler toggles its control state; owner, crash, and provider pauses win.
 [[workers]]

@@ -28,6 +28,8 @@ class CampaignConfigurationTests(unittest.TestCase):
                 "luna-custom-high-iterative-js-lean",
                 "luna-custom-low-iterative-js-rich",
                 "luna-custom-low-iterative-js-lean",
+                "luna-custom-low-current-rich-8ctx-js",
+                "luna-custom-low-explicit-v1-8ctx-js",
                 "luna-custom-none-spark-fallback-js-rich",
                 "luna-custom-none-spark-fallback-js-lean",
                 "gpt-4o-mini-official-temperature-js-rich",
@@ -46,17 +48,19 @@ class CampaignConfigurationTests(unittest.TestCase):
         for worker in self.config.workers.values():
             self.assertIn("--fuzzing", worker.d8_flags)
 
-    def test_enabled_workers_are_exact_rich_lean_pairs(self) -> None:
+    def test_enabled_workers_are_exact_two_variant_pairs(self) -> None:
         pairs = {}
         for worker in self.config.enabled_workers():
             pairs.setdefault(worker.corpus_pair_id, []).append(worker)
-        self.assertEqual(len(pairs), 6)
+        self.assertEqual(len(pairs), 7)
         for variants in pairs.values():
-            self.assertEqual(
-                {worker.prompt_variant for worker in variants},
-                {"rich", "lean"},
-            )
+            self.assertEqual(len({worker.prompt_variant for worker in variants}), 2)
             self.assertEqual(len({worker.model for worker in variants}), 1)
+        experiment = pairs["luna-custom-low-rich-vs-explicit-v1-8ctx"]
+        self.assertEqual(
+            {worker.prompt_variant for worker in experiment},
+            {"current_rich", "explicit_v1"},
+        )
 
     def test_configuration_rejects_worker_without_fuzzing_mode(self) -> None:
         source = Path("config/campaign-workers.toml").read_text(encoding="utf-8")
