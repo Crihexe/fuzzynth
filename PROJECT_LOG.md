@@ -913,3 +913,30 @@ This is the living operational memory for the project. Read it together with
   configuration invariants. All 9,830 eligible source files passed live size,
   hash, and encoding validation. The full offline suite passes with 149 tests and
   systemd unit verification succeeds before deployment.
+
+### 2026-09-02 — preview-v3 paired campaign live rollout
+
+- Pushed commit `fea3b31` and deployed the paired preview-v3 service. The
+  campaign and authenticated Telegram controller are active, with twelve
+  configured campaign lanes covering six exact rich/lean pairs.
+- Started with only the official GPT-4o mini pair as a controlled canary. Its
+  first rich and lean sessions had the same session seed, target turn count,
+  corpus-window SHA-256, and two source names/hashes, while retaining distinct
+  prompt SHA-256 values. Released the remaining pairs after that check.
+- Spark rich and lean independently returned the expected provider quota/rate
+  limit classification and paused. The fallback reconciler activated both Luna
+  `none` rich/lean substitutes without blocking any other model lane.
+- At the first live audit checkpoint, all 107 completed d8 executions used
+  `--allow-natives-syntax`, `--expose-gc`, and mandatory `--fuzzing`; none was a
+  bug candidate. Every comparable rich/lean session ordinal across all six pairs
+  had identical corpus SHA-256, seed, and turn target. Faster variants can lead
+  their mate temporarily, but the deterministic ordinal mapping remains intact.
+- Audited 126 new immutable generation requests: every record had a prompt
+  variant and digest, pair ID, session seed, turn index, corpus-window digest,
+  and exactly two source names/hashes. Every request artifact passed its
+  content-address digest check and its embedded full instructions matched the
+  recorded prompt digest.
+- Fixed the local `control-status` diagnostic to omit retired worker IDs retained
+  for audit history in the durable control ledger. This does not delete history
+  or alter dispatch. The regression test brings the full offline suite to 150
+  passing tests.

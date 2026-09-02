@@ -8,6 +8,7 @@ import tempfile
 import unittest
 
 from fuzzynth.cli import main
+from fuzzynth.control import ControlLedger
 
 
 class OfflineCliTests(unittest.TestCase):
@@ -62,6 +63,26 @@ class OfflineCliTests(unittest.TestCase):
                 for worker in document["workers"].values()
             )
         )
+
+    def test_control_status_omits_stale_unconfigured_workers(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            state_root = Path(temporary)
+            with ControlLedger(state_root / "control.sqlite3") as ledger:
+                ledger.set_worker(
+                    "retired-worker",
+                    "paused",
+                    request_id="test-retired-worker",
+                    source="test",
+                    actor="test",
+                    command="pause retired worker",
+                )
+
+            exit_code, document = self.invoke(
+                ["control-status", "--state-root", temporary]
+            )
+
+        self.assertEqual(exit_code, 0)
+        self.assertNotIn("retired-worker", document["workers"])
 
     def test_telegram_control_requires_explicit_live_switch(self) -> None:
         error = io.StringIO()

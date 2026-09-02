@@ -138,7 +138,17 @@ def _control_status(repo_root: Path, state_root: Path) -> int:
     )
     worker_ids = tuple(configuration.workers)
     with ControlLedger(state_root / "control.sqlite3") as ledger:
-        document = ledger.snapshot(worker_ids).as_dict()
+        snapshot = ledger.snapshot(worker_ids)
+        document = {
+            "global_state": snapshot.global_state,
+            "workers": {
+                worker_id: {
+                    "configured_state": snapshot.workers[worker_id],
+                    "effective_state": snapshot.effective_state(worker_id),
+                }
+                for worker_id in sorted(worker_ids)
+            },
+        }
     print(json.dumps(document, indent=2, sort_keys=True))
     return 0
 
