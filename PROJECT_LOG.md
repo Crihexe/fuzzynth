@@ -940,3 +940,19 @@ This is the living operational memory for the project. Read it together with
   for audit history in the durable control ledger. This does not delete history
   or alter dispatch. The regression test brings the full offline suite to 150
   passing tests.
+
+### 2026-09-02 — preview-v3 campaign stopped by owner
+
+- Applied the durable global `stopped` control state at the owner's request,
+  stopped both campaign units and both Spark automation timers, and verified that
+  no campaign, d8, or worker-container process remained. The authenticated
+  Telegram controller remains active for read-only monitoring and future owner
+  commands.
+- The preview-v3 interval closed with 2,346 generations, 2,344 d8 executions,
+  329 distinct paired corpus windows, 635 distinct historical source samples,
+  and zero bug candidates under `--fuzzing`.
+- The cooperative systemd stop waited on long-running provider calls, so the
+  campaign process was terminated after dispatch had already been blocked. Its
+  sole remaining active budget reservation was conservatively changed to
+  `uncertain`, not released; all evidence already committed to the content store
+  and SQLite ledgers remains intact.
