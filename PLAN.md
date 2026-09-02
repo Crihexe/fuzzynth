@@ -362,17 +362,19 @@ and pause. It must never silently count the request as free.
 
 ## 12. Telegram control and development updates
 
-After credentials are supplied, Telegram access is restricted to configured chat
-and user IDs. Proposed commands:
+Telegram access is restricted to the configured chat and owner identity. The
+deployed commands are:
 
-- `/status`, `/campaigns`, `/workers`, `/queue`;
-- `/cost`, `/budget`, `/rate`;
-- `/pause [campaign]`, `/resume [campaign]`, `/stop`;
-- `/lastcrash`, `/finding <id>`;
-- `/help`.
+- `/status`, `/workers`, `/sessions`;
+- `/cost`, `/budget`;
+- `/pause <worker|all>`, `/resume <worker|all>`;
+- `/stop CONFIRM`, `/start CONFIRM`;
+- `/lastcrash`.
 
-State-changing commands are audited and idempotent; dangerous global actions may
-require a short confirmation token. No command maps to an arbitrary shell.
+State-changing commands are audited and idempotent; global stop/start require the
+exact confirmation word. Changes are enforced before the next model turn and do
+not terminate an in-flight `d8` process. No command maps to an arbitrary shell,
+provider request, replay, or campaign start.
 
 A separate developer-update script will send commit/test/milestone summaries to
 the owner once Telegram is configured. It must omit credentials and raw sensitive
@@ -438,8 +440,8 @@ PoCs and must not make campaign correctness depend on Telegram availability.
 ### M8 — Manual triage, dashboard, and Telegram control
 
 - Human-triggered finding lifecycle, reducer, symbolization, authenticated
-  commands, and cost dashboard. Crash/pause alerts and development updates are
-  already implemented.
+  commands, and cost dashboard. Crash/pause alerts, authenticated runtime control,
+  budget status, and development updates are already implemented.
 - Gate: end-to-end synthetic incident drill and owner review.
 
 ### M9 — Long-running experiment
@@ -476,13 +478,12 @@ PoCs and must not make campaign correctness depend on Telegram availability.
    outside the Git repository.
 7. Retention period and encryption requirements for potentially sensitive crash
    artifacts.
-8. Telegram confirmation policy for global stop/resume commands.
 
 ## 16. Immediate implementation action
 
 Keep live campaign startup absent while the owner finishes the dataset. After an
 explicit dataset release, implement immutable corpus indexing and bounded random
 window selection, connect that selector to the existing session service, and add
-an owner-visible live scheduler lifecycle. Then implement authenticated Telegram
-status/pause/resume/stop commands and run a synthetic incident drill before any
-sustained campaign. No additional provider calls are needed for this work.
+an owner-visible live scheduler lifecycle. Then run a synthetic incident drill
+before any sustained campaign. No additional provider calls are needed for this
+work.

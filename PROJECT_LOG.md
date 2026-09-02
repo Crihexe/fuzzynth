@@ -14,8 +14,8 @@ This is the living operational memory for the project. Read it together with
 - V8 source: exact Chrome 152 V8 revision checked out with dependencies; release,
   optdebug, and ASAN are built, smoke-tested, and packaged as isolated workers.
 - Fuzzing campaigns running: none.
-- Telegram development notifier and crash/pause alerts: implemented and tested;
-  authenticated command/control is not yet implemented.
+- Telegram development notifier, crash/pause alerts, and authenticated command
+  control are implemented; the hardened long-polling service is active.
 - Historical PoC dataset available: no; owner is preparing it.
 - Remote status: implementation checkpoints are pushed frequently to
   `origin/main`; verify the exact head at each resume.
@@ -270,6 +270,17 @@ This is the living operational memory for the project. Read it together with
 - Why: avoids premature token spend and prevents implementation code from reading
   owner-managed corpus work while it is still changing.
 
+### D-028 — Durable authenticated Telegram control
+
+- Status: accepted from the owner's requested Telegram control scope and deployed
+  on 2026-09-02.
+- Decision: persist global/worker dispatch state and enforce it before session
+  start, resume, and every new model turn. Telegram accepts only the configured
+  chat and owner identity; mutations are audited and idempotent. Global stop/start
+  require the exact `CONFIRM` word and do not kill an already running `d8` process.
+- Why: owner commands must affect the actual scheduler boundary without exposing
+  a shell, losing repeated updates, or corrupting an in-flight evidence record.
+
 ## Work completed
 
 ### 2026-09-01 — Planning bootstrap
@@ -475,6 +486,29 @@ This is the living operational memory for the project. Read it together with
 - Kept streaming support dormant, made automatic crash replay unavailable, and
   did not read or modify the owner-managed `poc_dataset/` directory.
 
+### 2026-09-02 — Telegram owner control deployed
+
+- Added a private SQLite control ledger with `running`, `paused`, and `stopped`
+  global state, independent worker pauses, monotonic Telegram update offsets, and
+  an idempotent audit row for every state-changing update.
+- Wired campaign start, resume, and turn dispatch to the control ledger. Changes
+  take effect before the next provider request; an already running request or
+  isolated `d8` execution is allowed to finish and preserve its evidence.
+- Added `/status`, `/workers`, `/sessions`, `/cost`, `/budget`, `/lastcrash`,
+  `/pause`, `/resume`, `/stop CONFIRM`, and `/start CONFIRM`. No input maps to an
+  arbitrary command, path, provider call, replay, or campaign start.
+- Added strict chat/sender authorization. The current private-chat configuration
+  requires sender ID to equal chat ID; group use would additionally require an
+  explicit `TELEGRAM_USER_ID` in the external credential file.
+- Added bounded update/reply bodies, durable offsets, retry-safe mutation handling,
+  and conservative budget reports showing money/credits, token dimensions, and
+  uncertain reservations.
+- Installed and enabled `fuzzynth-telegram-control.service`. It loads no provider
+  credentials, can write only under `/root/fuzzynth/state`, has no Linux
+  capabilities, and received systemd exposure score `3.5 OK`. It was active with
+  zero restarts after installation.
+- Sent owner update message ID `16` with the available command list.
+
 ## Verification performed
 
 - No secret values were printed or added to the repository.
@@ -489,19 +523,21 @@ This is the living operational memory for the project. Read it together with
   configured chat ID.
 - Credential tests pass and `fuzzynth doctor` validates both providers without
   making network calls or displaying endpoint/key values.
-- Ninety-one unit tests pass after adding request omission/serialization, process
-  outcome classification, artifact integrity, non-streaming evidence capture,
+- One hundred eleven unit tests pass after adding request
+  omission/serialization, process outcome classification, artifact integrity,
+  non-streaming evidence capture,
   budget reservations, session orchestration, alerts, executor isolation,
   execution detail manifests, migrations, and offline status inspection.
 - All three pinned worker profiles pass local and isolated smoke verification.
 - All live probe output was restricted to capability, latency, effective
   parameters, response state, and usage metadata.
+- The systemd unit passed `systemd-analyze verify`; its install script passed
+  shell syntax validation, and the active control service retained private state
+  permissions (`0700` root, `0600` databases).
 
 ## Waiting on owner
 
 - Explicit release of the historical V8 PoC dataset when ready.
-- Telegram command/control policy and allowlisted actor validation at a later
-  milestone; the one-way development notifier is already configured.
 - Dataset window sizes, initial worker concurrency, and the remaining open choices
   in `PLAN.md` when convenient.
 
@@ -511,9 +547,7 @@ This is the living operational memory for the project. Read it together with
    randomized corpus-window selection without silently editing source items.
 2. Connect corpus selection to the existing session service and expose a bounded
    scheduler lifecycle only after its offline tests pass.
-3. Add an allowlisted Telegram command poller for status, cost, pause, resume,
-   and stop, with confirmation for global state changes.
-4. Run a synthetic incident drill, then one tightly bounded controlled session per
+3. Run a synthetic incident drill, then one tightly bounded controlled session per
    worker only when the owner confirms the dataset and live-start review gates.
-5. Keep replay, minimization, and Terra tools deferred until initial run results
+4. Keep replay, minimization, and Terra tools deferred until initial run results
    justify those separately authorized activities.

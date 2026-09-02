@@ -165,17 +165,20 @@ source-code analysis.
 - Spark on the alternate subscription has no monetary/token budget, but quota or
   rate-limit failures must pause its worker and trigger Telegram notification.
 - Fail closed or pause according to policy if usage accounting becomes unknown.
-- Add Telegram notifications and authenticated commands after the owner supplies
-  bot credentials and an allowed chat ID.
+- Telegram notifications and authenticated commands are enabled using the
+  owner-supplied bot credentials and allowed chat ID.
 - Telegram credentials are now available at
   `/root/fuzzynth_telegram_credentials` as `TELEGRAM_BOT_TOKEN` and
   `TELEGRAM_CHAT_ID`; keep that external file owner-readable only and never print
   or commit either value.
-- The owner explicitly authorizes `scripts/notify_telegram.py` during M0 solely
-  for concise development progress/test notifications. This exception does not
-  authorize the campaign control plane or other implementation before approval.
-- Telegram must eventually expose status, costs, pause/resume/stop, worker state,
-  and recent crash summaries without accepting arbitrary shell commands.
+- `scripts/notify_telegram.py` remains authorized for concise development updates.
+- Telegram exposes status, costs, pause/resume/stop/start, worker/session state,
+  and recent crash summaries without accepting arbitrary shell commands. Global
+  stop/start require `CONFIRM`; changes take effect before the next turn and do
+  not kill an in-flight isolated execution.
+- The control service must never load provider credentials. It must authorize the
+  configured chat and owner identity, persist update offsets, and make every
+  state-changing command audited and idempotent.
 - Send an immediate concise Telegram alert when a worker produces a native
   signal, V8 fatal/check failure, sanitizer finding, or confirmed differential
   mismatch. Do not include the full potentially sensitive PoC in the alert.
