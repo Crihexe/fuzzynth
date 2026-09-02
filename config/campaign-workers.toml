@@ -1,0 +1,92 @@
+schema_version = 1
+
+[context]
+max_context_bytes = 131072
+max_feedback_bytes = 4096
+dataset_enabled = false
+dataset_root = "poc_dataset"
+dataset_window_policy = "random_per_session"
+
+[[workers]]
+id = "spark-custom-iterative-js"
+enabled = true
+provider = "alternate"
+model = "gpt-5.3-codex-spark"
+meter = "spark_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_v1.txt"
+reasoning_efforts = ["none"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 8
+max_turns_per_session = 16
+history_turns = 6
+max_output_tokens = 4096
+reservation_output_tokens = 0
+v8_build_profile = "release_symbolized"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc"]
+
+[[workers]]
+id = "luna-custom-xhigh-iterative-js"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_v1.txt"
+reasoning_efforts = ["xhigh"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 4
+max_turns_per_session = 8
+history_turns = 4
+max_output_tokens = 8192
+# The alternate endpoint exceeded requested max_output_tokens in probes. Reserve
+# the full documented Luna output capacity before every custom Luna request.
+reservation_output_tokens = 128000
+v8_build_profile = "release_symbolized"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc"]
+
+[[workers]]
+id = "luna-official-high-temperature-js"
+enabled = true
+provider = "official"
+model = "gpt-5.6-luna"
+meter = "luna_official"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_v1.txt"
+reasoning_efforts = ["none", "low"]
+verbosity = "high"
+temperatures = [1.2, 1.5, 1.8]
+min_turns_per_session = 4
+max_turns_per_session = 8
+history_turns = 4
+max_output_tokens = 8192
+reservation_output_tokens = 8192
+v8_build_profile = "release_symbolized"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc"]
+
+# Deferred until raw-worker validity/novelty/cost baselines justify the 10x
+# custom credit rate. No scheduler may instantiate disabled workers.
+[[workers]]
+id = "terra-custom-xhigh-tool-investigator"
+enabled = false
+provider = "alternate"
+model = "gpt-5.6-terra"
+meter = "terra_alternate"
+mode = "tool_investigator"
+prompt = "prompts/tool_investigator_v1.txt"
+reasoning_efforts = ["xhigh"]
+verbosity = "medium"
+temperatures = []
+min_turns_per_session = 1
+max_turns_per_session = 1
+history_turns = 0
+max_output_tokens = 8192
+reservation_output_tokens = 128000
+v8_build_profile = "release_symbolized"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc"]
