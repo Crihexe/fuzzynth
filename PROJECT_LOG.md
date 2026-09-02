@@ -956,3 +956,37 @@ This is the living operational memory for the project. Read it together with
   sole remaining active budget reservation was conservatively changed to
   `uncertain`, not released; all evidence already committed to the content store
   and SQLite ledgers remains intact.
+
+### 2026-09-02 — prompt-quality audit and bounded explicit comparison
+
+- Audited all 2,346 preview-v3 generations and 2,344 primary executions from
+  immutable artifacts, including model/temperature cohorts, failure families,
+  feature use, program size, latency, token use, exact/near duplication,
+  iteration transitions, corpus-conditioned feature lift, and representative
+  source review. The complete analysis is in
+  `docs/PROMPT_CAMPAIGN_AUDIT_2026-09-02.md`.
+- On 294 fully completed historical A/B session pairs (1,065 turns per side),
+  lean reached exit 0 on 63.8% versus rich on 26.8%. Rich was dominated by
+  malformed Wasm; lean was substantially more runnable but often too shallow.
+  Official temperature 2.0 produced invalid syntax in 275/275 generations, and
+  temperature 1.5 in 193/260; temperatures at or below 1.0 produced 8/761.
+- Added and pushed the immutable explicit-v1 prompt plus a bounded Luna-low
+  comparison in commit `113297a`. Ran exactly 50 current-rich and 50 explicit-v1
+  turns, paired over ten identical eight-source corpus windows. The campaign
+  service and Spark timers stayed inactive; only the two foreground experiment
+  workers were dispatched.
+- Current rich reached exit 0 in 21/50 and failed Wasm validation in 25/50.
+  Explicit v1 reached exit 0 in 39/50, with two Wasm validation failures, three
+  JS failures, two other nonzero exits, and four timeouts. All 100 program
+  digests were unique. Explicit used fewer input/output tokens, 3.410 versus
+  4.353 custom credits, lower provider latency, narrower feature composition,
+  and lower adjacent structural similarity.
+- Replayed the same 100 programs on ASan and optdebug: no candidate. Then
+  replayed every one of the 1,108 original preview-v3 exit-0 programs on both
+  sensitive builds without model calls. ASan completed all 1,108; optdebug
+  completed 1,105 and timed out on three. No sanitizer report, native CHECK, or
+  signal candidate was observed in 2,216 additional shadow executions.
+- Disabled both one-shot experiment workers after completion, restored the
+  durable global state to `stopped`, verified campaign/timers inactive and no
+  campaign/d8 process, and confirmed zero active budget reservations. Telegram
+  control remains active.

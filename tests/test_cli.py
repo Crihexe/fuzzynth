@@ -25,7 +25,7 @@ class OfflineCliTests(unittest.TestCase):
         self.assertTrue(document["dataset_enabled"])
         self.assertEqual(
             sum(worker["enabled"] for worker in document["workers"]),
-            14,
+            12,
         )
 
     def test_budget_status_starts_at_only_configured_safety_reserve(self) -> None:

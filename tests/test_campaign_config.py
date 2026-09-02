@@ -28,8 +28,6 @@ class CampaignConfigurationTests(unittest.TestCase):
                 "luna-custom-high-iterative-js-lean",
                 "luna-custom-low-iterative-js-rich",
                 "luna-custom-low-iterative-js-lean",
-                "luna-custom-low-current-rich-8ctx-js",
-                "luna-custom-low-explicit-v1-8ctx-js",
                 "luna-custom-none-spark-fallback-js-rich",
                 "luna-custom-none-spark-fallback-js-lean",
                 "gpt-4o-mini-official-temperature-js-rich",
@@ -52,11 +50,24 @@ class CampaignConfigurationTests(unittest.TestCase):
         pairs = {}
         for worker in self.config.enabled_workers():
             pairs.setdefault(worker.corpus_pair_id, []).append(worker)
-        self.assertEqual(len(pairs), 7)
+        self.assertEqual(len(pairs), 6)
         for variants in pairs.values():
-            self.assertEqual(len({worker.prompt_variant for worker in variants}), 2)
+            self.assertEqual(
+                {worker.prompt_variant for worker in variants},
+                {"rich", "lean"},
+            )
             self.assertEqual(len({worker.model for worker in variants}), 1)
-        experiment = pairs["luna-custom-low-rich-vs-explicit-v1-8ctx"]
+
+    def test_bounded_explicit_comparison_is_retained_but_disabled(self) -> None:
+        experiment = [
+            self.config.workers["luna-custom-low-current-rich-8ctx-js"],
+            self.config.workers["luna-custom-low-explicit-v1-8ctx-js"],
+        ]
+        self.assertTrue(all(not worker.enabled for worker in experiment))
+        self.assertEqual(
+            {worker.corpus_pair_id for worker in experiment},
+            {"luna-custom-low-rich-vs-explicit-v1-8ctx"},
+        )
         self.assertEqual(
             {worker.prompt_variant for worker in experiment},
             {"current_rich", "explicit_v1"},
