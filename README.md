@@ -115,3 +115,21 @@ running isolated `d8` process. Install or refresh the hardened system service wi
 ```bash
 sudo ./scripts/install_telegram_control_service.sh
 ```
+
+## Supervised Spark campaign
+
+The checked-in v2 canary service runs only the alternate Spark worker and the
+four explicitly reviewed JavaScript corpus files. It preserves every request,
+raw response, program, execution capture, and session transition under private
+`state/` storage while emitting only safe identifiers and metrics to journald.
+
+```bash
+sudo ./scripts/install_spark_campaign_service.sh
+systemctl status fuzzynth-spark-campaign.service
+journalctl -u fuzzynth-spark-campaign.service
+```
+
+The service waits without retrying while its worker is paused. A native crash is
+terminal and is never replayed automatically. The deployed unit cannot access
+`/root/red-sailor`; generated programs still execute in the separately isolated,
+networkless d8 container.

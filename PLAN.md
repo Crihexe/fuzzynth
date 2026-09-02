@@ -151,9 +151,11 @@ factor; high effort or verbosity is a hypothesis, not an assumed improvement.
 Initial capability probes refine this matrix: the alternate endpoint accepts a
 requested `none` but reports effective effort `low`, reports temperature `1.0`
 when the parameter is omitted, and reflects requested verbosity. The official
-Luna endpoint preserves tested temperature, `none`, and verbosity values. Every
-case must store requested and effective parameters; HTTP success alone is not a
-capability assertion.
+Luna endpoint preserved temperature with `reasoning=none`, but the first campaign
+request rejected temperature with `reasoning=low`; these are distinct experiment
+lanes and the incompatible combination is disabled. Every case must store
+requested and effective parameters; HTTP success alone is not a capability
+assertion.
 
 Later context-lifetime comparisons may include:
 

@@ -25,6 +25,8 @@ class ArtifactStore:
 
     def __init__(self, root: Path):
         self.root = root
+        self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
+        os.chmod(self.root, 0o700)
 
     def _path(self, digest: str) -> Path:
         return self.root / digest[:2] / digest[2:]

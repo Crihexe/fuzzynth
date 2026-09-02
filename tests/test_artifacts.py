@@ -10,12 +10,14 @@ from fuzzynth.artifacts import ArtifactIntegrityError, ArtifactRef, ArtifactStor
 class ArtifactStoreTests(unittest.TestCase):
     def test_preserves_exact_bytes_and_uses_private_file_mode(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
+            Path(temporary).chmod(0o755)
             store = ArtifactStore(Path(temporary))
             payload = b"\x00raw-stream\r\n\xff"
 
             reference = store.put(payload)
 
             self.assertEqual(store.read(reference), payload)
+            self.assertEqual(Path(temporary).stat().st_mode & 0o777, 0o700)
             path = Path(temporary) / reference.relative_path
             self.assertEqual(path.stat().st_mode & 0o777, 0o600)
 

@@ -551,3 +551,83 @@ This is the living operational memory for the project. Read it together with
    worker only when the owner confirms the dataset and live-start review gates.
 4. Keep replay, minimization, and Terra tools deferred until initial run results
    justify those separately authorized activities.
+
+### 2026-09-02 — v2 corpus canary and first supervised campaigns
+
+- Validated the owner-released archive
+  `poc_dataset/v8_wasm_poc_handout_v2.zip` before extraction: 77 regular entries,
+  no absolute/traversal paths or symlinks, 1.0 MiB uncompressed, archive SHA-256
+  `635e89b7b5ac9b91e8f938bd3c5bde6fda4f0a1788d3f1ad8632775417964a1c`.
+  Extracted it privately under ignored `.local/datasets/`; no dataset file was
+  staged or modified.
+- The handout contains 388 mostly metadata-only records but only four materialized
+  JavaScript samples. Selected all four as a temporary explicit pool: a Maglev
+  optimization trigger, a large generated/inlining trigger, a Wasm validate and
+  detached-buffer/GC trigger, and a large async-generator constructor trigger.
+  Historical programs were never executed.
+- Added immutable rotating two-sample corpus windows. Every session stores the
+  exact corpus bytes and SHA-256. The prompt and corpus envelope both prohibit
+  copying, renaming, mechanical mutation, combination, or targeting the same
+  historical defect.
+- Added the explicit-live parallel supervisor, safe JSON events, bounded worker
+  and session canaries, crash-terminal behavior, durable pause/resume, Telegram
+  operational alerts, and the hardened persistent Spark service. Generated code
+  and captured output never enter operational logs or Telegram messages.
+- The first parallel start revealed local SQLite initialization contention.
+  Deterministic 750 ms worker staggering fixed it. A second canary revealed that
+  unsigned 64-bit derived seeds can exceed SQLite's signed range; seeds now retain
+  63 deterministic bits. Both fixes were regression-tested.
+- Alternate Luna xhigh produced no program in two attempts: the first exceeded
+  the original 90-second socket timeout, and the supervised retry returned HTTP
+  524 after about 125 seconds. Both attempts have unknown usage and retain their
+  full conservative reservations. The worker and session remain paused.
+- Official Luna with temperature 1.8 and `reasoning=low` returned HTTP 400 before
+  generation. The earlier `reasoning=none` probe had succeeded, so the incompatible
+  low-reasoning definition was disabled and retained for provenance. A separate
+  none-reasoning high-temperature worker completed a five-turn session.
+- Spark completed two full iterative sessions. Session 1 used the async-generator
+  and Maglev samples and yielded 15 programs: 1 `ok` and 14 Wasm `CompileError`
+  nonzero exits. Session 2 used the async-generator and Wasm/GC samples and yielded
+  16 programs: 14 `ok` and 2 expected JavaScript exceptions. No candidate crash,
+  timeout, OOM, output truncation, or Docker failure occurred.
+- Spark session input grew from 962 to 27,056 tokens in session 1 and from 929 to
+  28,502 in session 2. Across both, usage was 538,300 input, 397,003 output, and
+  284,420 reasoning tokens; the provider reported zero cached input. Median d8
+  execution time was about 0.2 seconds. Initial output/corpus comparison found
+  less than 0.071% exact 32-byte-gram overlap, with distinct program hashes.
+- Official none-reasoning temperature 1.2 completed five programs: 3 `ok`, 2
+  expected JavaScript exceptions, 0 reasoning tokens, and `$0.011312` actual cost.
+  Its failed low-reasoning request retains a conservative `$0.010776` uncertain
+  reservation. The official lane was paused after the supervised baseline.
+- At the start of Spark session 3, the alternate provider returned HTTP 500 with
+  `no healthy Codex account is available inside the key routing scope`. No program
+  or usage was returned. The service correctly paused without retrying and sent a
+  Telegram notification; it remains active and can be resumed after quota/account
+  availability returns.
+- The custom Luna ledger currently includes two uncertain reservations plus the
+  configured historical reserve, totaling 8.727090 credits accounted/reserved.
+  This is deliberately not reported as confirmed spend.
+- Installed and enabled `fuzzynth-spark-campaign.service`. It is restricted to the
+  Spark worker and the four reviewed v2 files, writes only project state, cannot
+  access `/root/red-sailor`, and scored `3.5 OK` in `systemd-analyze security`.
+  The Telegram control and Spark services are both active; Spark is waiting on its
+  durable worker pause.
+- One hundred seventeen unit tests pass. No secret, runtime state, extracted
+  dataset item, generated program, or captured d8 output was committed. All code
+  changes through this canary were committed as Cristian Di Nicola and pushed.
+
+### Review queue for the next session
+
+1. Inspect the 36 generated programs and their exact histories, especially the
+   14-program CompileError mode collapse versus the 14/16 valid second session.
+2. Compare novelty, feature mix, program size, executor outcomes, and token cost by
+   corpus window and turn index; decide whether to shorten Spark lifetimes below
+   8–16 turns before resuming quota.
+3. Inspect the two alternate Luna gateway failures and decide whether xhigh needs
+   smaller context/output, a provider-side asynchronous path, or a lower-effort
+   comparison. Do not clear uncertain reservations without provider evidence.
+4. Compare official Luna's concise no-reasoning programs against Spark at equal
+   execution/output budgets before allocating more of the `$4.90` cap.
+5. Replace the temporary four-file pool with the owner-provided v3 dataset only
+   after explicit review and immutable ingestion. Keep replay/minimization and
+   Terra deferred.
