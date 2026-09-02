@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+import tempfile
 import unittest
 
 from fuzzynth.campaign_config import (
+    CampaignConfigurationError,
     choose_session_plan,
     load_campaign_configuration,
 )
@@ -33,6 +35,25 @@ class CampaignConfigurationTests(unittest.TestCase):
         for worker in self.config.enabled_workers():
             if worker.provider == "alternate":
                 self.assertEqual(worker.temperatures, ())
+
+    def test_every_worker_executes_d8_in_fuzzing_mode(self) -> None:
+        for worker in self.config.workers.values():
+            self.assertIn("--fuzzing", worker.d8_flags)
+
+    def test_configuration_rejects_worker_without_fuzzing_mode(self) -> None:
+        source = Path("config/campaign-workers.toml").read_text(encoding="utf-8")
+        unsafe = source.replace(
+            '["--allow-natives-syntax", "--expose-gc", "--fuzzing"]',
+            '["--allow-natives-syntax", "--expose-gc"]',
+            1,
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "campaign-workers.toml"
+            path.write_text(unsafe, encoding="utf-8")
+            with self.assertRaisesRegex(
+                CampaignConfigurationError, "must execute d8 with --fuzzing"
+            ):
+                load_campaign_configuration(path)
 
     def test_spark_requests_none_and_high_verbosity(self) -> None:
         worker = self.config.workers["spark-custom-iterative-js"]

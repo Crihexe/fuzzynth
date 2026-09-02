@@ -106,8 +106,11 @@ executions, sanitizer executions, and triage replays.
    prose, fences, or syntax. If a terminal SSE or JSON response ends at its
    output cap, execute the exact bounded prefix once and retain it in subsequent
    session context rather than pausing solely for truncation.
-4. Execute it immediately in a fresh isolated `d8` process and persist the exact
-   program, output, termination facts, worker identity, and resource envelope.
+4. Execute it immediately in a fresh isolated `d8` process with mandatory
+   `--fuzzing` plus the worker's recorded flags, and persist the exact program,
+   output, termination facts, worker identity, and resource envelope. The base
+   fuzzing flag suppresses invalid test-intrinsic contract failures; it does not
+   replace signal, sanitizer, or remaining fatal-check collection.
 5. Return only a compact factual observation to the next turn. Do not ask the
    model to classify a crash or claim a V8 bug.
 6. Continue until the randomized session limit after both ordinary outcomes and

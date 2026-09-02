@@ -156,8 +156,12 @@ source-code analysis.
   variants suitable for crash discovery and reproduction.
 - Make the V8 checkout available read-only for optional, explicit inspection;
   do not inject the source tree into every generation context.
-- Evaluate multiple versioned flag profiles rather than using one global flag
-  set.
+- Use `--fuzzing` as a mandatory base flag for every campaign worker. It is the
+  primary execution mode because pinned V8 explicitly makes invalid test
+  intrinsic usage fail silently instead of producing harness-only fatal checks.
+  Preserve the exact effective flags with every execution.
+- Evaluate additional versioned flag profiles on top of that base rather than
+  relying on one global stress configuration.
 - Include lanes that permit `--allow-natives-syntax`, `%` intrinsics, useful
   `d8` shell helpers, optimization/GC stress, Wasm tiering, and differential
   execution.

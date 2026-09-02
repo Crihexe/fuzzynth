@@ -25,7 +25,7 @@ max_output_tokens = 4096
 reservation_output_tokens = 0
 v8_build_profile = "release_symbolized"
 v8_worker_profile = "standard"
-d8_flags = ["--allow-natives-syntax", "--expose-gc"]
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
 
 [[workers]]
 id = "luna-custom-xhigh-iterative-js"
@@ -48,7 +48,7 @@ max_output_tokens = 2048
 reservation_output_tokens = 128000
 v8_build_profile = "release_symbolized"
 v8_worker_profile = "standard"
-d8_flags = ["--allow-natives-syntax", "--expose-gc"]
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
 
 # High-effort replacement for xhigh. SSE removed the historical 125-second 524,
 # but xhigh still encountered an upstream request timeout near 535 seconds.
@@ -70,7 +70,7 @@ max_output_tokens = 2048
 reservation_output_tokens = 128000
 v8_build_profile = "release_symbolized"
 v8_worker_profile = "standard"
-d8_flags = ["--allow-natives-syntax", "--expose-gc"]
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
 
 # Low-effort streaming baseline, kept distinct from xhigh so latency, token use,
 # validity, and novelty remain directly comparable.
@@ -92,7 +92,7 @@ max_output_tokens = 2048
 reservation_output_tokens = 128000
 v8_build_profile = "release_symbolized"
 v8_worker_profile = "standard"
-d8_flags = ["--allow-natives-syntax", "--expose-gc"]
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
 
 # Managed replacement capacity while Spark is provider/quota paused. A local
 # reconciler toggles its control state; owner, crash, and provider pauses win.
@@ -114,7 +114,7 @@ max_output_tokens = 2048
 reservation_output_tokens = 128000
 v8_build_profile = "release_symbolized"
 v8_worker_profile = "standard"
-d8_flags = ["--allow-natives-syntax", "--expose-gc"]
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
 
 [[workers]]
 id = "luna-official-high-temperature-js"
@@ -134,7 +134,7 @@ max_output_tokens = 8192
 reservation_output_tokens = 8192
 v8_build_profile = "release_symbolized"
 v8_worker_profile = "standard"
-d8_flags = ["--allow-natives-syntax", "--expose-gc"]
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
 
 # The first campaign attempt showed that temperature plus low reasoning is
 # rejected even though the earlier none-reasoning capability probe succeeded.
@@ -158,7 +158,7 @@ max_output_tokens = 8192
 reservation_output_tokens = 8192
 v8_build_profile = "release_symbolized"
 v8_worker_profile = "standard"
-d8_flags = ["--allow-natives-syntax", "--expose-gc"]
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
 
 # Non-reasoning official baseline. Live capability probing confirmed the model
 # and temperature=2.0 on 2026-09-02. Reasoning and text verbosity are omitted
@@ -183,7 +183,7 @@ max_output_tokens = 8192
 reservation_output_tokens = 8192
 v8_build_profile = "release_symbolized"
 v8_worker_profile = "standard"
-d8_flags = ["--allow-natives-syntax", "--expose-gc"]
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
 
 # Deprecated but still live on the owner's project as of 2026-09-02. A live
 # probe confirmed temperature=2.0 and a separate probe returned HTTP 400
@@ -209,7 +209,7 @@ max_output_tokens = 8192
 reservation_output_tokens = 8192
 v8_build_profile = "release_symbolized"
 v8_worker_profile = "standard"
-d8_flags = ["--allow-natives-syntax", "--expose-gc"]
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
 
 # Deferred until raw-worker validity/novelty/cost baselines justify the 10x
 # custom credit rate. No scheduler may instantiate disabled workers.
@@ -231,4 +231,4 @@ max_output_tokens = 8192
 reservation_output_tokens = 128000
 v8_build_profile = "release_symbolized"
 v8_worker_profile = "standard"
-d8_flags = ["--allow-natives-syntax", "--expose-gc"]
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]

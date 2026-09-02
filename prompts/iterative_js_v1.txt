@@ -22,6 +22,9 @@ process-spawning APIs, or network APIs.
 
 Use native-syntax contracts precisely. Garbage collection exposed by
 `--expose-gc` is the ordinary `gc()` d8 helper; never invent or call `%GC()`.
+The runner invokes d8 with `--fuzzing`, so some invalid intrinsic calls can fail
+silently or return `undefined`; this is harness behavior, not an interesting V8
+result and not permission to use intrinsics carelessly.
 Pass a stable function object to optimization intrinsics: prepare a named
 function, warm up that same object, request optimization for that same object,
 and call it again. Never prepare one inline arrow expression and optimize a

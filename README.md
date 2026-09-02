@@ -74,7 +74,9 @@ PYTHONPATH=src python3 -m fuzzynth execute \
   --program sample.js \
   --profile release_symbolized \
   --worker-profile standard \
-  --flag=--allow-natives-syntax
+  --flag=--allow-natives-syntax \
+  --flag=--expose-gc \
+  --flag=--fuzzing
 ```
 
 The command resolves the tag to the image ID pinned in the local worker manifest,
@@ -82,6 +84,12 @@ captures bounded stdout/stderr as content-addressed artifacts, records terminati
 build identity, final Docker state, and exact resource limits in the SQLite
 catalog, and prints metadata rather than program output. Runtime evidence stays
 under ignored `state/` storage.
+
+All configured campaign workers are required to execute d8 with `--fuzzing`.
+This keeps invalid test-intrinsic contracts from becoming fatal harness noise;
+the exact flag list remains attached to every execution record, while native
+signals, sanitizer output, and remaining V8 fatal checks are still collected by
+the ordinary evidence path.
 
 ## Development notifications
 

@@ -295,6 +295,20 @@ This is the living operational memory for the project. Read it together with
   while conservative classification preserves every native failure for later
   human review and lets the model avoid repeating an identified harness mistake.
 
+### D-030 — Mandatory V8 fuzzing execution mode
+
+- Status: accepted by owner on 2026-09-02.
+- Decision: execute every configured campaign worker with `--fuzzing` as a
+  mandatory base d8 flag, alongside `--allow-natives-syntax` and `--expose-gc`.
+  Reject campaign configuration that omits it. Continue recording the exact flag
+  vector on every execution and retain all signal, sanitizer, and remaining V8
+  fatal evidence under the existing classifier.
+- Why: pinned Chrome 152 V8 documents this flag as making invalid intrinsic usage
+  fail silently, and its runtime-test implementation specifically bypasses the
+  `CheckMarkedForManualOptimization` fatal check while leaving useful manual
+  optimization paths available. This removes repeated harness-contract noise
+  before classification and makes surviving candidates materially stronger.
+
 ## Work completed
 
 ### 2026-09-01 — Planning bootstrap

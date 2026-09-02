@@ -160,6 +160,10 @@ def load_campaign_configuration(path: Path, *, repo_root: Path = Path(".")) -> C
         flags = _string_list(raw, "d8_flags")
         if any(not flag.startswith("--") for flag in flags):
             raise CampaignConfigurationError(f"invalid d8 flag: {worker_id}")
+        if "--fuzzing" not in flags:
+            raise CampaignConfigurationError(
+                f"campaign worker must execute d8 with --fuzzing: {worker_id}"
+            )
         verbosity = _string(raw, "verbosity")
         if verbosity not in {"low", "medium", "high"}:
             raise CampaignConfigurationError(f"invalid verbosity: {worker_id}")
