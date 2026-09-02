@@ -224,6 +224,7 @@ class CreateClientTests(unittest.TestCase):
                 )
 
         self.assertEqual(raised.exception.code, "response_too_large")
+        self.assertEqual(raised.exception.raw_response, b'{"ove')
         self.assertTrue(connection.closed)
 
     def test_rejects_stream_request(self) -> None:

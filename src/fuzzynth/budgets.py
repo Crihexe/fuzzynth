@@ -358,10 +358,22 @@ class BudgetLedger:
             output_tokens=usage.output_tokens,
         )
         overrun = (
-            uncached > row[2]
-            or cached > row[3]
-            or usage.output_tokens > row[4]
-            or actual_microunits > row[5]
+            (
+                policy.hard_uncached_input_tokens is not None
+                and uncached > row[2]
+            )
+            or (
+                policy.hard_cached_input_tokens is not None
+                and cached > row[3]
+            )
+            or (
+                policy.hard_output_tokens is not None
+                and usage.output_tokens > row[4]
+            )
+            or (
+                policy.hard_total_microunits is not None
+                and actual_microunits > row[5]
+            )
         )
         now = datetime.now(timezone.utc).isoformat()
         try:

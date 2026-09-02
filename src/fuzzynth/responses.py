@@ -16,10 +16,18 @@ from fuzzynth.sse import ResponsesStreamAssembler, SSEDecoder, StreamProtocolErr
 class ResponsesError(RuntimeError):
     """A safe-to-display Responses API failure."""
 
-    def __init__(self, message: str, *, status: int | None = None, code: str = ""):
+    def __init__(
+        self,
+        message: str,
+        *,
+        status: int | None = None,
+        code: str = "",
+        raw_response: bytes = b"",
+    ):
         super().__init__(message)
         self.status = status
         self.code = code
+        self.raw_response = raw_response
 
 
 @dataclass(frozen=True, slots=True)
@@ -268,6 +276,7 @@ class ResponsesClient:
                     "provider response exceeded local byte limit",
                     status=response.status,
                     code="response_too_large",
+                    raw_response=response_body,
                 )
         except (OSError, http.client.HTTPException) as exc:
             raise ResponsesError(
@@ -284,6 +293,7 @@ class ResponsesClient:
                 f"provider returned invalid JSON (HTTP {response.status})",
                 status=response.status,
                 code="invalid_json",
+                raw_response=response_body,
             ) from exc
 
         if not isinstance(decoded, dict):
@@ -291,6 +301,7 @@ class ResponsesClient:
                 f"provider returned an invalid response shape (HTTP {response.status})",
                 status=response.status,
                 code="invalid_shape",
+                raw_response=response_body,
             )
 
         if response.status < 200 or response.status >= 300:
@@ -304,6 +315,7 @@ class ResponsesClient:
                 f"provider rejected request (HTTP {response.status}, code={code})",
                 status=response.status,
                 code=code,
+                raw_response=response_body,
             )
 
         return CreateResult(raw_response=response_body, response=decoded)
