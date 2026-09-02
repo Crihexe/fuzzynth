@@ -175,9 +175,12 @@ class CampaignSupervisor:
                         f"worker={worker_id}\nsession={session.session_id}\n"
                         f"reason={session.pause_reason or 'unknown'}"
                     )
-                    return WorkerRunSummary(
-                        worker_id, turns, sessions_started, "paused", "session_paused"
-                    )
+                    if exit_when_blocked:
+                        return WorkerRunSummary(
+                            worker_id, turns, sessions_started, "paused", "session_paused"
+                        )
+                    self.stop_event.wait(self.idle_seconds)
+                    continue
                 if session is None:
                     if max_sessions is not None and sessions_started >= max_sessions:
                         return WorkerRunSummary(
@@ -239,10 +242,13 @@ class CampaignSupervisor:
                         worker_id,
                         result.session.pause_reason or "session_paused",
                     )
-                    return WorkerRunSummary(
-                        worker_id, turns, sessions_started, "paused",
-                        result.session.pause_reason or "session_paused",
-                    )
+                    if exit_when_blocked:
+                        return WorkerRunSummary(
+                            worker_id, turns, sessions_started, "paused",
+                            result.session.pause_reason or "session_paused",
+                        )
+                    self.stop_event.wait(self.idle_seconds)
+                    continue
         return WorkerRunSummary(
             worker_id, turns, sessions_started, "stopped", "supervisor_stopped"
         )
