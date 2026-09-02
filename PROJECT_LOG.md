@@ -723,3 +723,14 @@ This is the living operational memory for the project. Read it together with
   or mutating worker state. `/workers` separately reports static configuration,
   persistent control, and effective schedulability; a disabled worker can no
   longer misleadingly appear to be dispatching.
+- The full offline suite passes with 132 tests. Commit `323f002` was deployed
+  cooperatively: active streams completed and were recorded before the old
+  supervisor exited, Telegram restarted at 10:24:50 UTC, and the campaign
+  restarted at 10:26:02 UTC.
+- A live custom-endpoint request after deployment contained the role sequence
+  `user, assistant, user, assistant, user`. Both assistant-content hashes exactly
+  matched the corresponding locally archived prior programs, `store` was false,
+  and no legacy program-data envelope appeared. Subsequent turns completed
+  normally, proving custom-provider acceptance rather than only offline schema
+  validity. At this checkpoint the catalog held 740 generations, 732 executions,
+  and zero bug candidates.
