@@ -118,8 +118,9 @@ sudo ./scripts/install_telegram_control_service.sh
 
 ## Supervised v2 campaign
 
-The checked-in v2 service runs independent Spark, custom Luna, and official Luna
-threads over the four explicitly reviewed JavaScript corpus files. Custom API
+The checked-in v2 service runs independent Spark, custom Luna, official GPT-4o
+mini, and official GPT-4.1 nano threads over the four explicitly reviewed
+JavaScript corpus files. Custom API
 requests use SSE to keep the gateway connection alive. The controller always
 waits until the stream terminates before executing anything. Completed output is
 cross-checked against the terminal response; a bounded text prefix from a failed
@@ -134,6 +135,12 @@ messages with the generated JavaScript retained only in its original assistant
 message. Every request, raw response/stream, program, execution capture, and
 session transition is preserved under private `state/` storage while journald
 receives only safe identifiers and metrics.
+
+The official models rotate temperature from 0 through 2. GPT-4o mini sessions
+last at most three turns; GPT-4.1 nano sessions last exactly six. Neither request
+sends reasoning or verbosity controls because live probing confirmed that the
+deprecated GPT-4.1 nano model rejects `reasoning.effort`. Both use exact
+model-specific rates inside one shared cumulative `$4.90` ledger.
 
 ```bash
 sudo ./scripts/install_v2_campaign_service.sh

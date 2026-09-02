@@ -84,7 +84,8 @@ separates provider effects from model and generation effects:
 | `luna-custom-high-iterative-js` | alternate GPT-5.6 Luna | `high`, high verbosity; unsupported controls omitted | randomized 4–8 | enabled replacement |
 | `luna-custom-low-iterative-js` | alternate GPT-5.6 Luna | `low`, high verbosity; unsupported controls omitted | randomized 4–8 | enabled baseline |
 | `luna-custom-none-spark-fallback-js` | alternate GPT-5.6 Luna | `none`, high verbosity; unsupported controls omitted | randomized 4–8 | managed fallback while Spark is paused |
-| `luna-official-high-temperature-none-js` | official GPT-5.6 Luna | `none`, high verbosity, temperature 1.2/1.5/1.8 per session | randomized 4–8 | enabled |
+| `gpt-4o-mini-official-temperature-js` | official GPT-4o mini | no reasoning/verbosity controls; temperature 0/0.5/1/1.5/2 per session | randomized 1–3 | enabled |
+| `gpt-4.1-nano-official-temperature-js` | official GPT-4.1 nano | no reasoning/verbosity controls; temperature 0/0.5/1/1.5/2 per session | exactly 6 | enabled despite deprecation; access live-probed |
 | `terra-custom-xhigh-tool-investigator` | alternate GPT-5.6 Terra | `xhigh`, tool-driven | separately bounded | disabled/deferred |
 
 The scheduler must be able to set a campaign to zero, pause it, or cap it without
@@ -113,9 +114,10 @@ executions, sanitizer executions, and triage replays.
 
 ### 4.2 Session and context policy
 
-Spark sessions run for 8–16 turns; Luna sessions run for 4–8 turns. The exact
-length and official Luna temperature choice are sampled once per session and
-recorded. Recent history is bounded independently of the full
+Spark sessions run for 8–16 turns; custom Luna sessions run for 4–8 turns;
+official GPT-4o mini sessions run for 1–3 turns; official GPT-4.1 nano sessions
+run for exactly six. The exact length (where ranged) and official temperature
+choice are sampled once per session and recorded. Recent history is bounded independently of the full
 archived history. Each stateless API request reconstructs that history as real
 alternating Responses API messages: the exact generated program is an
 `assistant` message and only its d8 observation plus the next request is a
@@ -153,15 +155,15 @@ response/program byte limits and worst-case token reservations remain in force.
 ### 4.4 Parameter and context experiments
 
 Provider capability is part of each experiment identity. The alternate endpoint
-must omit `temperature`; the official Luna endpoint may test a bounded set of
-temperature values. Unsupported parameters are never sent merely to make rows
+must omit `temperature`; official GPT-4o mini and GPT-4.1 nano sample a bounded
+set from 0 through 2. Unsupported parameters are never sent merely to make rows
 look uniform.
 
-The initial matrix intentionally fixes alternate Luna at `xhigh` and alternate
-Spark at its minimum accepted reasoning, both with high verbosity. Official Luna
-uses `none` or `low` reasoning and high verbosity while sampling temperatures
-1.2, 1.5, and 1.8 per session. Later fixed-budget experiments can isolate each
-factor; high effort or verbosity is a hypothesis, not an assumed improvement.
+The sustained custom matrix compares Luna high/low/none with Spark at its
+minimum accepted reasoning, all with high verbosity. The two official models
+omit reasoning and verbosity parameters and sample temperatures
+0/0.5/1/1.5/2. Later fixed-budget experiments can isolate each factor; high
+effort or verbosity is a hypothesis, not an assumed improvement.
 
 Initial capability probes refine this matrix: the alternate endpoint accepts a
 requested `none` but reports effective effort `low`, reports temperature `1.0`
@@ -444,7 +446,7 @@ PoCs and must not make campaign correctness depend on Telegram availability.
 
 ### M6 — Controlled worker comparison
 
-- Run Spark custom, Luna custom `xhigh`, and official Luna temperature sessions
+- Run Spark custom, custom Luna effort lanes, and both cheap official temperature lanes
   under matched execution and recorded-token budgets.
 - Gate: validity, novelty, throughput, usage, and cost report with zero lost
   evidence records.

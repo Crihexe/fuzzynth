@@ -67,8 +67,11 @@ def _workers(repo_root: Path, seed: int) -> int:
                 "mode": worker.mode,
                 "meter": worker.meter,
                 "reasoning_efforts": worker.reasoning_efforts,
+                "send_reasoning": worker.send_reasoning,
                 "verbosity": worker.verbosity,
+                "send_verbosity": worker.send_verbosity,
                 "temperatures": worker.temperatures,
+                "pricing_profile": worker.pricing_profile,
                 "turn_range": [
                     worker.min_turns_per_session,
                     worker.max_turns_per_session,

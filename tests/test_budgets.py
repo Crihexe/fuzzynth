@@ -28,9 +28,17 @@ class BudgetConfigurationTests(unittest.TestCase):
             policies["luna_alternate"].hard_output_tokens,
             42_000_000,
         )
+        official = policies["openai_official"]
+        self.assertEqual(official.hard_total_microunits, 4_900_000)
+        self.assertEqual(official.legacy_meter_ids, ("luna_official",))
         self.assertEqual(
-            policies["luna_official"].hard_total_microunits,
-            4_900_000,
+            official.charge(
+                uncached_input_tokens=1_000_000,
+                cached_input_tokens=0,
+                output_tokens=1_000_000,
+                pricing_profile="gpt_4_1_nano",
+            ),
+            500_000,
         )
         self.assertNotIn("terra_alternate", policies)
 
@@ -133,6 +141,48 @@ class BudgetLedgerTests(unittest.TestCase):
         status = self.ledger.status("test")
         self.assertEqual(status["output_tokens"], 0)
         self.assertEqual(status["total_microunits"], 0)
+
+    def test_legacy_meter_rows_migrate_into_shared_official_cap(self) -> None:
+        legacy_path = Path(self.temporary.name) / "legacy.sqlite3"
+        legacy_policy = MeterPolicy(
+            meter_id="luna_official",
+            unit="USD",
+            metered=True,
+            input_per_million=Decimal("0.20"),
+            output_per_million=Decimal("1.20"),
+            hard_total_microunits=4_900_000,
+        )
+        with BudgetLedger(
+            legacy_path, {"luna_official": legacy_policy}
+        ) as legacy:
+            reservation = legacy.reserve(
+                "luna_official",
+                campaign_id="old",
+                worker_id="old",
+                max_input_tokens=100,
+                max_output_tokens=100,
+            )
+            legacy.settle(
+                reservation.reservation_id,
+                TokenUsage(input_tokens=100, output_tokens=100),
+            )
+
+        current_policy = MeterPolicy(
+            meter_id="openai_official",
+            unit="USD",
+            metered=True,
+            input_per_million=Decimal("0.15"),
+            output_per_million=Decimal("0.60"),
+            hard_total_microunits=4_900_000,
+            legacy_meter_ids=("luna_official",),
+        )
+        with BudgetLedger(
+            legacy_path, {"openai_official": current_policy}
+        ) as current:
+            self.assertEqual(
+                current.status("openai_official")["total_microunits"],
+                140,
+            )
 
 
 if __name__ == "__main__":

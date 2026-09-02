@@ -41,6 +41,9 @@ class CampaignWorker:
     v8_build_profile: str
     v8_worker_profile: str
     d8_flags: tuple[str, ...]
+    send_reasoning: bool = True
+    send_verbosity: bool = True
+    pricing_profile: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,6 +84,22 @@ def _string_list(raw: dict[str, object], name: str) -> tuple[str, ...]:
     ):
         raise CampaignConfigurationError(f"{name} must be a string array")
     return tuple(value)
+
+
+def _optional_bool(raw: dict[str, object], name: str, *, default: bool) -> bool:
+    value = raw.get(name, default)
+    if not isinstance(value, bool):
+        raise CampaignConfigurationError(f"{name} must be boolean")
+    return value
+
+
+def _optional_string(raw: dict[str, object], name: str) -> str | None:
+    value = raw.get(name)
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise CampaignConfigurationError(f"{name} must be a non-empty string")
+    return value
 
 
 def load_campaign_configuration(path: Path, *, repo_root: Path = Path(".")) -> CampaignConfiguration:
@@ -166,6 +185,13 @@ def load_campaign_configuration(path: Path, *, repo_root: Path = Path(".")) -> C
             v8_build_profile=_string(raw, "v8_build_profile"),
             v8_worker_profile=_string(raw, "v8_worker_profile"),
             d8_flags=flags,
+            send_reasoning=_optional_bool(
+                raw, "send_reasoning", default=True
+            ),
+            send_verbosity=_optional_bool(
+                raw, "send_verbosity", default=True
+            ),
+            pricing_profile=_optional_string(raw, "pricing_profile"),
         )
         if enabled and worker.mode != "iterative_raw_js":
             raise CampaignConfigurationError(

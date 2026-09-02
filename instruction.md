@@ -56,8 +56,9 @@ source-code analysis.
   rate, token, and cost budgets.
 - The primary iterative workers are: alternate Spark with requested minimum
   reasoning and high verbosity; alternate Luna `high` and `low` comparison
-  lanes with high verbosity; and official Luna with high verbosity, `none`
-  reasoning, and high temperatures selected per session.
+  lanes with high verbosity; official GPT-4o mini without reasoning for at most
+  three turns; and official GPT-4.1 nano without reasoning for exactly six
+  turns. The official workers rotate temperature from 0 through 2.
 - While Spark is paused by its five-hour or weekly provider quota, run a distinct
   alternate Luna lane with `none` reasoning and high verbosity. The fallback
   must not block other workers or override owner, crash, or provider pauses.
@@ -96,11 +97,17 @@ source-code analysis.
   an optional persistent `d8` console as later, separately budgeted work.
 - Run Spark and Luna through the alternate endpoint with `temperature` omitted,
   because that provider does not support setting it.
-- Run Luna through the official OpenAI endpoint in separate campaigns that can
-  vary `temperature`.
+- Do not run Luna through the official OpenAI endpoint after the 2026-09-02
+  strategy change. Use official GPT-4o mini for sessions of at most three turns
+  and official GPT-4.1 nano for exactly six turns, rotating temperature across
+  0–2.
+- GPT-4.1 nano is deprecated but remained accessible to the owner's project in
+  a live probe. It is not a reasoning model: `reasoning.effort=medium` returned
+  HTTP 400 `unsupported_parameter`, so omit reasoning rather than falsely
+  labelling normal generation as medium/high thinking.
 - Treat parameter support as provider-specific and probe it before scheduling.
   Omission is distinct from sending a default-valued parameter.
-- Experiment with Luna `reasoning.effort` and `text.verbosity`. Measure valid
+- Experiment with custom Luna `reasoning.effort` and `text.verbosity`. Measure valid
   code, novelty, crash yield, output/reasoning tokens, throughput, and cost; do
   not assume that higher effort or verbosity is better.
 - Permit optimization-oriented `%` intrinsics and `gc()` under validated flags,
@@ -181,8 +188,8 @@ source-code analysis.
 - Prices are configuration owned by the custom provider; do not assume official
   OpenAI prices apply.
 - Enforce per-campaign and global hourly, daily, and total soft/hard budgets.
-- The official Luna cumulative local ceiling is `$4.90`, leaving headroom below
-  the owner's external `$5` account cap.
+- All official-model workers share one cumulative local ceiling of `$4.90`,
+  including preserved historical official-Luna spend and uncertain work.
 - Alternate Luna has a cumulative 1250-credit ceiling using owner-provided rates
   of 5 credits/M uncached input, 0.5/M cached input, and 30/M output/reasoning,
   plus hard category ceilings of 250M, 2.5B, and 42M tokens respectively.

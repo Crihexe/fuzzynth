@@ -163,8 +163,10 @@ class CampaignTurnRunner:
                 None if streaming_transport else worker.max_output_tokens
             ),
             temperature=None if streaming_transport else plan.temperature,
-            reasoning_effort=plan.reasoning_effort,
-            verbosity=worker.verbosity,
+            reasoning_effort=(
+                plan.reasoning_effort if worker.send_reasoning else None
+            ),
+            verbosity=worker.verbosity if worker.send_verbosity else None,
             stream=streaming_transport,
         )
         request_bytes = request.to_bytes()
@@ -175,6 +177,7 @@ class CampaignTurnRunner:
             worker_id=worker.worker_id,
             max_input_tokens=len(request_bytes),
             max_output_tokens=worker.reservation_output_tokens,
+            pricing_profile=worker.pricing_profile,
         )
         started_at = datetime.now(timezone.utc).isoformat()
         requested_parameters = {
@@ -182,6 +185,7 @@ class CampaignTurnRunner:
             "max_output_tokens_sent": request.max_output_tokens,
             "max_program_bytes": self.max_program_bytes,
             "reasoning_effort": plan.reasoning_effort,
+            "reasoning_effort_sent": request.reasoning_effort,
             "reservation_output_tokens": worker.reservation_output_tokens,
             "session_seed": plan.seed,
             "stream": request.stream,
@@ -189,6 +193,8 @@ class CampaignTurnRunner:
             "transport": "sse" if streaming_transport else "json",
             "turn_index": turn_index,
             "verbosity": worker.verbosity,
+            "verbosity_sent": request.verbosity,
+            "pricing_profile": worker.pricing_profile,
         }
         if streaming_transport:
             requested_parameters["terminal_partial_output_policy"] = "execute_once"

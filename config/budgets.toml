@@ -38,15 +38,23 @@ hard_cached_input_tokens = 2500000000
 hard_output_tokens = 42000000
 historical_reserve_microunits = 1000000
 
-# Official GPT-5.6 Luna rates from OpenAI documentation on 2026-09-02. The local
-# $4.90 cap leaves $0.10 beneath the owner's external $5 limit for earlier probes.
-[meters.luna_official]
+# Shared official-OpenAI ledger. The base rate is GPT-4o mini; named pricing
+# profiles let cheaper models settle at their exact rates while sharing the same
+# cumulative $4.90 hard stop. Historical official-Luna rows are migrated into
+# this meter at deployment, preserving spend and uncertain reservations.
+[meters.openai_official]
 unit = "USD"
 metered = true
-input_per_million = "0.20"
-cached_input_per_million = "0.02"
-output_per_million = "1.20"
+legacy_meter_ids = ["luna_official"]
+input_per_million = "0.15"
+cached_input_per_million = "0.075"
+output_per_million = "0.60"
 hard_total_microunits = 4900000
+
+[meters.openai_official.pricing_profiles.gpt_4_1_nano]
+input_per_million = "0.10"
+cached_input_per_million = "0.025"
+output_per_million = "0.40"
 
 # Terra remains off until raw-worker baselines justify its 10x custom credit cost.
 [meters.terra_alternate]

@@ -15,7 +15,7 @@ class CampaignConfigurationTests(unittest.TestCase):
             Path("config/campaign-workers.toml")
         )
 
-    def test_enables_four_lanes_plus_managed_fallback(self) -> None:
+    def test_enables_custom_lanes_and_two_official_baselines(self) -> None:
         enabled = {worker.worker_id for worker in self.config.enabled_workers()}
         self.assertEqual(
             enabled,
@@ -24,7 +24,8 @@ class CampaignConfigurationTests(unittest.TestCase):
                 "luna-custom-high-iterative-js",
                 "luna-custom-low-iterative-js",
                 "luna-custom-none-spark-fallback-js",
-                "luna-official-high-temperature-none-js",
+                "gpt-4o-mini-official-temperature-js",
+                "gpt-4.1-nano-official-temperature-js",
             },
         )
 
@@ -56,12 +57,21 @@ class CampaignConfigurationTests(unittest.TestCase):
         self.assertEqual(worker.max_output_tokens, 2048)
         self.assertEqual(worker.reservation_output_tokens, 128_000)
 
-    def test_official_worker_rotates_high_temperature_with_no_reasoning(self) -> None:
-        worker = self.config.workers["luna-official-high-temperature-none-js"]
-        self.assertEqual(worker.temperatures, (1.2, 1.5, 1.8))
-        self.assertEqual(worker.reasoning_efforts, ("none",))
+    def test_official_workers_rotate_full_temperature_range_without_reasoning(self) -> None:
+        mini = self.config.workers["gpt-4o-mini-official-temperature-js"]
+        nano = self.config.workers["gpt-4.1-nano-official-temperature-js"]
+        expected_temperatures = (0.0, 0.5, 1.0, 1.5, 2.0)
+        self.assertEqual(mini.temperatures, expected_temperatures)
+        self.assertEqual(nano.temperatures, expected_temperatures)
+        self.assertFalse(mini.send_reasoning)
+        self.assertFalse(mini.send_verbosity)
+        self.assertEqual((mini.min_turns_per_session, mini.max_turns_per_session), (1, 3))
+        self.assertFalse(nano.send_reasoning)
+        self.assertFalse(nano.send_verbosity)
+        self.assertEqual((nano.min_turns_per_session, nano.max_turns_per_session), (6, 6))
+        self.assertEqual(nano.pricing_profile, "gpt_4_1_nano")
         self.assertFalse(
-            self.config.workers["luna-official-high-temperature-js"].enabled
+            self.config.workers["luna-official-high-temperature-none-js"].enabled
         )
 
     def test_session_choice_is_reproducible_and_in_range(self) -> None:

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_CEILING
 import os
@@ -27,6 +28,13 @@ class BudgetLimitError(RuntimeError):
 
 
 @dataclass(frozen=True, slots=True)
+class TokenRates:
+    input_per_million: Decimal
+    cached_input_per_million: Decimal
+    output_per_million: Decimal
+
+
+@dataclass(frozen=True, slots=True)
 class MeterPolicy:
     meter_id: str
     unit: str
@@ -39,6 +47,22 @@ class MeterPolicy:
     hard_cached_input_tokens: int | None = None
     hard_output_tokens: int | None = None
     historical_reserve_microunits: int = 0
+    pricing_profiles: Mapping[str, TokenRates] = field(default_factory=dict)
+    legacy_meter_ids: tuple[str, ...] = ()
+
+    def rates(self, pricing_profile: str | None = None) -> TokenRates:
+        if pricing_profile is None:
+            return TokenRates(
+                input_per_million=self.input_per_million,
+                cached_input_per_million=self.cached_input_per_million,
+                output_per_million=self.output_per_million,
+            )
+        try:
+            return self.pricing_profiles[pricing_profile]
+        except KeyError as exc:
+            raise BudgetConfigurationError(
+                f"unknown pricing profile {self.meter_id}.{pricing_profile}"
+            ) from exc
 
     def charge(
         self,
@@ -46,13 +70,15 @@ class MeterPolicy:
         uncached_input_tokens: int,
         cached_input_tokens: int,
         output_tokens: int,
+        pricing_profile: str | None = None,
     ) -> int:
         if not self.metered:
             return 0
+        rates = self.rates(pricing_profile)
         amount = (
-            Decimal(uncached_input_tokens) * self.input_per_million
-            + Decimal(cached_input_tokens) * self.cached_input_per_million
-            + Decimal(output_tokens) * self.output_per_million
+            Decimal(uncached_input_tokens) * rates.input_per_million
+            + Decimal(cached_input_tokens) * rates.cached_input_per_million
+            + Decimal(output_tokens) * rates.output_per_million
         ) / Decimal(1_000_000)
         return int(
             (amount * Decimal(1_000_000)).to_integral_value(
@@ -133,29 +159,82 @@ def load_meter_policies(path: Path) -> dict[str, MeterPolicy]:
         if not isinstance(metered, bool) or not isinstance(unit, str) or not unit:
             raise BudgetConfigurationError(f"invalid meter: {meter_id}")
 
-        def decimal_field(name: str) -> Decimal:
-            value = raw.get(name, "0")
+        def decimal_value(
+            source: dict[str, object], name: str, label: str
+        ) -> Decimal:
+            value = source.get(name, "0")
             if not isinstance(value, str):
-                raise BudgetConfigurationError(f"{meter_id}.{name} must be a string")
+                raise BudgetConfigurationError(f"{label}.{name} must be a string")
             try:
                 parsed = Decimal(value)
             except Exception as exc:
                 raise BudgetConfigurationError(
-                    f"{meter_id}.{name} is not decimal"
+                    f"{label}.{name} is not decimal"
                 ) from exc
             if not parsed.is_finite() or parsed < 0:
                 raise BudgetConfigurationError(
-                    f"{meter_id}.{name} must be finite and non-negative"
+                    f"{label}.{name} must be finite and non-negative"
                 )
             return parsed
+
+        raw_profiles = raw.get("pricing_profiles", {})
+        if not isinstance(raw_profiles, dict):
+            raise BudgetConfigurationError(
+                f"{meter_id}.pricing_profiles must be a table"
+            )
+        pricing_profiles: dict[str, TokenRates] = {}
+        for profile_id, profile in raw_profiles.items():
+            if (
+                not isinstance(profile_id, str)
+                or not profile_id
+                or not isinstance(profile, dict)
+            ):
+                raise BudgetConfigurationError(
+                    f"invalid pricing profile for {meter_id}"
+                )
+            label = f"{meter_id}.pricing_profiles.{profile_id}"
+            rates = TokenRates(
+                input_per_million=decimal_value(
+                    profile, "input_per_million", label
+                ),
+                cached_input_per_million=decimal_value(
+                    profile, "cached_input_per_million", label
+                ),
+                output_per_million=decimal_value(
+                    profile, "output_per_million", label
+                ),
+            )
+            if rates.cached_input_per_million > rates.input_per_million:
+                raise BudgetConfigurationError(
+                    f"{label} cached input rate exceeds input rate"
+                )
+            pricing_profiles[profile_id] = rates
+
+        raw_legacy_ids = raw.get("legacy_meter_ids", [])
+        if not isinstance(raw_legacy_ids, list) or any(
+            not isinstance(item, str) or not item or item == meter_id
+            for item in raw_legacy_ids
+        ):
+            raise BudgetConfigurationError(
+                f"{meter_id}.legacy_meter_ids must contain distinct old meter names"
+            )
+        legacy_meter_ids = tuple(raw_legacy_ids)
+        if len(set(legacy_meter_ids)) != len(legacy_meter_ids):
+            raise BudgetConfigurationError(
+                f"{meter_id}.legacy_meter_ids contains duplicates"
+            )
 
         policy = MeterPolicy(
             meter_id=meter_id,
             unit=unit,
             metered=metered,
-            input_per_million=decimal_field("input_per_million"),
-            cached_input_per_million=decimal_field("cached_input_per_million"),
-            output_per_million=decimal_field("output_per_million"),
+            input_per_million=decimal_value(raw, "input_per_million", meter_id),
+            cached_input_per_million=decimal_value(
+                raw, "cached_input_per_million", meter_id
+            ),
+            output_per_million=decimal_value(
+                raw, "output_per_million", meter_id
+            ),
             hard_total_microunits=_optional_nonnegative_int(
                 raw.get("hard_total_microunits"),
                 f"{meter_id}.hard_total_microunits",
@@ -177,6 +256,8 @@ def load_meter_policies(path: Path) -> dict[str, MeterPolicy]:
                 f"{meter_id}.historical_reserve_microunits",
             )
             or 0,
+            pricing_profiles=pricing_profiles,
+            legacy_meter_ids=legacy_meter_ids,
         )
         if metered and policy.hard_total_microunits is None:
             raise BudgetConfigurationError(
@@ -187,6 +268,13 @@ def load_meter_policies(path: Path) -> dict[str, MeterPolicy]:
                 f"{meter_id} cached input rate exceeds input rate"
             )
         policies[meter_id] = policy
+    configured_ids = set(policies)
+    claimed_legacy_ids: set[str] = set()
+    for policy in policies.values():
+        aliases = set(policy.legacy_meter_ids)
+        if aliases & configured_ids or aliases & claimed_legacy_ids:
+            raise BudgetConfigurationError("budget meter legacy aliases overlap")
+        claimed_legacy_ids.update(aliases)
     return policies
 
 
@@ -198,6 +286,7 @@ class Reservation:
     reserved_cached_input_tokens: int
     reserved_output_tokens: int
     reserved_microunits: int
+    pricing_profile: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -227,11 +316,12 @@ CREATE TABLE reservation (
   actual_output_tokens INTEGER CHECK(actual_output_tokens >= 0),
   actual_reasoning_tokens INTEGER CHECK(actual_reasoning_tokens >= 0),
   actual_microunits INTEGER CHECK(actual_microunits >= 0),
+  pricing_profile TEXT,
   created_at TEXT NOT NULL,
   finished_at TEXT
 ) STRICT;
 CREATE INDEX reservation_meter_idx ON reservation(meter_id, status, created_at);
-PRAGMA user_version = 1;
+PRAGMA user_version = 2;
 """
 
 
@@ -248,9 +338,36 @@ class BudgetLedger:
         version = self.connection.execute("PRAGMA user_version").fetchone()[0]
         if version == 0:
             self.connection.executescript(_SCHEMA)
-        elif version != 1:
+        elif version == 1:
+            with self.connection:
+                self.connection.execute(
+                    "ALTER TABLE reservation ADD COLUMN pricing_profile TEXT"
+                )
+                self.connection.execute("PRAGMA user_version = 2")
+        elif version != 2:
             self.connection.close()
             raise BudgetConfigurationError("unsupported budget ledger version")
+        self._migrate_legacy_meter_ids()
+
+    def _migrate_legacy_meter_ids(self) -> None:
+        migrations = tuple(
+            (legacy_id, policy.meter_id)
+            for policy in self.policies.values()
+            for legacy_id in policy.legacy_meter_ids
+        )
+        if not migrations:
+            return
+        try:
+            with self.connection:
+                for legacy_id, meter_id in migrations:
+                    self.connection.execute(
+                        "UPDATE reservation SET meter_id = ? WHERE meter_id = ?",
+                        (meter_id, legacy_id),
+                    )
+        except sqlite3.Error as exc:
+            raise BudgetConfigurationError(
+                "budget meter alias migration failed"
+            ) from exc
 
     def close(self) -> None:
         self.connection.close()
@@ -315,6 +432,7 @@ class BudgetLedger:
         worker_id: str,
         max_input_tokens: int,
         max_output_tokens: int,
+        pricing_profile: str | None = None,
     ) -> Reservation:
         for name, value in (
             ("max_input_tokens", max_input_tokens),
@@ -323,10 +441,12 @@ class BudgetLedger:
             if isinstance(value, bool) or value < 0:
                 raise ValueError(f"{name} must be a non-negative integer")
         policy = self._policy(meter_id)
+        policy.rates(pricing_profile)
         reserved_microunits = policy.charge(
             uncached_input_tokens=max_input_tokens,
             cached_input_tokens=0,
             output_tokens=max_output_tokens,
+            pricing_profile=pricing_profile,
         )
         reservation = Reservation(
             reservation_id=f"budget-{uuid.uuid4()}",
@@ -337,6 +457,7 @@ class BudgetLedger:
             reserved_cached_input_tokens=max_input_tokens,
             reserved_output_tokens=max_output_tokens,
             reserved_microunits=reserved_microunits,
+            pricing_profile=pricing_profile,
         )
         now = datetime.now(timezone.utc).isoformat()
         try:
@@ -356,8 +477,16 @@ class BudgetLedger:
                 raise BudgetLimitError(blocked)
             self.connection.execute(
                 """
-                INSERT INTO reservation VALUES (
-                  ?, ?, ?, ?, 'active', ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, ?, NULL
+                INSERT INTO reservation (
+                  id, meter_id, campaign_id, worker_id, status,
+                  reserved_uncached_input_tokens, reserved_cached_input_tokens,
+                  reserved_output_tokens, reserved_microunits,
+                  actual_uncached_input_tokens, actual_cached_input_tokens,
+                  actual_output_tokens, actual_reasoning_tokens,
+                  actual_microunits, pricing_profile, created_at, finished_at
+                ) VALUES (
+                  ?, ?, ?, ?, 'active', ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL,
+                  ?, ?, NULL
                 )
                 """,
                 (
@@ -369,6 +498,7 @@ class BudgetLedger:
                     reservation.reserved_cached_input_tokens,
                     reservation.reserved_output_tokens,
                     reservation.reserved_microunits,
+                    reservation.pricing_profile,
                     now,
                 ),
             )
@@ -387,7 +517,7 @@ class BudgetLedger:
             """
             SELECT meter_id, status, reserved_uncached_input_tokens,
                    reserved_cached_input_tokens, reserved_output_tokens,
-                   reserved_microunits
+                   reserved_microunits, pricing_profile
             FROM reservation WHERE id = ?
             """,
             (reservation_id,),
@@ -399,6 +529,7 @@ class BudgetLedger:
             uncached_input_tokens=uncached,
             cached_input_tokens=cached,
             output_tokens=usage.output_tokens,
+            pricing_profile=row[6],
         )
         overrun = (
             (

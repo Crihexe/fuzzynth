@@ -213,6 +213,8 @@ class CampaignTurnTests(unittest.TestCase):
             v8_build_profile=self.worker.v8_build_profile,
             v8_worker_profile=self.worker.v8_worker_profile,
             d8_flags=self.worker.d8_flags,
+            send_reasoning=False,
+            send_verbosity=False,
         )
 
         result = self.runner().run_turn(
@@ -229,6 +231,9 @@ class CampaignTurnTests(unittest.TestCase):
         self.assertFalse(client.request.stream)
         self.assertEqual(client.request.max_output_tokens, 8192)
         self.assertEqual(client.request.temperature, 1.5)
+        payload = client.request.to_payload()
+        self.assertNotIn("reasoning", payload)
+        self.assertNotIn("text", payload)
 
     def test_stream_mismatch_is_archived_and_never_executed(self) -> None:
         response = self.response()

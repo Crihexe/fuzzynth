@@ -734,3 +734,26 @@ This is the living operational memory for the project. Read it together with
   normally, proving custom-provider acceptance rather than only offline schema
   validity. At this checkpoint the catalog held 740 generations, 732 executions,
   and zero bug candidates.
+
+### 2026-09-02 — cheaper official-model strategy
+
+- Replaced the official GPT-5.6 Luna lane with two cheaper non-reasoning lanes:
+  GPT-4o mini rotates temperature 0/0.5/1/1.5/2 over randomized 1–3-turn
+  sessions; GPT-4.1 nano uses the same temperatures and exactly six turns.
+- Minimal live official-endpoint probes confirmed GPT-4o mini snapshot
+  `gpt-4o-mini-2024-07-18` and GPT-4.1 nano snapshot
+  `gpt-4.1-nano-2025-04-14`, both with `temperature=2.0` and detailed usage.
+  GPT-4.1 nano remains accessible despite its deprecated status.
+- A separate bounded GPT-4.1 nano request with `reasoning.effort=medium`
+  returned HTTP 400 `unsupported_parameter`, matching the model documentation:
+  it has no reasoning step. Both new workers therefore omit the reasoning and
+  text-verbosity fields entirely.
+- Added per-model pricing profiles to the durable budget ledger. Both workers
+  share one `$4.90` hard cap while GPT-4o mini settles at
+  `$0.15/$0.075/$0.60` and GPT-4.1 nano at `$0.10/$0.025/$0.40` per million
+  uncached-input/cached-input/output tokens.
+- Added an automatic SQLite schema migration and legacy meter alias. A coherent
+  copy of the live version-1 ledger migrated to version 2 with all 358 official
+  Luna rows folded into `openai_official`; `$0.986597` and two uncertain
+  reservations remained intact.
+- All 134 offline tests pass before deployment.

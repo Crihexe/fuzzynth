@@ -142,7 +142,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc"]
 # none-reasoning lane under a distinct identity.
 [[workers]]
 id = "luna-official-high-temperature-none-js"
-enabled = true
+enabled = false
 provider = "official"
 model = "gpt-5.6-luna"
 meter = "luna_official"
@@ -154,6 +154,57 @@ temperatures = [1.2, 1.5, 1.8]
 min_turns_per_session = 4
 max_turns_per_session = 8
 history_turns = 4
+max_output_tokens = 8192
+reservation_output_tokens = 8192
+v8_build_profile = "release_symbolized"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc"]
+
+# Non-reasoning official baseline. Live capability probing confirmed the model
+# and temperature=2.0 on 2026-09-02. Reasoning and text verbosity are omitted
+# from the request because this model family does not implement those controls.
+[[workers]]
+id = "gpt-4o-mini-official-temperature-js"
+enabled = true
+provider = "official"
+model = "gpt-4o-mini"
+meter = "openai_official"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_v1.txt"
+reasoning_efforts = ["none"]
+send_reasoning = false
+verbosity = "medium"
+send_verbosity = false
+temperatures = [0.0, 0.5, 1.0, 1.5, 2.0]
+min_turns_per_session = 1
+max_turns_per_session = 3
+history_turns = 2
+max_output_tokens = 8192
+reservation_output_tokens = 8192
+v8_build_profile = "release_symbolized"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc"]
+
+# Deprecated but still live on the owner's project as of 2026-09-02. A live
+# probe confirmed temperature=2.0 and a separate probe returned HTTP 400
+# unsupported_parameter for reasoning.effort=medium, so reasoning is omitted.
+[[workers]]
+id = "gpt-4.1-nano-official-temperature-js"
+enabled = true
+provider = "official"
+model = "gpt-4.1-nano"
+meter = "openai_official"
+pricing_profile = "gpt_4_1_nano"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_v1.txt"
+reasoning_efforts = ["none"]
+send_reasoning = false
+verbosity = "medium"
+send_verbosity = false
+temperatures = [0.0, 0.5, 1.0, 1.5, 2.0]
+min_turns_per_session = 6
+max_turns_per_session = 6
+history_turns = 5
 max_output_tokens = 8192
 reservation_output_tokens = 8192
 v8_build_profile = "release_symbolized"

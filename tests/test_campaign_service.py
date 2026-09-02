@@ -142,15 +142,26 @@ class CampaignServiceTests(unittest.TestCase):
 
     def test_unconditioned_control_requires_explicit_switch(self) -> None:
         session = self.service.start_session(
-            "luna-official-high-temperature-none-js",
+            "gpt-4o-mini-official-temperature-js",
             seed=99,
             corpus_window=None,
             allow_unconditioned=True,
         )
 
         self.assertIsNone(session.corpus)
-        self.assertIn(session.temperature, (1.2, 1.5, 1.8))
-        self.assertIn(session.reasoning_effort, ("none", "low"))
+        self.assertIn(session.temperature, (0.0, 0.5, 1.0, 1.5, 2.0))
+        self.assertEqual(session.reasoning_effort, "none")
+        self.assertLessEqual(session.target_turns, 3)
+
+    def test_nano_sessions_are_exactly_six_turns(self) -> None:
+        session = self.service.start_session(
+            "gpt-4.1-nano-official-temperature-js",
+            seed=101,
+            corpus_window=None,
+            allow_unconditioned=True,
+        )
+
+        self.assertEqual(session.target_turns, 6)
 
     def test_paused_worker_cannot_start_or_advance(self) -> None:
         session = self.service.start_session(
