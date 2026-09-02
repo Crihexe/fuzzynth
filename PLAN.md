@@ -128,9 +128,10 @@ bytes reach d8 while a custom stream is active. Completed responses require the
 assembled deltas to equal terminal semantic output. When an error or incomplete
 terminal event follows text deltas, the bounded exact prefix is marked partial
 and executed once after termination; absent usage remains conservatively
-reserved and the lane pauses. The custom request omits `max_output_tokens`,
-`max_completion_tokens`, `temperature`, and `top_p`; local response/program byte
-limits and worst-case token reservations remain in force.
+reserved. A request-timeout/incomplete prefix and its d8 feedback enter the next
+bounded turn instead of resetting the conversation. The custom request omits
+`max_output_tokens`, `max_completion_tokens`, `temperature`, and `top_p`; local
+response/program byte limits and worst-case token reservations remain in force.
 
 ### 4.3 Evidence and resource safeguards
 

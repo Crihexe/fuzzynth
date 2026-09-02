@@ -249,6 +249,9 @@ class CampaignTurnRunner:
             partial_executable = bool(
                 partial_program and len(partial_program) <= self.max_program_bytes
             )
+            partial_continuable = bool(
+                partial_executable and exc.code == "request_timeout"
+            )
             self.catalog.record_generation(
                 GenerationRecord(
                     generation_id=generation_id,
@@ -267,6 +270,7 @@ class CampaignTurnRunner:
                         "error_code": exc.code,
                         "http_status": exc.status,
                         "partial_output_bytes": len(partial_program),
+                        "partial_output_continuable": partial_continuable,
                         "partial_output_executable": partial_executable,
                     },
                     input_tokens=None,
@@ -291,6 +295,11 @@ class CampaignTurnRunner:
                     generation_id,
                     partial_program,
                 )
+                if partial_continuable and not execution.bug_candidate:
+                    # The worst-case reservation remains charged. Continue the
+                    # bounded session so the next turn sees the exact prefix and
+                    # factual d8 observation instead of discarding useful work.
+                    pause_reason = None
                 return TurnResult(
                     generation_id=generation_id,
                     execution=execution,
@@ -371,6 +380,15 @@ class CampaignTurnRunner:
                 pause_reason = pause_reason or "invalid_output"
 
         finished_at = datetime.now(timezone.utc).isoformat()
+        terminal_partial_continuation = bool(
+            streaming_transport
+            and generation_status == "incomplete"
+            and program
+            and len(program) <= self.max_program_bytes
+            and pause_reason in {"incomplete_response", "unknown_usage"}
+        )
+        if terminal_partial_continuation:
+            pause_reason = None
         effective = _effective_parameters(response)
         if streaming_transport:
             effective["stream_terminal_type"] = stream_terminal_type
@@ -379,6 +397,9 @@ class CampaignTurnRunner:
                 len(program)
                 if generation_status == "incomplete" and program
                 else 0
+            )
+            effective["partial_output_continuation"] = (
+                terminal_partial_continuation
             )
         if output_error is not None:
             effective["output_error"] = output_error.code

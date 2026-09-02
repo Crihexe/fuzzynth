@@ -669,8 +669,10 @@ This is the living operational memory for the project. Read it together with
   Fuzzynth may execute the exact bounded output-text prefix once because even
   syntactically incomplete generated code can exercise parsing paths. It still
   never executes live stream fragments. Partial programs, raw SSE, provider code,
-  execution evidence, and the unknown-usage reservation remain linked, and the
-  affected lane pauses after the one execution.
+  execution evidence, and the unknown-usage reservation remain linked. For
+  upstream request-timeout or terminal-incomplete prefixes, the bounded session
+  continues: the next request contains that exact prefix plus factual d8 feedback.
+  Crash, hard-budget, quota, and unrelated provider failures still pause.
 - The sustained reasoning lane changed from custom Luna `xhigh` to `high` to test
   whether lower thinking latency improves terminal completion. The historical
   xhigh worker and evidence remain configured but disabled.

@@ -276,7 +276,7 @@ class CampaignTurnTests(unittest.TestCase):
             client=client,
         )
 
-        self.assertEqual(result.pause_reason, "provider_error")
+        self.assertIsNone(result.pause_reason)
         self.assertEqual(result.program, b"print('partial');")
         self.assertIsNotNone(result.execution)
         self.assertEqual(self.executed_generation_id, result.generation_id)
@@ -287,6 +287,7 @@ class CampaignTurnTests(unittest.TestCase):
         self.assertEqual(row[0], "incomplete")
         effective = json.loads(row[1])
         self.assertEqual(effective["error_code"], "request_timeout")
+        self.assertTrue(effective["partial_output_continuable"])
         self.assertTrue(effective["partial_output_executable"])
         self.assertIsNotNone(row[2])
         self.assertIsNotNone(row[3])
@@ -315,7 +316,7 @@ class CampaignTurnTests(unittest.TestCase):
             client=client,
         )
 
-        self.assertEqual(result.pause_reason, "incomplete_response")
+        self.assertIsNone(result.pause_reason)
         self.assertEqual(result.program, b"print('prefix');")
         self.assertIsNotNone(result.execution)
         self.assertEqual(self.budgets.status("luna")["output_tokens"], 50)

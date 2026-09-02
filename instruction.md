@@ -76,8 +76,11 @@ source-code analysis.
   `response.completed`, verify semantic output against assembled deltas. If the
   provider instead terminates with an error or incomplete response after emitting
   text deltas, preserve and execute that exact bounded prefix once, mark it as
-  partial, retain unknown-usage reservations, and pause the affected lane. Never
-  execute bytes while a stream is still active.
+  partial, and retain unknown-usage reservations. For upstream `request_timeout`
+  or a terminal incomplete response, continue the bounded conversation so the
+  next turn receives the partial program and factual d8 result; crash, budget,
+  quota, and other provider errors still pause. Never execute bytes while a
+  stream is active.
 - The alternate endpoint does not support `max_output_tokens`,
   `max_completion_tokens`, `temperature`, or `top_p`; omit all four rather than
   sending defaults. Continue enforcing local response/program byte limits and
