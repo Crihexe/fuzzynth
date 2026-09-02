@@ -29,6 +29,7 @@ class CampaignServiceError(RuntimeError):
 
 ClientFactory = Callable[[ProviderCredentials, float], ResponsesClient]
 Executor = Callable[..., RecordedExecution]
+EventNotifier = Callable[[SessionRecord, TurnResult], None]
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,6 +64,7 @@ class CampaignService:
         credentials: CredentialStore,
         client_factory: ClientFactory = _default_client_factory,
         executor: Executor = execute_program,
+        event_notifier: EventNotifier | None = None,
     ):
         self.repo_root = repo_root.resolve()
         self.state_root = state_root.resolve()
@@ -90,6 +92,7 @@ class CampaignService:
             self.store,
         )
         self.executor = executor
+        self.event_notifier = event_notifier
 
     def close(self) -> None:
         self.sessions.close()
@@ -199,6 +202,10 @@ class CampaignService:
             )
             completed.append(result)
             session = self.sessions.record_turn(session_id, result)
+            if self.event_notifier is not None and (
+                session.status == "crash" or result.pause_reason is not None
+            ):
+                self.event_notifier(session, result)
         return SessionRunResult(session=session, turns=tuple(completed))
 
     def resume_session(self, session_id: str) -> SessionRecord:
