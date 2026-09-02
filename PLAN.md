@@ -103,7 +103,9 @@ executions, sanitizer executions, and triage replays.
    request JSON, raw provider response/SSE, and extracted semantic output as
    separate immutable artifacts.
 3. Treat the complete assistant output as the canonical program without repairing
-   prose, fences, or syntax.
+   prose, fences, or syntax. If a terminal SSE or JSON response ends at its
+   output cap, execute the exact bounded prefix once and retain it in subsequent
+   session context rather than pausing solely for truncation.
 4. Execute it immediately in a fresh isolated `d8` process and persist the exact
    program, output, termination facts, worker identity, and resource envelope.
 5. Return only a compact factual observation to the next turn. Do not ask the

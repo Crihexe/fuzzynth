@@ -335,6 +335,57 @@ class CampaignTurnTests(unittest.TestCase):
         ).fetchone()[0]
         self.assertEqual(status, "incomplete")
 
+    def test_official_max_output_prefix_is_executed_without_pausing(self) -> None:
+        response = self.response()
+        response["status"] = "incomplete"
+        response["incomplete_details"] = {"reason": "max_output_tokens"}
+        response["output"][0]["content"][0]["text"] = "print('json-prefix');"
+        raw = json.dumps(response, separators=(",", ":")).encode()
+        client = FakeClient(CreateResult(raw_response=raw, response=response))
+        official = CampaignWorker(
+            worker_id="official-prefix-test",
+            enabled=True,
+            provider="official",
+            model="gpt-4o-mini",
+            meter="luna",
+            mode=self.worker.mode,
+            prompt_path=self.worker.prompt_path,
+            reasoning_efforts=("none",),
+            verbosity="medium",
+            temperatures=(2.0,),
+            min_turns_per_session=1,
+            max_turns_per_session=3,
+            history_turns=2,
+            max_output_tokens=8192,
+            reservation_output_tokens=8192,
+            v8_build_profile=self.worker.v8_build_profile,
+            v8_worker_profile=self.worker.v8_worker_profile,
+            d8_flags=self.worker.d8_flags,
+            send_reasoning=False,
+            send_verbosity=False,
+        )
+
+        result = self.runner().run_turn(
+            worker=official,
+            session_id="session-official-prefix",
+            turn_index=1,
+            plan=SessionPlan(12, 3, "none", 2.0),
+            instructions="code only",
+            input_messages=self.input_messages(),
+            client=client,
+        )
+
+        self.assertIsNone(result.pause_reason)
+        self.assertEqual(result.program, b"print('json-prefix');")
+        self.assertIsNotNone(result.execution)
+        row = self.catalog.connection.execute(
+            "SELECT status, effective_parameters_json FROM generation"
+        ).fetchone()
+        self.assertEqual(row[0], "incomplete")
+        effective = json.loads(row[1])
+        self.assertEqual(effective["incomplete_reason"], "max_output_tokens")
+        self.assertTrue(effective["partial_output_continuation"])
+
     def test_provider_limit_error_is_preserved_and_pauses(self) -> None:
         client = FakeClient(
             error=ResponsesError(

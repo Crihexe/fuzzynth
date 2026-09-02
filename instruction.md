@@ -90,6 +90,10 @@ source-code analysis.
 - Preserve the exact request JSON, raw response JSON/SSE, and extracted semantic
   output separately before any optional derived transformation.
 - Each completed model turn normally represents one new program.
+- A terminal official JSON response truncated by `max_output_tokens` is handled
+  like a terminal custom SSE prefix: archive and execute the exact bounded text
+  once, then continue the bounded session with d8 feedback. Do not pause a
+  worker merely because it filled its output cap.
 - Immediately execute each completed output in a fresh isolated `d8`, feed a
   bounded factual observation into the next turn, and reset after a randomized
   bounded session length with a newly selected PoC window.

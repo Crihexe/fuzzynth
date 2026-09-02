@@ -757,3 +757,10 @@ This is the living operational memory for the project. Read it together with
   Luna rows folded into `openai_official`; `$0.986597` and two uncertain
   reservations remained intact.
 - All 134 offline tests pass before deployment.
+- The first live GPT-4o mini temperature-2 session filled its 8,192-token output
+  cap. Its terminal JSON response contained a 53,151-byte text prefix, but the
+  SSE-only partial-output branch archived it without execution and paused that
+  worker. Generalized terminal-prefix handling to official JSON: bounded output
+  is now preserved, executed once, returned with factual d8 feedback, and does
+  not pause solely for `max_output_tokens`. The regression suite now has 135
+  passing tests.

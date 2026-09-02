@@ -365,13 +365,20 @@ class CampaignTurnRunner:
         if response_status != "completed":
             if streaming_transport and stream_partial_output:
                 program = stream_partial_output
+            else:
+                try:
+                    # A terminal JSON response can also contain useful output
+                    # when max_output_tokens ends generation. Preserve and run
+                    # that exact bounded prefix just like terminal SSE output.
+                    program = extract_output_text(response)
+                except ResponsesError as exc:
+                    output_error = exc
+            generation_status = "incomplete"
+            if program is not None:
                 program_ref = self.store.put(program)
-                generation_status = "incomplete"
                 if len(program) > self.max_program_bytes:
                     generation_status = "failed"
                     pause_reason = pause_reason or "program_too_large"
-            else:
-                generation_status = "incomplete"
             pause_reason = pause_reason or "incomplete_response"
         else:
             try:
@@ -387,8 +394,7 @@ class CampaignTurnRunner:
 
         finished_at = datetime.now(timezone.utc).isoformat()
         terminal_partial_continuation = bool(
-            streaming_transport
-            and generation_status == "incomplete"
+            generation_status == "incomplete"
             and program
             and len(program) <= self.max_program_bytes
             and pause_reason in {"incomplete_response", "unknown_usage"}
@@ -399,6 +405,13 @@ class CampaignTurnRunner:
         if streaming_transport:
             effective["stream_terminal_type"] = stream_terminal_type
             effective["stream_error_code"] = stream_error_code
+        if generation_status == "incomplete":
+            incomplete_details = response.get("incomplete_details")
+            effective["incomplete_reason"] = (
+                incomplete_details.get("reason")
+                if isinstance(incomplete_details, dict)
+                else None
+            )
             effective["partial_output_bytes"] = (
                 len(program)
                 if generation_status == "incomplete" and program
