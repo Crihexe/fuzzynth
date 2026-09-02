@@ -769,3 +769,15 @@ This is the living operational memory for the project. Read it together with
   ordinary JavaScript exception in 173 ms, not a crash candidate. Resuming a
   paused session whose attempted turn count already reached its target now
   closes that session instead of dispatching an unintended extra turn.
+- Commits `25cdc99`, `a14a6b5`, and `6e56c0a` were pushed and deployed with
+  cooperative supervisor restarts. Both official workers and the Telegram
+  control plane are active; the old official-Luna lanes remain disabled.
+- A post-fix live GPT-4o mini canary at temperature 2 again reached exactly
+  8,192 output tokens. Fuzzynth preserved its 53,634-byte program prefix,
+  recorded `incomplete_reason=max_output_tokens`, executed it once in d8
+  (`js_exception`, no candidate), kept `pause_reason=null`, and advanced the
+  three-turn session. The next request retained role-correct history with the
+  preceding program byte-exactly in its `assistant` message and `store=false`.
+- The full offline suite passes with 136 tests after the exhausted-session
+  transition fix. No bug candidate has been observed in the new official lanes
+  at this checkpoint.
