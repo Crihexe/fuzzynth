@@ -1,24 +1,50 @@
-schema_version = 1
+schema_version = 2
 
 [gate]
-sustained_campaigns_enabled = false
-unknown_usage_policy = "pause"
-unknown_pricing_policy = "pause"
-
-# Zero is intentionally fail-closed until the owner selects real limits.
-[global]
-hard_hourly_microusd = 0
-hard_daily_microusd = 0
-hard_total_microusd = 0
+bounded_campaigns_enabled = true
+unknown_usage_policy = "reserve_worst_case_and_pause"
+automatic_budget_reset = false
 
 [request_caps]
-wall_seconds = 60
-idle_seconds = 20
-max_stream_bytes = 4194304
-max_program_bytes = 2097152
+wall_seconds = 90
+max_response_bytes = 2097152
+max_program_bytes = 524288
+max_feedback_bytes = 4096
+max_context_bytes = 131072
 
-# Provider/model prices are not guessed. Add versioned schedules only after
-# confirming the billing semantics and rates for each endpoint.
-[pricing]
-alternate_status = "required_before_campaign"
-official_status = "required_before_campaign"
+# Spark is unmetered for the owner-provided custom subscription. Usage is still
+# recorded. Quota failures pause only its worker and trigger an alert.
+[meters.spark_alternate]
+unit = "unmetered"
+metered = false
+
+# Owner-provided custom billing in credits per million tokens. Observed Responses
+# usage includes reasoning inside output_tokens, so reasoning is not added twice.
+# These cumulative caps never reset automatically.
+[meters.luna_alternate]
+unit = "credit"
+metered = true
+input_per_million = "5"
+cached_input_per_million = "0.5"
+output_per_million = "30"
+hard_total_microunits = 1250000000
+hard_uncached_input_tokens = 250000000
+hard_cached_input_tokens = 2500000000
+hard_output_tokens = 42000000
+historical_reserve_microunits = 1000000
+
+# Official GPT-5.6 Luna rates from OpenAI documentation on 2026-09-02. The local
+# $4.90 cap leaves $0.10 beneath the owner's external $5 limit for earlier probes.
+[meters.luna_official]
+unit = "USD"
+metered = true
+input_per_million = "0.20"
+cached_input_per_million = "0.02"
+output_per_million = "1.20"
+hard_total_microunits = 4900000
+
+# Terra remains off until raw-worker baselines justify its 10x custom credit cost.
+[meters.terra_alternate]
+unit = "credit"
+metered = true
+enabled = false
