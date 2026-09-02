@@ -20,7 +20,7 @@ class SessionLedgerTests(unittest.TestCase):
         self.ledger = SessionLedger(root / "sessions.sqlite3", self.store)
         self.addCleanup(self.ledger.close)
         config = load_campaign_configuration(Path("config/campaign-workers.toml"))
-        self.worker = config.workers["spark-custom-iterative-js"]
+        self.worker = config.workers["spark-custom-iterative-js-rich"]
 
     @staticmethod
     def execution(*, candidate: bool = False) -> RecordedExecution:

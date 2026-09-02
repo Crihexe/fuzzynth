@@ -309,6 +309,20 @@ This is the living operational memory for the project. Read it together with
   optimization paths available. This removes repeated harness-contract noise
   before classification and makes surviving candidates materially stronger.
 
+### D-031 — Indexed preview-v3 paired-prompt experiment
+
+- Status: accepted by owner on 2026-09-02.
+- Decision: replace the four-file v2 canary pool with a fail-closed SQLite-indexed
+  preview-v3 pool. Run every enabled model/effort configuration as an exact
+  `rich`/`lean` pair. For each pair ordinal, derive session plan and corpus from
+  the shared pair ID so both prompts receive identical examples, temperature,
+  reasoning effort, and turn limit. Persist prompt variant/hash, pair ID, and
+  exact corpus provenance on every generation.
+- Why: 3,688 earlier generations were conditioned by only four sources, causing
+  avoidable priming and preventing a meaningful prompt comparison. The new
+  design isolates prompt effects while preserving reproducibility and exposes a
+  broad randomly sampled context-poisoning pool instead of a hand-selected set.
+
 ## Work completed
 
 ### 2026-09-01 — Planning bootstrap
@@ -864,3 +878,38 @@ This is the living operational memory for the project. Read it together with
   `--allow-natives-syntax`, `--expose-gc`, `--fuzzing`; they contain zero
   candidates and zero executions missing the mandatory flag. Campaign and
   Telegram services remain active.
+
+### 2026-09-02 — preview-v3 corpus and paired prompts
+
+- The owner identified that the sustained v2 run had produced 3,688 generated
+  programs while conditioning on only four materialized sources. That pool was
+  intended only as a first canary; allowing it to continue without prominently
+  re-escalating the limitation was an experiment-design error.
+- Validated `poc_dataset/v8_js_pocs_preview_v3.zip` before extraction: SHA-256
+  `f89960a11adcd0dfae78e99c2047ea9787b7609902f8f85c32a36c54a15d455f`,
+  10,078 entries, 216,968,027 uncompressed bytes, 10,070 JavaScript files, no
+  absolute/traversal paths, and no symlinks. Extracted it under ignored private
+  storage without modifying the owner-managed archive.
+- Audited the schema-2 SQLite index read-only with a successful integrity check.
+  It contains 10,070 accepted artifacts, 22,767 provenance instances, 60,925 tag
+  relations, 13,264 required-flag relations, 13,760 issue relations, 2,181 CVE
+  relations, and full-text source records for every artifact. Detailed category,
+  engine, syntax, size, intrinsic, marker, origin, tag, and flag distributions
+  are recorded in `docs/V3_PREVIEW_AUDIT.md`.
+- Implemented a fail-closed index loader that caps individual context samples at
+  48 KiB, omits explicit SpiderMonkey/JavaScriptCore sources and support-only
+  harnesses, retains one representative per normalized source, and verifies
+  filename, size, SHA-256, and UTF-8 at every startup. The resulting uniform
+  random pool contains 9,830 byte-distinct sources totaling 15,406,909 bytes.
+- Added a minimal creativity-oriented system prompt without optimization, Wasm,
+  GC, generator, or intrinsic recipes. Every enabled model/effort configuration
+  now has exact `rich` and `lean` workers. Shared pair IDs derive identical
+  corpus windows, temperature, reasoning effort, and turn limits; six offline
+  first-session checks produced byte-identical windows inside every pair.
+- Generation metadata now explicitly records `prompt_variant`, `prompt_sha256`,
+  `corpus_pair_id`, corpus-window SHA-256, and constituent source names/hashes;
+  the immutable request artifact continues to preserve the complete prompt.
+- Updated paired Spark cooldown/fallback control, preview-v3 service wiring, and
+  configuration invariants. All 9,830 eligible source files passed live size,
+  hash, and encoding validation. The full offline suite passes with 149 tests and
+  systemd unit verification succeeds before deployment.

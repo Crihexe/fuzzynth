@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+import hashlib
 import json
 from pathlib import Path
 import tempfile
@@ -82,6 +83,8 @@ class CampaignTurnTests(unittest.TestCase):
             v8_build_profile=base.v8_build_profile,
             v8_worker_profile=base.v8_worker_profile,
             d8_flags=base.d8_flags,
+            prompt_variant=base.prompt_variant,
+            corpus_pair_id=base.corpus_pair_id,
         )
         self.executed_generation_id = None
 
@@ -184,11 +187,19 @@ class CampaignTurnTests(unittest.TestCase):
         self.assertEqual(status["cached_input_tokens"], 60)
         self.assertEqual(status["output_tokens"], 50)
         generation = self.catalog.connection.execute(
-            "SELECT status, raw_stream_sha256, program_sha256 FROM generation"
+            "SELECT status, raw_stream_sha256, program_sha256, "
+            "requested_parameters_json FROM generation"
         ).fetchone()
         self.assertEqual(generation[0], "completed")
         self.assertIsNotNone(generation[1])
         self.assertIsNotNone(generation[2])
+        parameters = json.loads(generation[3])
+        self.assertEqual(parameters["prompt_variant"], self.worker.prompt_variant)
+        self.assertEqual(parameters["corpus_pair_id"], self.worker.corpus_pair_id)
+        self.assertEqual(
+            parameters["prompt_sha256"],
+            hashlib.sha256(b"code only").hexdigest(),
+        )
 
     def test_official_provider_uses_complete_json_with_supported_controls(self) -> None:
         response = self.response()

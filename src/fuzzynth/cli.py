@@ -72,6 +72,8 @@ def _workers(repo_root: Path, seed: int) -> int:
                 "send_verbosity": worker.send_verbosity,
                 "temperatures": worker.temperatures,
                 "pricing_profile": worker.pricing_profile,
+                "prompt_variant": worker.prompt_variant,
+                "corpus_pair_id": worker.corpus_pair_id,
                 "turn_range": [
                     worker.min_turns_per_session,
                     worker.max_turns_per_session,
@@ -219,7 +221,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="run supervised iterative workers with an explicit corpus",
     )
     campaign.add_argument("--live", action="store_true", help="confirm provider usage")
-    campaign.add_argument("--corpus-file", type=Path, action="append", required=True)
+    corpus_source = campaign.add_mutually_exclusive_group(required=True)
+    corpus_source.add_argument("--corpus-file", type=Path, action="append")
+    corpus_source.add_argument("--corpus-index", type=Path)
     campaign.add_argument("--window-size", type=int, default=2)
     campaign.add_argument("--worker", action="append")
     campaign.add_argument("--seed", type=int, default=1)
@@ -313,7 +317,11 @@ def main(argv: list[str] | None = None) -> int:
                 worker.worker_id
                 for worker in configuration.enabled_workers()
             ))
-            corpus = CorpusPool.load(tuple(args.corpus_file))
+            corpus = (
+                CorpusPool.load_index(args.corpus_index)
+                if args.corpus_index is not None
+                else CorpusPool.load(tuple(args.corpus_file or ()))
+            )
             provider_credentials = load_credentials(args.credentials)
             telegram_credentials = load_telegram_credentials(
                 args.telegram_credentials

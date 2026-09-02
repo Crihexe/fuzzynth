@@ -21,10 +21,10 @@ class OfflineCliTests(unittest.TestCase):
         exit_code, document = self.invoke(["workers", "--seed", "7"])
 
         self.assertEqual(exit_code, 0)
-        self.assertFalse(document["dataset_enabled"])
+        self.assertTrue(document["dataset_enabled"])
         self.assertEqual(
             sum(worker["enabled"] for worker in document["workers"]),
-            6,
+            12,
         )
 
     def test_budget_status_starts_at_only_configured_safety_reserve(self) -> None:
@@ -55,7 +55,7 @@ class OfflineCliTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(document["global_state"], "running")
-        self.assertEqual(len(document["workers"]), 10)
+        self.assertEqual(len(document["workers"]), 16)
         self.assertTrue(
             all(
                 worker["effective_state"] == "running"

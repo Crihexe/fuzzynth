@@ -22,12 +22,18 @@ class CampaignConfigurationTests(unittest.TestCase):
         self.assertEqual(
             enabled,
             {
-                "spark-custom-iterative-js",
-                "luna-custom-high-iterative-js",
-                "luna-custom-low-iterative-js",
-                "luna-custom-none-spark-fallback-js",
-                "gpt-4o-mini-official-temperature-js",
-                "gpt-4.1-nano-official-temperature-js",
+                "spark-custom-iterative-js-rich",
+                "spark-custom-iterative-js-lean",
+                "luna-custom-high-iterative-js-rich",
+                "luna-custom-high-iterative-js-lean",
+                "luna-custom-low-iterative-js-rich",
+                "luna-custom-low-iterative-js-lean",
+                "luna-custom-none-spark-fallback-js-rich",
+                "luna-custom-none-spark-fallback-js-lean",
+                "gpt-4o-mini-official-temperature-js-rich",
+                "gpt-4o-mini-official-temperature-js-lean",
+                "gpt-4.1-nano-official-temperature-js-rich",
+                "gpt-4.1-nano-official-temperature-js-lean",
             },
         )
 
@@ -39,6 +45,18 @@ class CampaignConfigurationTests(unittest.TestCase):
     def test_every_worker_executes_d8_in_fuzzing_mode(self) -> None:
         for worker in self.config.workers.values():
             self.assertIn("--fuzzing", worker.d8_flags)
+
+    def test_enabled_workers_are_exact_rich_lean_pairs(self) -> None:
+        pairs = {}
+        for worker in self.config.enabled_workers():
+            pairs.setdefault(worker.corpus_pair_id, []).append(worker)
+        self.assertEqual(len(pairs), 6)
+        for variants in pairs.values():
+            self.assertEqual(
+                {worker.prompt_variant for worker in variants},
+                {"rich", "lean"},
+            )
+            self.assertEqual(len({worker.model for worker in variants}), 1)
 
     def test_configuration_rejects_worker_without_fuzzing_mode(self) -> None:
         source = Path("config/campaign-workers.toml").read_text(encoding="utf-8")
@@ -56,31 +74,33 @@ class CampaignConfigurationTests(unittest.TestCase):
                 load_campaign_configuration(path)
 
     def test_spark_requests_none_and_high_verbosity(self) -> None:
-        worker = self.config.workers["spark-custom-iterative-js"]
+        worker = self.config.workers["spark-custom-iterative-js-rich"]
         self.assertEqual(worker.reasoning_efforts, ("none",))
         self.assertEqual(worker.verbosity, "high")
         self.assertEqual((worker.min_turns_per_session, worker.max_turns_per_session), (8, 16))
 
     def test_custom_luna_streaming_effort_lanes_are_enabled(self) -> None:
-        worker = self.config.workers["luna-custom-low-iterative-js"]
+        worker = self.config.workers["luna-custom-low-iterative-js-rich"]
         self.assertEqual(worker.reasoning_efforts, ("low",))
         self.assertEqual(worker.max_output_tokens, 2048)
         self.assertEqual(worker.reservation_output_tokens, 128_000)
-        high = self.config.workers["luna-custom-high-iterative-js"]
+        high = self.config.workers["luna-custom-high-iterative-js-rich"]
         self.assertTrue(high.enabled)
         self.assertEqual(high.reasoning_efforts, ("high",))
         self.assertFalse(self.config.workers["luna-custom-xhigh-iterative-js"].enabled)
 
     def test_spark_fallback_requests_none_with_high_verbosity(self) -> None:
-        worker = self.config.workers["luna-custom-none-spark-fallback-js"]
+        worker = self.config.workers[
+            "luna-custom-none-spark-fallback-js-rich"
+        ]
         self.assertEqual(worker.reasoning_efforts, ("none",))
         self.assertEqual(worker.verbosity, "high")
         self.assertEqual(worker.max_output_tokens, 2048)
         self.assertEqual(worker.reservation_output_tokens, 128_000)
 
     def test_official_workers_rotate_full_temperature_range_without_reasoning(self) -> None:
-        mini = self.config.workers["gpt-4o-mini-official-temperature-js"]
-        nano = self.config.workers["gpt-4.1-nano-official-temperature-js"]
+        mini = self.config.workers["gpt-4o-mini-official-temperature-js-rich"]
+        nano = self.config.workers["gpt-4.1-nano-official-temperature-js-rich"]
         expected_temperatures = (0.0, 0.5, 1.0, 1.5, 2.0)
         self.assertEqual(mini.temperatures, expected_temperatures)
         self.assertEqual(nano.temperatures, expected_temperatures)
@@ -96,7 +116,7 @@ class CampaignConfigurationTests(unittest.TestCase):
         )
 
     def test_session_choice_is_reproducible_and_in_range(self) -> None:
-        worker = self.config.workers["spark-custom-iterative-js"]
+        worker = self.config.workers["spark-custom-iterative-js-rich"]
         first = choose_session_plan(worker, 12345)
         second = choose_session_plan(worker, 12345)
 
@@ -104,9 +124,12 @@ class CampaignConfigurationTests(unittest.TestCase):
         self.assertGreaterEqual(first.target_turns, 8)
         self.assertLessEqual(first.target_turns, 16)
 
-    def test_dataset_remains_disabled_during_owner_concurrent_work(self) -> None:
-        self.assertFalse(self.config.context.dataset_enabled)
-        self.assertEqual(self.config.context.dataset_root, "poc_dataset")
+    def test_v3_preview_dataset_is_enabled_from_private_extraction(self) -> None:
+        self.assertTrue(self.config.context.dataset_enabled)
+        self.assertEqual(
+            self.config.context.dataset_root,
+            ".local/datasets/v8_js_pocs_preview_v3/javascript_corpus",
+        )
 
 
 if __name__ == "__main__":

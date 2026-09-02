@@ -112,14 +112,14 @@ class CampaignServiceTests(unittest.TestCase):
     def test_requires_explicit_corpus_or_unconditioned_control(self) -> None:
         with self.assertRaisesRegex(CampaignServiceError, "corpus"):
             self.service.start_session(
-                "spark-custom-iterative-js",
+                "spark-custom-iterative-js-rich",
                 seed=7,
                 corpus_window=None,
             )
 
     def test_runs_immediate_iterative_turns_with_previous_feedback(self) -> None:
         session = self.service.start_session(
-            "spark-custom-iterative-js",
+            "spark-custom-iterative-js-rich",
             seed=7,
             corpus_window=b"// selected historical example",
         )
@@ -169,7 +169,7 @@ class CampaignServiceTests(unittest.TestCase):
             lambda session, result: notifications.append((session, result))
         )
         session = self.service.start_session(
-            "spark-custom-iterative-js",
+            "spark-custom-iterative-js-rich",
             seed=7,
             corpus_window=b"// selected historical example",
         )
@@ -183,7 +183,7 @@ class CampaignServiceTests(unittest.TestCase):
 
     def test_unconditioned_control_requires_explicit_switch(self) -> None:
         session = self.service.start_session(
-            "gpt-4o-mini-official-temperature-js",
+            "gpt-4o-mini-official-temperature-js-rich",
             seed=99,
             corpus_window=None,
             allow_unconditioned=True,
@@ -196,7 +196,7 @@ class CampaignServiceTests(unittest.TestCase):
 
     def test_nano_sessions_are_exactly_six_turns(self) -> None:
         session = self.service.start_session(
-            "gpt-4.1-nano-official-temperature-js",
+            "gpt-4.1-nano-official-temperature-js-rich",
             seed=101,
             corpus_window=None,
             allow_unconditioned=True,
@@ -206,7 +206,7 @@ class CampaignServiceTests(unittest.TestCase):
 
     def test_paused_worker_cannot_start_or_advance(self) -> None:
         session = self.service.start_session(
-            "spark-custom-iterative-js",
+            "spark-custom-iterative-js-rich",
             seed=7,
             corpus_window=b"// selected historical example",
         )
@@ -223,7 +223,7 @@ class CampaignServiceTests(unittest.TestCase):
             self.service.run_session(session.session_id, max_turns=1)
         with self.assertRaisesRegex(CampaignServiceError, "paused"):
             self.service.start_session(
-                "spark-custom-iterative-js",
+                "spark-custom-iterative-js-rich",
                 seed=8,
                 corpus_window=b"// selected historical example",
             )

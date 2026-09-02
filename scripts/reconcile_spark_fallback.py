@@ -9,41 +9,60 @@ from fuzzynth.control import ControlLedger, is_supervisor_provider_pause
 
 
 STATE_ROOT = Path("/root/fuzzynth/state")
-SPARK_WORKER = "spark-custom-iterative-js"
-FALLBACK_WORKER = "luna-custom-none-spark-fallback-js"
+WORKER_PAIRS = (
+    (
+        "spark-custom-iterative-js-rich",
+        "luna-custom-none-spark-fallback-js-rich",
+    ),
+    (
+        "spark-custom-iterative-js-lean",
+        "luna-custom-none-spark-fallback-js-lean",
+    ),
+)
 MANAGER_SOURCE = "spark-fallback"
 
 
 def main() -> int:
     with ControlLedger(STATE_ROOT / "control.sqlite3") as control:
-        spark_change = control.latest_change(SPARK_WORKER)
-        fallback_change = control.latest_change(FALLBACK_WORKER)
-        managed = fallback_change is None or fallback_change.source == MANAGER_SOURCE
-        if not managed:
-            print("spark_fallback=skipped reason=owner_or_provider_override")
-            return 0
+        for spark_worker, fallback_worker in WORKER_PAIRS:
+            spark_change = control.latest_change(spark_worker)
+            fallback_change = control.latest_change(fallback_worker)
+            managed = (
+                fallback_change is None or fallback_change.source == MANAGER_SOURCE
+            )
+            if not managed:
+                print(
+                    f"spark_fallback={fallback_worker} "
+                    "skipped=owner_or_provider_override"
+                )
+                continue
 
-        spark_provider_paused = (
-            control.global_state() == "running"
-            and control.worker_state(SPARK_WORKER) == "paused"
-            and is_supervisor_provider_pause(spark_change)
-        )
-        desired = "running" if spark_provider_paused else "paused"
-        current = control.worker_state(FALLBACK_WORKER)
-        if fallback_change is not None and current == desired:
-            print(f"spark_fallback=unchanged state={current}")
-            return 0
+            spark_provider_paused = (
+                control.global_state() == "running"
+                and control.worker_state(spark_worker) == "paused"
+                and is_supervisor_provider_pause(spark_change)
+            )
+            desired = "running" if spark_provider_paused else "paused"
+            current = control.worker_state(fallback_worker)
+            if fallback_change is not None and current == desired:
+                print(f"spark_fallback={fallback_worker} unchanged={current}")
+                continue
 
-        spark_request = spark_change.request_id if spark_change is not None else "none"
-        control.set_worker(
-            FALLBACK_WORKER,
-            desired,
-            request_id=f"fallback:{spark_request}:{desired}",
-            source=MANAGER_SOURCE,
-            actor="spark-fallback-reconciler",
-            command=f"set fallback {desired} for Spark availability",
-        )
-        print(f"spark_fallback=changed previous={current} state={desired}")
+            spark_request = (
+                spark_change.request_id if spark_change is not None else "none"
+            )
+            control.set_worker(
+                fallback_worker,
+                desired,
+                request_id=f"fallback:{spark_request}:{desired}",
+                source=MANAGER_SOURCE,
+                actor="spark-fallback-reconciler",
+                command=f"set fallback {desired} for Spark availability",
+            )
+            print(
+                f"spark_fallback={fallback_worker} "
+                f"previous={current} state={desired}"
+            )
     return 0
 
 

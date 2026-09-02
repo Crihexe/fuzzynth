@@ -7,6 +7,7 @@ import hashlib
 from pathlib import Path
 import random
 import re
+import sqlite3
 
 
 class CorpusError(RuntimeError):
@@ -14,6 +15,14 @@ class CorpusError(RuntimeError):
 
 
 MAX_SAMPLE_BYTES = 64 * 1024
+INDEX_MAX_SAMPLE_BYTES = 48 * 1024
+MIN_INDEX_POOL_SAMPLES = 1_000
+_INDEX_ALLOWED_ENGINES = (
+    "V8",
+    "WebAssembly/V8",
+    "JavaScript engine unclassified",
+    "Chromium/JavaScript",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,6 +89,93 @@ class CorpusPool:
                     sha256=hashlib.sha256(data).hexdigest(),
                     data=data,
                 )
+            )
+        return cls(tuple(samples))
+
+    @classmethod
+    def load_index(cls, index_path: Path) -> CorpusPool:
+        """Load a large, statically validated corpus from the preview-v3 index."""
+
+        selected_index = index_path.resolve()
+        files_root = selected_index.parent / "files"
+        if not selected_index.is_file() or not files_root.is_dir():
+            raise CorpusError("corpus index or files directory is unavailable")
+        try:
+            connection = sqlite3.connect(
+                f"file:{selected_index}?mode=ro",
+                uri=True,
+            )
+        except sqlite3.Error as exc:
+            raise CorpusError("corpus index cannot be opened read-only") from exc
+        try:
+            integrity = connection.execute("PRAGMA quick_check").fetchone()
+            if integrity != ("ok",):
+                raise CorpusError("corpus index integrity check failed")
+            build_version = connection.execute(
+                "SELECT value FROM build_info WHERE key = 'schema_version'"
+            ).fetchone()
+            if build_version != ("2",):
+                raise CorpusError("unsupported corpus index schema version")
+            placeholders = ",".join("?" for _ in _INDEX_ALLOWED_ENGINES)
+            rows = connection.execute(
+                f"""
+                WITH eligible AS (
+                  SELECT filename, sha256, size_bytes, normalized_sha256,
+                         preserved_original_available,
+                         ROW_NUMBER() OVER (
+                           PARTITION BY normalized_sha256
+                           ORDER BY preserved_original_available DESC,
+                                    size_bytes ASC, artifact_id
+                         ) AS normalized_rank
+                  FROM artifacts
+                  WHERE validation_status = 'accepted'
+                    AND size_bytes BETWEEN 1 AND ?
+                    AND primary_category != 'support_harness'
+                    AND engine_family IN ({placeholders})
+                )
+                SELECT filename, sha256, size_bytes
+                FROM eligible
+                WHERE normalized_rank = 1
+                ORDER BY sha256
+                """,
+                (INDEX_MAX_SAMPLE_BYTES, *_INDEX_ALLOWED_ENGINES),
+            ).fetchall()
+        except sqlite3.Error as exc:
+            raise CorpusError("corpus index schema or query is invalid") from exc
+        finally:
+            connection.close()
+        if len(rows) < MIN_INDEX_POOL_SAMPLES:
+            raise CorpusError("corpus index has fewer than 1000 eligible samples")
+
+        samples: list[CorpusSample] = []
+        for filename, expected_sha256, expected_size in rows:
+            if (
+                not isinstance(filename, str)
+                or re.fullmatch(r"[A-Za-z0-9._-]{1,128}", filename) is None
+                or not filename.endswith(".js")
+                or not isinstance(expected_sha256, str)
+                or re.fullmatch(r"[0-9a-f]{64}", expected_sha256) is None
+                or not isinstance(expected_size, int)
+            ):
+                raise CorpusError("corpus index contains invalid artifact metadata")
+            source = (files_root / filename).resolve()
+            if source.parent != files_root.resolve():
+                raise CorpusError("corpus index resolves outside its files directory")
+            try:
+                data = source.read_bytes()
+            except OSError as exc:
+                raise CorpusError("an indexed corpus file cannot be read") from exc
+            if len(data) != expected_size:
+                raise CorpusError("an indexed corpus file has an unexpected size")
+            actual_sha256 = hashlib.sha256(data).hexdigest()
+            if actual_sha256 != expected_sha256:
+                raise CorpusError("an indexed corpus file failed SHA-256 validation")
+            try:
+                data.decode("utf-8", errors="strict")
+            except UnicodeError as exc:
+                raise CorpusError("an indexed corpus file is not UTF-8") from exc
+            samples.append(
+                CorpusSample(name=filename, sha256=actual_sha256, data=data)
             )
         return cls(tuple(samples))
 

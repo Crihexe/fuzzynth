@@ -4,8 +4,11 @@ Fuzzynth is an LLM-driven JavaScript and WebAssembly fuzzing laboratory for
 V8's `d8` shell.
 
 The pinned V8 worker matrix and the complete-response iterative controller are
-implemented. A supervised campaign is running against the owner-approved v2
-sample while the larger PoC dataset is prepared.
+implemented. The preview-v3 experiment loads 9,830 integrity-checked JavaScript
+samples through its SQLite index and compares paired `rich` and `lean` prompts
+over identical pseudorandom corpus windows. The corpus classification and
+selection policy are documented in
+[docs/V3_PREVIEW_AUDIT.md](docs/V3_PREVIEW_AUDIT.md).
 
 Project documents:
 
@@ -14,7 +17,8 @@ Project documents:
 - [PROJECT_LOG.md](PROJECT_LOG.md) — living status, decisions, completed work, and next work.
 
 Implementation and supervised live campaign operation are authorized. Every
-live command still requires an explicit `--live` switch.
+live command still requires an explicit `--live` switch and durable dispatch
+permission.
 
 ## Local checks
 
@@ -124,11 +128,12 @@ running isolated `d8` process. Install or refresh the hardened system service wi
 sudo ./scripts/install_telegram_control_service.sh
 ```
 
-## Supervised v2 campaign
+## Supervised preview-v3 campaign
 
-The checked-in v2 service runs independent Spark, custom Luna, official GPT-4o
-mini, and official GPT-4.1 nano threads over the four explicitly reviewed
-JavaScript corpus files. Custom API
+The checked-in service runs paired `rich` and `lean` variants for Spark, custom
+Luna, official GPT-4o mini, and official GPT-4.1 nano. Each pair receives the
+same pseudorandom two-source window from 9,830 preview-v3 JavaScript files, while
+its prompts differ. Custom API
 requests use SSE to keep the gateway connection alive. The controller always
 waits until the stream terminates before executing anything. Completed output is
 cross-checked against the terminal response; a bounded text prefix from a failed
@@ -161,7 +166,7 @@ candidate is archived and alerted but does not terminate the worker or its
 bounded conversation; the next turn receives the factual d8 result. Narrow,
 high-confidence d8 intrinsic-contract mistakes also receive a clearly labelled
 triage hint, without downgrading or deleting the candidate. Every generation
-records the exact corpus-window hash and the names and hashes of its source `.js`
-files. Crash replay and validation remain manual. The deployed unit cannot access
+records the prompt variant/hash, pair identity, exact corpus-window hash, and the
+names and hashes of its source `.js` files. Crash replay and validation remain manual. The deployed unit cannot access
 `/root/red-sailor`; generated programs still execute in the separately isolated,
 networkless d8 container.

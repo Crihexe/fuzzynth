@@ -100,7 +100,7 @@ class TelegramControlServiceTests(unittest.TestCase):
         loader.assert_called_once()
 
     def test_pause_worker_is_idempotent_and_enforced(self) -> None:
-        worker_id = "spark-custom-iterative-js"
+        worker_id = "spark-custom-iterative-js-rich"
         command = update(10, f"/pause {worker_id}")
 
         first = self.service.handle_update(command)
@@ -122,7 +122,7 @@ class TelegramControlServiceTests(unittest.TestCase):
         self.assertIn("global=running", started)
 
     def test_resume_all_clears_individual_worker_pauses(self) -> None:
-        worker_id = "spark-custom-iterative-js"
+        worker_id = "spark-custom-iterative-js-rich"
         self.service.handle_update(update(24, f"/pause {worker_id}"))
 
         reply = self.service.handle_update(update(25, "/resume all"))

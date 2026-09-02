@@ -79,13 +79,13 @@ separates provider effects from model and generation effects:
 
 | Worker | Provider/model | Parameters | Session turns | Status |
 |---|---|---|---|---|
-| `spark-custom-iterative-js` | alternate Spark | `none`, high verbosity; unsupported controls omitted | randomized 8–16 | enabled; quota-paused independently |
+| `spark-custom-iterative-js-{rich,lean}` | alternate Spark | `none`, high verbosity; unsupported controls omitted | randomized 8–16 | paired; quota-paused independently |
 | `luna-custom-xhigh-iterative-js` | alternate GPT-5.6 Luna | `xhigh`, high verbosity; unsupported controls omitted | randomized 4–8 | sampled, disabled after upstream timeout |
-| `luna-custom-high-iterative-js` | alternate GPT-5.6 Luna | `high`, high verbosity; unsupported controls omitted | randomized 4–8 | enabled replacement |
-| `luna-custom-low-iterative-js` | alternate GPT-5.6 Luna | `low`, high verbosity; unsupported controls omitted | randomized 4–8 | enabled baseline |
-| `luna-custom-none-spark-fallback-js` | alternate GPT-5.6 Luna | `none`, high verbosity; unsupported controls omitted | randomized 4–8 | managed fallback while Spark is paused |
-| `gpt-4o-mini-official-temperature-js` | official GPT-4o mini | no reasoning/verbosity controls; temperature 0/0.5/1/1.5/2 per session | randomized 1–3 | enabled |
-| `gpt-4.1-nano-official-temperature-js` | official GPT-4.1 nano | no reasoning/verbosity controls; temperature 0/0.5/1/1.5/2 per session | exactly 6 | enabled despite deprecation; access live-probed |
+| `luna-custom-high-iterative-js-{rich,lean}` | alternate GPT-5.6 Luna | `high`, high verbosity; unsupported controls omitted | randomized 4–8 | paired replacement |
+| `luna-custom-low-iterative-js-{rich,lean}` | alternate GPT-5.6 Luna | `low`, high verbosity; unsupported controls omitted | randomized 4–8 | paired baseline |
+| `luna-custom-none-spark-fallback-js-{rich,lean}` | alternate GPT-5.6 Luna | `none`, high verbosity; unsupported controls omitted | randomized 4–8 | paired managed fallback while Spark is paused |
+| `gpt-4o-mini-official-temperature-js-{rich,lean}` | official GPT-4o mini | no reasoning/verbosity controls; temperature 0/0.5/1/1.5/2 per session | randomized 1–3 | paired |
+| `gpt-4.1-nano-official-temperature-js-{rich,lean}` | official GPT-4.1 nano | no reasoning/verbosity controls; temperature 0/0.5/1/1.5/2 per session | exactly 6 | paired despite deprecation; access live-probed |
 | `terra-custom-xhigh-tool-investigator` | alternate GPT-5.6 Terra | `xhigh`, tool-driven | separately bounded | disabled/deferred |
 
 The scheduler must be able to set a campaign to zero, pause it, or cap it without
@@ -131,8 +131,12 @@ alternating Responses API messages: the exact generated program is an
 following `user` message. The program is never quoted again inside that user
 feedback. A new session receives a newly sampled corpus window.
 
-The first conditioned run uses four owner-approved examples selected from dataset
-v2. An explicit unconditioned control can bypass corpus selection. Every live
+The preview-v3 run samples two examples uniformly from 9,830 index-validated,
+normalized-deduplicated sources. Each model/effort lane is represented by a
+`rich` and a `lean` prompt worker. A shared pair ID and ordinal produce identical
+corpus, temperature, reasoning effort, and turn limit for the two variants.
+Every generation records the exact prompt hash/variant and corpus provenance.
+An explicit unconditioned control can bypass corpus selection. Every live
 campaign entry point requires `--live`, durable control permission, and a budget
 reservation before provider dispatch.
 
@@ -512,9 +516,9 @@ PoCs and must not make campaign correctness depend on Telegram availability.
 
 ## 16. Immediate implementation action
 
-Keep the supervised v2 campaign running with independent provider-failure
-isolation, complete SSE capture for custom workers, hard cumulative budgets, and
-the managed Spark-to-Luna fallback. Inspect validity, novelty, usage, latency, and
-execution outcomes while the owner finishes dataset v3. Integrate that dataset
-immutably only after review; keep automatic replay/minimization and Terra
-disabled during this first-pass discovery run.
+Run the indexed preview-v3 corpus through matched `rich`/`lean` prompt pairs with
+independent provider-failure isolation, complete SSE capture for custom workers,
+hard cumulative budgets, and paired Spark-to-Luna fallback. Compare validity,
+novelty, structural similarity, usage, latency, and execution outcomes by prompt
+variant using exact recorded corpus and prompt provenance. Keep automatic
+replay/minimization and Terra disabled during this first-pass discovery run.

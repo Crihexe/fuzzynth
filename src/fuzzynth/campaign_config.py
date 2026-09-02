@@ -44,6 +44,8 @@ class CampaignWorker:
     send_reasoning: bool = True
     send_verbosity: bool = True
     pricing_profile: str | None = None
+    prompt_variant: str = "legacy"
+    corpus_pair_id: str = "legacy"
 
 
 @dataclass(frozen=True, slots=True)
@@ -196,12 +198,53 @@ def load_campaign_configuration(path: Path, *, repo_root: Path = Path(".")) -> C
                 raw, "send_verbosity", default=True
             ),
             pricing_profile=_optional_string(raw, "pricing_profile"),
+            prompt_variant=_optional_string(raw, "prompt_variant") or "legacy",
+            corpus_pair_id=_optional_string(raw, "corpus_pair_id") or worker_id,
         )
         if enabled and worker.mode != "iterative_raw_js":
             raise CampaignConfigurationError(
                 f"enabled worker mode is not implemented: {worker_id}"
             )
         workers[worker_id] = worker
+    paired: dict[str, list[CampaignWorker]] = {}
+    for worker in workers.values():
+        if worker.enabled:
+            paired.setdefault(worker.corpus_pair_id, []).append(worker)
+    for pair_id, variants in paired.items():
+        if len(variants) != 2 or {item.prompt_variant for item in variants} != {
+            "rich",
+            "lean",
+        }:
+            raise CampaignConfigurationError(
+                f"enabled corpus pair must contain rich and lean variants: {pair_id}"
+            )
+        comparable = {
+            (
+                item.provider,
+                item.model,
+                item.meter,
+                item.mode,
+                item.reasoning_efforts,
+                item.verbosity,
+                item.temperatures,
+                item.min_turns_per_session,
+                item.max_turns_per_session,
+                item.history_turns,
+                item.max_output_tokens,
+                item.reservation_output_tokens,
+                item.v8_build_profile,
+                item.v8_worker_profile,
+                item.d8_flags,
+                item.send_reasoning,
+                item.send_verbosity,
+                item.pricing_profile,
+            )
+            for item in variants
+        }
+        if len(comparable) != 1:
+            raise CampaignConfigurationError(
+                f"paired workers differ beyond their prompt: {pair_id}"
+            )
     return CampaignConfiguration(context=context, workers=workers)
 
 

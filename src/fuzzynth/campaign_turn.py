@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import hashlib
 from pathlib import Path
 from typing import Callable
 import uuid
@@ -208,6 +209,9 @@ class CampaignTurnRunner:
             "verbosity": worker.verbosity,
             "verbosity_sent": request.verbosity,
             "pricing_profile": worker.pricing_profile,
+            "prompt_sha256": hashlib.sha256(instructions.encode("utf-8")).hexdigest(),
+            "prompt_variant": worker.prompt_variant,
+            "corpus_pair_id": worker.corpus_pair_id,
         }
         if streaming_transport:
             requested_parameters["terminal_partial_output_policy"] = "execute_once"

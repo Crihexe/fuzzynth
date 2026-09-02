@@ -23,8 +23,8 @@ source-code analysis.
 - The owner authorized implementation, official V8 checkout/build, bounded
   provider capability probes, and repository setup on 2026-09-01.
 - The runner, crash evidence path, and hard budget gates passed their initial
-  review. The owner authorized a supervised sustained campaign using selected
-  examples extracted from dataset v2 while dataset v3 is prepared.
+  review. The owner authorized a paired-prompt campaign using the indexed
+  preview-v3 dataset on 2026-09-02.
 - Work only under `/root/fuzzynth` and project-owned containers.
 - Do not modify, move, build inside, or otherwise disturb `/root/red-sailor` or
   any of its files, containers, volumes, configuration, or processes.
@@ -54,6 +54,10 @@ source-code analysis.
 
 - Support multiple campaign types running concurrently with independent worker,
   rate, token, and cost budgets.
+- Pair every enabled preview-v3 model/effort lane into `rich` and `lean` prompt
+  variants. For a given pair ordinal, both must receive the same corpus window,
+  temperature, reasoning effort, and turn limit. Record prompt variant/hash,
+  pair identity, and every corpus source filename/hash on each generation.
 - The primary iterative workers are: alternate Spark with requested minimum
   reasoning and high verbosity; alternate Luna `high` and `low` comparison
   lanes with high verbosity; official GPT-4o mini without reasoning for at most

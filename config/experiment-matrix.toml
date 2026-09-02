@@ -28,7 +28,7 @@ id = "luna-alternate"
 provider = "alternate"
 model = "gpt-5.6-luna"
 temperature = []
-reasoning_effort = ["xhigh"]
+reasoning_effort = ["none", "low", "high"]
 verbosity = ["high"]
 
 [[models]]
@@ -57,39 +57,66 @@ reasoning_effort = ["xhigh"]
 verbosity = ["medium"]
 
 [[campaigns]]
-id = "spark-custom-iterative-js"
+id = "spark-custom-iterative-js-v3-preview"
 enabled = true
 model = "spark-alternate"
 mode = "iterative_complete_response"
 format = "javascript"
-prompt = "prompts/iterative_js_v1.txt"
+prompt_variants = ["rich", "lean"]
+prompts = ["prompts/iterative_js_v1.txt", "prompts/iterative_js_lean_v1.txt"]
 turn_range = [8, 16]
 
 [[campaigns]]
-id = "luna-custom-xhigh-iterative-js"
+id = "luna-custom-high-iterative-js-v3-preview"
 enabled = true
 model = "luna-alternate"
 mode = "iterative_complete_response"
 format = "javascript"
-prompt = "prompts/iterative_js_v1.txt"
+reasoning_effort = "high"
+prompt_variants = ["rich", "lean"]
+prompts = ["prompts/iterative_js_v1.txt", "prompts/iterative_js_lean_v1.txt"]
 turn_range = [4, 8]
 
 [[campaigns]]
-id = "gpt-4o-mini-official-temperature-js"
+id = "luna-custom-low-iterative-js-v3-preview"
+enabled = true
+model = "luna-alternate"
+mode = "iterative_complete_response"
+format = "javascript"
+reasoning_effort = "low"
+prompt_variants = ["rich", "lean"]
+prompts = ["prompts/iterative_js_v1.txt", "prompts/iterative_js_lean_v1.txt"]
+turn_range = [4, 8]
+
+[[campaigns]]
+id = "luna-custom-none-spark-fallback-js-v3-preview"
+enabled = true
+model = "luna-alternate"
+mode = "iterative_complete_response"
+format = "javascript"
+reasoning_effort = "none"
+prompt_variants = ["rich", "lean"]
+prompts = ["prompts/iterative_js_v1.txt", "prompts/iterative_js_lean_v1.txt"]
+turn_range = [4, 8]
+
+[[campaigns]]
+id = "gpt-4o-mini-official-temperature-js-v3-preview"
 enabled = true
 model = "gpt-4o-mini-official"
 mode = "iterative_non_streaming"
 format = "javascript"
-prompt = "prompts/iterative_js_v1.txt"
+prompt_variants = ["rich", "lean"]
+prompts = ["prompts/iterative_js_v1.txt", "prompts/iterative_js_lean_v1.txt"]
 turn_range = [1, 3]
 
 [[campaigns]]
-id = "gpt-4.1-nano-official-temperature-js"
+id = "gpt-4.1-nano-official-temperature-js-v3-preview"
 enabled = true
 model = "gpt-4.1-nano-official"
 mode = "iterative_non_streaming"
 format = "javascript"
-prompt = "prompts/iterative_js_v1.txt"
+prompt_variants = ["rich", "lean"]
+prompts = ["prompts/iterative_js_v1.txt", "prompts/iterative_js_lean_v1.txt"]
 turn_range = [6, 6]
 
 [[campaigns]]
@@ -102,7 +129,9 @@ turn_range = [1, 1]
 
 [context]
 policies = ["short_randomized", "unconditioned_control"]
-dataset_window_policy = "random_per_session"
+dataset_window_policy = "paired_random_per_session"
+dataset_pool_size = 9830
+dataset_window_size = 2
 archive_full_history = true
 resend_full_history = false
 

@@ -149,6 +149,7 @@ class CampaignSupervisor:
                 raise CampaignServiceError(f"unknown campaign worker: {worker_id}")
             if not service.configuration.workers[worker_id].enabled:
                 raise CampaignServiceError(f"campaign worker is disabled: {worker_id}")
+            worker = service.configuration.workers[worker_id]
             while not self.stop_event.is_set():
                 if max_turns is not None and turns >= max_turns:
                     return WorkerRunSummary(
@@ -188,7 +189,11 @@ class CampaignSupervisor:
                             worker_id, turns, sessions_started, state, "session_limit"
                         )
                     ordinal = len(worker_sessions) + 1
-                    seed = _stable_seed(self.base_seed, worker_id, ordinal)
+                    seed = _stable_seed(
+                        self.base_seed,
+                        worker.corpus_pair_id,
+                        ordinal,
+                    )
                     window = self.corpus.build_window(seed=seed, size=self.window_size)
                     session = service.start_session(
                         worker_id,
@@ -203,6 +208,8 @@ class CampaignSupervisor:
                             "worker_id": worker_id,
                             "target_turns": session.target_turns,
                             "corpus_sha256": session.corpus.sha256 if session.corpus else None,
+                            "corpus_pair_id": worker.corpus_pair_id,
+                            "prompt_variant": worker.prompt_variant,
                         }
                     )
                 result = service.run_session(session.session_id, max_turns=1)
@@ -221,6 +228,8 @@ class CampaignSupervisor:
                         {
                             "event": "turn_completed",
                             "worker_id": worker_id,
+                            "corpus_pair_id": worker.corpus_pair_id,
+                            "prompt_variant": worker.prompt_variant,
                             "session_id": result.session.session_id,
                             "session_status": result.session.status,
                             "generation_id": turn.generation_id,
