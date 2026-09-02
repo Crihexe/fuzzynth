@@ -674,6 +674,16 @@ This is the living operational memory for the project. Read it together with
 - The sustained reasoning lane changed from custom Luna `xhigh` to `high` to test
   whether lower thinking latency improves terminal completion. The historical
   xhigh worker and evidence remain configured but disabled.
+- The previously archived xhigh timeout contained a 2,619-byte semantic text
+  prefix. After the owner changed policy, it was reconstructed from the immutable
+  SSE, associated with its original generation, and executed exactly once in the
+  isolated release-symbolized d8 worker. It produced an ordinary JavaScript
+  exception in 176 ms and no candidate crash.
+- The first custom Luna `high` SSE turn completed in about 152 seconds with 1,258
+  input, 8,368 output, and 6,662 reasoning tokens (0.257330 credits). Its program
+  completed successfully in d8. This initial observation is materially faster
+  and cheaper than the 345–424-second completed xhigh turns, so high remains the
+  active sustained reasoning lane.
 - Added a distinct custom Luna `none`/high-verbosity fallback lane managed by a
   local reconciler. It runs only while Spark has a supervisor-originated provider
   or quota pause and never overrides owner, crash, or provider control. Its first
