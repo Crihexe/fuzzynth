@@ -17,6 +17,7 @@ from fuzzynth.campaign_config import (
 from fuzzynth.campaign_turn import CampaignTurnRunner, TurnResult
 from fuzzynth.catalog import EvidenceCatalog
 from fuzzynth.control import ControlLedger
+from fuzzynth.corpus import extract_corpus_references
 from fuzzynth.credentials import CredentialStore, ProviderCredentials
 from fuzzynth.execution_service import RecordedExecution, execute_program
 from fuzzynth.responses import ResponsesClient
@@ -175,6 +176,7 @@ class CampaignService:
         except (OSError, UnicodeError) as exc:
             raise CampaignServiceError("worker prompt cannot be loaded") from exc
         corpus_window = self.sessions.corpus_bytes(session_id)
+        corpus_sources = extract_corpus_references(corpus_window)
         turn_runner = CampaignTurnRunner(
             repo_root=self.repo_root,
             state_root=self.state_root,
@@ -213,11 +215,16 @@ class CampaignService:
                 instructions=instructions,
                 input_messages=input_messages,
                 client=client,
+                corpus_window_sha256=(
+                    session.corpus.sha256 if session.corpus is not None else None
+                ),
+                corpus_sources=corpus_sources,
             )
             completed.append(result)
             session = self.sessions.record_turn(session_id, result)
             if self.event_notifier is not None and (
-                session.status == "crash" or result.pause_reason is not None
+                result.stop_reason == "bug_candidate"
+                or result.pause_reason is not None
             ):
                 self.event_notifier(session, result)
         return SessionRunResult(session=session, turns=tuple(completed))

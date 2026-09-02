@@ -116,7 +116,7 @@ class SessionLedgerTests(unittest.TestCase):
         self.assertEqual(resumed.status, "completed")
         self.assertEqual(resumed.next_turn, 2)
 
-    def test_bug_candidate_stops_without_replay(self) -> None:
+    def test_bug_candidate_is_recorded_but_session_continues(self) -> None:
         session = self.ledger.start(
             self.worker,
             SessionPlan(7, 4, "none", None),
@@ -127,10 +127,28 @@ class SessionLedgerTests(unittest.TestCase):
             self.result(1, candidate=True),
         )
 
-        self.assertEqual(session.status, "crash")
-        self.assertEqual(session.pause_reason, "bug_candidate")
-        with self.assertRaisesRegex(SessionStateError, "paused"):
-            self.ledger.resume(session.session_id)
+        self.assertEqual(session.status, "active")
+        self.assertIsNone(session.pause_reason)
+        history = self.ledger.history(session.session_id, limit=1)
+        self.assertEqual(history[0].program, b"print(1);")
+
+    def test_legacy_crash_session_can_continue_after_policy_upgrade(self) -> None:
+        session = self.ledger.start(
+            self.worker,
+            SessionPlan(7, 4, "none", None),
+            corpus_window=None,
+        )
+        with self.ledger.connection:
+            self.ledger.connection.execute(
+                "UPDATE session SET status='crash', pause_reason='bug_candidate' "
+                "WHERE id=?",
+                (session.session_id,),
+            )
+
+        recovered = self.ledger.continue_after_crash(session.session_id)
+
+        self.assertEqual(recovered.status, "active")
+        self.assertIsNone(recovered.pause_reason)
 
     def test_only_one_open_session_per_worker(self) -> None:
         plan = SessionPlan(7, 4, "none", None)

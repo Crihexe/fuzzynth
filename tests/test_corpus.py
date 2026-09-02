@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from fuzzynth.corpus import CorpusError, CorpusPool
+from fuzzynth.corpus import CorpusError, CorpusPool, extract_corpus_references
 
 
 class CorpusPoolTests(unittest.TestCase):
@@ -25,6 +25,10 @@ class CorpusPoolTests(unittest.TestCase):
         self.assertEqual(first.count(b"<historical-js-example "), 2)
         self.assertIn(b"Do not copy, mutate", first)
         self.assertIn(b"sha256=", first)
+        references = extract_corpus_references(first)
+        self.assertEqual(len(references), 2)
+        self.assertTrue(all(reference.name.endswith(".js") for reference in references))
+        self.assertTrue(all(len(reference.sha256) == 64 for reference in references))
 
     def test_rejects_duplicates_and_non_javascript(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

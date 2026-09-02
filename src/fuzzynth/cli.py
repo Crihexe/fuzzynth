@@ -318,7 +318,10 @@ def main(argv: list[str] | None = None) -> int:
             telegram_credentials = load_telegram_credentials(
                 args.telegram_credentials
             )
-            campaign_notifier = TelegramCampaignNotifier(telegram_credentials)
+            campaign_notifier = TelegramCampaignNotifier(
+                telegram_credentials,
+                state_root=args.state_root,
+            )
             supervisor = CampaignSupervisor(
                 repo_root=repo_root,
                 state_root=args.state_root,

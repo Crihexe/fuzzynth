@@ -3,7 +3,12 @@ from __future__ import annotations
 import signal
 import unittest
 
-from fuzzynth.outcomes import OutcomeKind, ProcessObservation, classify
+from fuzzynth.outcomes import (
+    OutcomeKind,
+    ProcessObservation,
+    classify,
+    diagnose_harness_misuse,
+)
 
 
 class OutcomeClassificationTests(unittest.TestCase):
@@ -31,6 +36,33 @@ class OutcomeClassificationTests(unittest.TestCase):
 
         self.assertEqual(outcome.kind, OutcomeKind.WASM_TRAP)
         self.assertFalse(outcome.bug_candidate)
+
+    def test_detects_invalid_percent_gc_contract_misuse(self) -> None:
+        diagnostic = diagnose_harness_misuse(
+            b"function f(){ %GC(); }",
+            b"Check failed: EnsureCompiledAndFeedbackVector(isolate, function)",
+        )
+
+        self.assertEqual(diagnostic.code, "invalid_percent_gc_intrinsic")
+        self.assertIn("gc()", diagnostic.guidance)
+
+    def test_detects_distinct_inline_optimization_targets(self) -> None:
+        diagnostic = diagnose_harness_misuse(
+            b"%PrepareFunctionForOptimization(() => 1);\n"
+            b"%OptimizeFunctionOnNextCall(() => 1);",
+            b"Check failed: CheckMarkedForManualOptimization(isolate, function)",
+        )
+
+        self.assertEqual(diagnostic.code, "fresh_function_optimization_target")
+
+    def test_does_not_downgrade_same_named_function_without_specific_pattern(self) -> None:
+        diagnostic = diagnose_harness_misuse(
+            b"function f(){}\n%PrepareFunctionForOptimization(f);\n"
+            b"%OptimizeFunctionOnNextCall(f);",
+            b"Check failed: CheckMarkedForManualOptimization(isolate, function)",
+        )
+
+        self.assertIsNone(diagnostic)
 
     def test_native_signal_is_candidate(self) -> None:
         outcome = classify(

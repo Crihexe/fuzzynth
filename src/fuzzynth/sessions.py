@@ -202,10 +202,7 @@ class SessionLedger:
             self.store.put(result.feedback) if result.feedback is not None else None
         )
         next_turn = session.next_turn + 1
-        if result.stop_reason == "bug_candidate":
-            status = "crash"
-            reason = "bug_candidate"
-        elif result.pause_reason:
+        if result.pause_reason:
             status = "paused"
             reason = result.pause_reason
         elif session.next_turn >= session.target_turns:
@@ -310,6 +307,28 @@ class SessionLedger:
             )
         if cursor.rowcount != 1:
             raise SessionStateError("only a paused session can be resumed")
+        return self.get(session_id)
+
+    def continue_after_crash(self, session_id: str) -> SessionRecord:
+        """Recover a legacy terminal crash session under continue-on-crash policy."""
+
+        now = datetime.now(timezone.utc).isoformat()
+        with self.connection:
+            cursor = self.connection.execute(
+                """
+                UPDATE session SET
+                    status = CASE
+                        WHEN next_turn > target_turns THEN 'completed'
+                        ELSE 'active'
+                    END,
+                    pause_reason = NULL,
+                    updated_at = ?
+                WHERE id = ? AND status = 'crash'
+                """,
+                (now, session_id),
+            )
+        if cursor.rowcount != 1:
+            raise SessionStateError("only a legacy crash session can continue")
         return self.get(session_id)
 
     def list_sessions(self) -> tuple[SessionRecord, ...]:

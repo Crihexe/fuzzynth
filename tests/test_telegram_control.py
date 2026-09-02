@@ -71,11 +71,14 @@ class TelegramControlServiceTests(unittest.TestCase):
         self.addCleanup(self.service.close)
 
     def test_status_cost_and_worker_replies_are_bounded_and_safe(self) -> None:
-        for index, command in enumerate(("/status", "/cost", "/workers"), start=1):
+        for index, command in enumerate(
+            ("/status", "/cost", "/workers", "/lastcrash"), start=1
+        ):
             reply = self.service.handle_update(update(index, command))
             self.assertIsNotNone(reply)
             self.assertLess(len(reply), 4000)
             self.assertNotIn("secret", reply)
+        self.assertEqual(reply, "FUZZYNTH LAST CRASH\nnone")
 
     def test_workers_distinguishes_config_control_and_effective_state(self) -> None:
         reply = self.service.handle_update(update(4, "/workers"))

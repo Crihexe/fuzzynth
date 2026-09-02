@@ -96,6 +96,41 @@ class EvidenceCatalogTests(unittest.TestCase):
         with self.assertRaisesRegex(CatalogError, "generation"):
             self.catalog.record_generation(generation)
 
+    def test_latest_bug_candidate_survives_continuing_session_policy(self) -> None:
+        generation = self.generation()
+        self.catalog.record_generation(generation)
+        program = generation.program
+        self.catalog.record_execution(
+            ExecutionRecord(
+                execution_id="exec-crash",
+                generation_id=generation.generation_id,
+                program=program,  # type: ignore[arg-type]
+                stdout=self.store.put(b""),
+                stderr=self.store.put(b"Check failed: synthetic"),
+                profile="release_symbolized",
+                image_id="sha256:" + "a" * 64,
+                d8_sha256="b" * 64,
+                flags=("--allow-natives-syntax",),
+                outcome="v8_fatal",
+                bug_candidate=True,
+                exit_code=134,
+                signal_name=None,
+                timed_out=False,
+                oom_killed=False,
+                output_truncated=False,
+                duration_ms=5,
+                docker_error="",
+                started_at="2026-09-01T00:00:02Z",
+            )
+        )
+
+        candidate = self.catalog.latest_bug_candidate()
+
+        self.assertEqual(candidate.execution_id, "exec-crash")
+        self.assertEqual(candidate.session_id, "session-1")
+        reference = self.catalog.artifact_reference(candidate.stderr_sha256)
+        self.assertEqual(self.store.read(reference), b"Check failed: synthetic")
+
     def test_foreign_key_rejects_unknown_generation(self) -> None:
         program = self.store.put(b"0;")
         with self.assertRaisesRegex(CatalogError, "execution"):

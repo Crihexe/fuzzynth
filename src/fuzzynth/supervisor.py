@@ -17,6 +17,7 @@ from fuzzynth.control import ControlStateError
 from fuzzynth.corpus import CorpusPool
 from fuzzynth.credentials import CredentialStore
 from fuzzynth.notifications import TelegramCampaignNotifier
+from fuzzynth.outcomes import diagnose_harness_misuse
 from fuzzynth.sessions import SessionRecord, SessionStateError
 
 
@@ -208,6 +209,14 @@ class CampaignSupervisor:
                 if result.turns:
                     turns += 1
                     turn = result.turns[0]
+                    diagnostic = (
+                        diagnose_harness_misuse(
+                            turn.program or b"",
+                            turn.execution.stderr,
+                        )
+                        if turn.execution is not None
+                        else None
+                    )
                     self.event_sink(
                         {
                             "event": "turn_completed",
@@ -229,12 +238,10 @@ class CampaignSupervisor:
                             "actual_microunits": turn.actual_microunits,
                             "pause_reason": turn.pause_reason,
                             "stop_reason": turn.stop_reason,
+                            "suspected_harness_misuse": (
+                                diagnostic.code if diagnostic is not None else None
+                            ),
                         }
-                    )
-                if result.session.status == "crash":
-                    self._pause_worker(service, worker_id, "crash_candidate")
-                    return WorkerRunSummary(
-                        worker_id, turns, sessions_started, "paused", "crash_candidate"
                     )
                 if result.session.status == "paused":
                     self._pause_worker(

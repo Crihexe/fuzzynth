@@ -148,7 +148,12 @@ systemctl status fuzzynth-v2-campaign.service
 journalctl -u fuzzynth-v2-campaign.service
 ```
 
-The service waits without retrying while its worker is paused. A native crash is
-terminal and is never replayed automatically. The deployed unit cannot access
+The service waits without retrying while its worker is paused. A native crash
+candidate is archived and alerted but does not terminate the worker or its
+bounded conversation; the next turn receives the factual d8 result. Narrow,
+high-confidence d8 intrinsic-contract mistakes also receive a clearly labelled
+triage hint, without downgrading or deleting the candidate. Every generation
+records the exact corpus-window hash and the names and hashes of its source `.js`
+files. Crash replay and validation remain manual. The deployed unit cannot access
 `/root/red-sailor`; generated programs still execute in the separately isolated,
 networkless d8 container.

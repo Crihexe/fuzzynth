@@ -110,9 +110,11 @@ executions, sanitizer executions, and triage replays.
    program, output, termination facts, worker identity, and resource envelope.
 5. Return only a compact factual observation to the next turn. Do not ask the
    model to classify a crash or claim a V8 bug.
-6. On an ordinary outcome, continue until the randomized session limit. On a
-   crash candidate, save evidence, stop the session, and alert the owner without
-   automatic replay or model investigation.
+6. Continue until the randomized session limit after both ordinary outcomes and
+   crash candidates. For a candidate, save evidence, alert the owner, and return
+   the factual d8 result to the next turn without automatic replay or separate
+   model investigation. A narrow deterministic harness-misuse recognizer may add
+   a labelled corrective hint but never suppresses the candidate.
 
 ### 4.2 Session and context policy
 
@@ -320,10 +322,14 @@ The first-pass classifier consumes facts, not model judgments:
 
 Initial candidate workflow:
 
-1. store the original program, provider evidence, and execution evidence;
-2. mark the session terminal so it cannot generate another turn;
+1. store the original program, provider evidence, execution evidence, exact
+   corpus-window hash, and constituent dataset `.js` names and hashes;
+2. keep the bounded session active and include the factual execution observation
+   in its next turn;
 3. emit a private alert containing metadata and artifact IDs, not the full PoC;
-4. leave replay, validation, symbolization, deduplication, minimization, and model
+4. optionally identify only narrowly recognized d8 intrinsic-contract mistakes,
+   retain them as candidates, and add their corrective hint to the next turn;
+5. leave replay, validation, symbolization, deduplication, minimization, and model
    investigation to a later explicit human action.
 
 The later triage design may replay across release, optdebug, ASAN, and differential

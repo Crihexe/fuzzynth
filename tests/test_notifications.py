@@ -4,7 +4,9 @@ from pathlib import Path
 import tempfile
 import unittest
 
+from fuzzynth.artifacts import ArtifactRef
 from fuzzynth.campaign_turn import TurnResult
+from fuzzynth.corpus import CorpusReference
 from fuzzynth.execution_service import RecordedExecution
 from fuzzynth.notifications import (
     TelegramCampaignNotifier,
@@ -17,7 +19,7 @@ from fuzzynth.sessions import SessionRecord
 
 class CampaignNotificationTests(unittest.TestCase):
     @staticmethod
-    def session(status: str = "crash") -> SessionRecord:
+    def session(status: str = "active") -> SessionRecord:
         return SessionRecord(
             session_id="session-test",
             worker_id="spark-custom-iterative-js",
@@ -27,8 +29,12 @@ class CampaignNotificationTests(unittest.TestCase):
             temperature=None,
             status=status,
             next_turn=2,
-            pause_reason="bug_candidate" if status == "crash" else None,
-            corpus=None,
+            pause_reason=None,
+            corpus=ArtifactRef(
+                sha256="f" * 64,
+                size=100,
+                relative_path="ff/" + "f" * 62,
+            ),
             created_at="2026-09-02T00:00:00Z",
             updated_at="2026-09-02T00:00:01Z",
         )
@@ -70,10 +76,19 @@ class CampaignNotificationTests(unittest.TestCase):
         )
 
     def test_crash_alert_contains_identity_but_no_sensitive_body(self) -> None:
-        alert = build_campaign_alert(self.session(), self.result())
+        alert = build_campaign_alert(
+            self.session(),
+            self.result(),
+            corpus_sources=(
+                CorpusReference(name="sample.js", sha256="a" * 64),
+            ),
+        )
 
         self.assertIsNotNone(alert)
         self.assertIn("program_sha256=" + "c" * 64, alert)
+        self.assertIn("worker continuing", alert)
+        self.assertIn("corpus_window_sha256=" + "f" * 64, alert)
+        self.assertIn("corpus_source=sample.js@" + "a" * 64, alert)
         self.assertIn("no_automatic_replay", alert)
         self.assertNotIn("sensitive", alert)
 

@@ -64,6 +64,19 @@ class ExecutionRecord:
     details: ArtifactRef | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class BugCandidateRecord:
+    execution_id: str
+    generation_id: str
+    session_id: str | None
+    worker_id: str
+    outcome: str
+    signal_name: str | None
+    program_sha256: str
+    stderr_sha256: str
+    started_at: str
+
+
 _SCHEMA = """
 CREATE TABLE artifact (
   sha256 TEXT PRIMARY KEY CHECK(length(sha256) = 64),
@@ -291,3 +304,38 @@ class EvidenceCatalog:
             "bug_candidates": candidates,
             "known_cost_microusd": known_cost,
         }
+
+    def latest_bug_candidate(self) -> BugCandidateRecord | None:
+        row = self.connection.execute(
+            """
+            SELECT e.id, e.generation_id, g.session_id, g.campaign_id,
+                   e.outcome, e.signal_name, e.program_sha256,
+                   e.stderr_sha256, e.started_at
+            FROM execution e
+            JOIN generation g ON g.id = e.generation_id
+            WHERE e.bug_candidate = 1
+            ORDER BY e.started_at DESC LIMIT 1
+            """
+        ).fetchone()
+        if row is None:
+            return None
+        return BugCandidateRecord(
+            execution_id=row[0],
+            generation_id=row[1],
+            session_id=row[2],
+            worker_id=row[3],
+            outcome=row[4],
+            signal_name=row[5],
+            program_sha256=row[6],
+            stderr_sha256=row[7],
+            started_at=row[8],
+        )
+
+    def artifact_reference(self, sha256: str) -> ArtifactRef:
+        row = self.connection.execute(
+            "SELECT size, relative_path FROM artifact WHERE sha256 = ?",
+            (sha256,),
+        ).fetchone()
+        if row is None:
+            raise CatalogError("unknown artifact")
+        return ArtifactRef(sha256=sha256, size=row[0], relative_path=row[1])

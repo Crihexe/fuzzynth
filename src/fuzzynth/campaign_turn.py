@@ -13,7 +13,9 @@ from fuzzynth.artifacts import ArtifactStore
 from fuzzynth.budgets import BudgetLedger, MeterPolicy
 from fuzzynth.campaign_config import CampaignWorker, SessionPlan
 from fuzzynth.catalog import EvidenceCatalog, GenerationRecord
+from fuzzynth.corpus import CorpusReference
 from fuzzynth.execution_service import RecordedExecution, execute_program
+from fuzzynth.outcomes import diagnose_harness_misuse
 from fuzzynth.responses import (
     GenerationRequest,
     ResponsesClient,
@@ -123,6 +125,7 @@ class CampaignTurnRunner:
             state_root=self.state_root,
             max_program_bytes=self.max_program_bytes,
         )
+        diagnostic = diagnose_harness_misuse(program, execution.stderr)
         feedback = build_execution_feedback(
             ExecutionFeedback(
                 outcome=execution.outcome,
@@ -134,6 +137,12 @@ class CampaignTurnRunner:
                 duration_ms=execution.duration_ms,
                 stdout=execution.stdout,
                 stderr=execution.stderr,
+                suspected_harness_misuse=(
+                    diagnostic.code if diagnostic is not None else None
+                ),
+                triage_guidance=(
+                    diagnostic.guidance if diagnostic is not None else None
+                ),
             ),
             max_feedback_bytes=self.max_feedback_bytes,
         )
@@ -149,6 +158,8 @@ class CampaignTurnRunner:
         instructions: str,
         input_messages: tuple[ConversationMessage, ...],
         client: ResponsesClient,
+        corpus_window_sha256: str | None = None,
+        corpus_sources: tuple[CorpusReference, ...] = (),
     ) -> TurnResult:
         generation_id = f"gen-{uuid.uuid4()}"
         streaming_transport = worker.provider == "alternate"
@@ -182,6 +193,8 @@ class CampaignTurnRunner:
         started_at = datetime.now(timezone.utc).isoformat()
         requested_parameters = {
             "budget_reservation_id": reservation.reservation_id,
+            "corpus_sources": [source.as_dict() for source in corpus_sources],
+            "corpus_window_sha256": corpus_window_sha256,
             "max_output_tokens_sent": request.max_output_tokens,
             "max_program_bytes": self.max_program_bytes,
             "reasoning_effort": plan.reasoning_effort,

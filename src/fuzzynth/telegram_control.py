@@ -11,16 +11,19 @@ import time
 from typing import Callable
 from urllib.parse import urlencode
 
-from fuzzynth.artifacts import ArtifactStore
+from fuzzynth.artifacts import ArtifactIntegrityError, ArtifactStore
 from fuzzynth.budgets import BudgetLedger, load_meter_policies
 from fuzzynth.campaign_config import CampaignConfiguration, load_campaign_configuration
+from fuzzynth.catalog import CatalogError, EvidenceCatalog
 from fuzzynth.control import ControlLedger
+from fuzzynth.corpus import extract_corpus_references
 from fuzzynth.notifications import (
     MAX_MESSAGE_CHARS,
     NotificationError,
     TelegramCredentials,
     send_telegram_message,
 )
+from fuzzynth.outcomes import diagnose_harness_misuse
 from fuzzynth.sessions import SessionLedger
 
 
@@ -178,8 +181,10 @@ class TelegramControlService:
             self.state_root / "sessions.sqlite3",
             self.store,
         )
+        self.catalog = EvidenceCatalog(self.state_root / "catalog.sqlite3")
 
     def close(self) -> None:
+        self.catalog.close()
         self.sessions.close()
         self.budgets.close()
         self.control.close()
@@ -294,18 +299,56 @@ class TelegramControlService:
         return "\n".join(lines)
 
     def _last_crash(self) -> str:
-        for session in reversed(self.sessions.list_sessions()):
-            if session.status == "crash":
-                return "\n".join(
-                    (
-                        "FUZZYNTH LAST CRASH",
-                        f"session={session.session_id}",
-                        f"worker={session.worker_id}",
-                        f"next_turn={session.next_turn}",
-                        "action=evidence_saved_no_automatic_replay",
+        candidate = self.catalog.latest_bug_candidate()
+        if candidate is None:
+            return "FUZZYNTH LAST CRASH\nnone"
+        lines = [
+            "FUZZYNTH LAST CRASH",
+            f"session={candidate.session_id or 'none'}",
+            f"worker={candidate.worker_id}",
+            f"generation={candidate.generation_id}",
+            f"execution={candidate.execution_id}",
+            f"outcome={candidate.outcome}",
+            f"signal={candidate.signal_name or 'none'}",
+            f"program_sha256={candidate.program_sha256}",
+        ]
+        if candidate.session_id is not None:
+            try:
+                session = self.sessions.get(candidate.session_id)
+                lines.append(
+                    "corpus_window_sha256="
+                    + (
+                        session.corpus.sha256
+                        if session.corpus is not None
+                        else "none"
                     )
                 )
-        return "FUZZYNTH LAST CRASH\nnone"
+                if session.corpus is not None:
+                    sources = extract_corpus_references(
+                        self.store.read(session.corpus)
+                    )
+                    lines.extend(
+                        f"corpus_source={source.name}@{source.sha256}"
+                        for source in sources
+                    )
+            except (OSError, ArtifactIntegrityError):
+                lines.append("corpus_provenance=unavailable")
+        try:
+            program = self.store.read(
+                self.catalog.artifact_reference(candidate.program_sha256)
+            )
+            stderr = self.store.read(
+                self.catalog.artifact_reference(candidate.stderr_sha256)
+            )
+            diagnostic = diagnose_harness_misuse(program, stderr)
+            if diagnostic is not None:
+                lines.append(
+                    f"triage=suspected_harness_misuse:{diagnostic.code}"
+                )
+        except (OSError, ArtifactIntegrityError, CatalogError):
+            lines.append("triage=unavailable")
+        lines.append("action=evidence_saved_worker_continuing_no_automatic_replay")
+        return "\n".join(lines)
 
     @staticmethod
     def _help() -> str:

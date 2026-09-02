@@ -61,7 +61,7 @@ source-code analysis.
   turns. The official workers rotate temperature from 0 through 2.
 - While Spark is paused by its five-hour or weekly provider quota, run a distinct
   alternate Luna lane with `none` reasoning and high verbosity. The fallback
-  must not block other workers or override owner, crash, or provider pauses.
+  must not block other workers or override owner or provider pauses.
 - Retain the alternate Luna `xhigh` sample for comparison, but use `high` for the
   sustained reasoning lane after the upstream service ended one realistic xhigh
   stream with `request_timeout` near 535 seconds.
@@ -181,9 +181,12 @@ source-code analysis.
   differential mismatches.
 - Never publish a potentially security-sensitive new PoC automatically. Keep
   findings private until triaged and ready for responsible disclosure.
-- On a first-pass crash candidate, save all available evidence, stop that session,
-  and alert the owner. Do not automatically replay, validate, minimize, or ask a
-  model to investigate it in the initial campaign phase.
+- On a first-pass crash candidate, save all available evidence, including the
+  exact corpus-window hash and constituent dataset `.js` names and hashes, alert
+  the owner, and continue the same bounded session. Return the factual d8 error
+  to the next turn. Narrow deterministic detection of known d8 intrinsic misuse
+  may add an explicitly labelled corrective hint, but must not downgrade or
+  discard the candidate. Do not automatically replay, validate, or minimize it.
 
 ## Cost and control plane
 

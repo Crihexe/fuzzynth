@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+import re
 import signal
 
 
@@ -45,6 +46,12 @@ class ExecutionOutcome:
     markers: tuple[str, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class HarnessMisuseDiagnostic:
+    code: str
+    guidance: str
+
+
 _SANITIZER_MARKERS = (
     (b"ERROR: AddressSanitizer", "asan"),
     (b"AddressSanitizer:DEADLYSIGNAL", "asan_deadly_signal"),
@@ -78,6 +85,46 @@ _WASM_TRAP_MARKERS = (
     b"RuntimeError: memory access out of bounds",
     b"RuntimeError: divide by zero",
 )
+
+
+_INLINE_ARROW_PREPARE = re.compile(
+    rb"%PrepareFunctionForOptimization\s*\(\s*(?:async\s*)?\([^)]*\)\s*=>"
+)
+_INLINE_ARROW_OPTIMIZE = re.compile(
+    rb"%OptimizeFunctionOnNextCall\s*\(\s*(?:async\s*)?\([^)]*\)\s*=>"
+)
+
+
+def diagnose_harness_misuse(
+    program: bytes,
+    stderr: bytes,
+) -> HarnessMisuseDiagnostic | None:
+    """Recognize only narrow, explainable d8 native-syntax contract mistakes."""
+
+    if (
+        b"EnsureCompiledAndFeedbackVector" in stderr
+        and re.search(rb"%GC\s*\(", program) is not None
+    ):
+        return HarnessMisuseDiagnostic(
+            code="invalid_percent_gc_intrinsic",
+            guidance=(
+                "Do not use %GC(). With --expose-gc call the d8 helper gc() "
+                "instead, outside optimization intrinsics."
+            ),
+        )
+    if (
+        b"CheckMarkedForManualOptimization" in stderr
+        and _INLINE_ARROW_PREPARE.search(program) is not None
+        and _INLINE_ARROW_OPTIMIZE.search(program) is not None
+    ):
+        return HarnessMisuseDiagnostic(
+            code="fresh_function_optimization_target",
+            guidance=(
+                "Prepare and optimize the same stable named function object; "
+                "separate inline arrow expressions create different functions."
+            ),
+        )
+    return None
 
 
 def _present_markers(

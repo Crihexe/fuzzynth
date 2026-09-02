@@ -11,7 +11,10 @@ import stat
 from typing import Callable
 from urllib.parse import urlencode
 
+from fuzzynth.artifacts import ArtifactIntegrityError, ArtifactStore
 from fuzzynth.campaign_turn import TurnResult
+from fuzzynth.corpus import CorpusReference, extract_corpus_references
+from fuzzynth.outcomes import diagnose_harness_misuse
 from fuzzynth.sessions import SessionRecord
 
 
@@ -133,23 +136,39 @@ def send_telegram_message(
 Sender = Callable[[TelegramCredentials, str], int]
 
 
-def build_campaign_alert(session: SessionRecord, result: TurnResult) -> str | None:
+def build_campaign_alert(
+    session: SessionRecord,
+    result: TurnResult,
+    *,
+    corpus_sources: tuple[CorpusReference, ...] = (),
+) -> str | None:
     execution = result.execution
     if result.stop_reason == "bug_candidate" and execution is not None:
-        return "\n".join(
-            (
-                "FUZZYNTH CRASH CANDIDATE — worker stopped",
-                f"worker={session.worker_id}",
-                f"session={session.session_id}",
-                f"generation={result.generation_id}",
-                f"execution={execution.execution_id}",
-                f"outcome={execution.outcome}",
-                f"signal={execution.signal_name or 'none'}",
-                f"profile={execution.profile}",
-                f"program_sha256={execution.program_sha256}",
-                "action=evidence_saved_no_automatic_replay",
-            )
+        diagnostic = diagnose_harness_misuse(
+            result.program or b"",
+            execution.stderr,
         )
+        lines = [
+            "FUZZYNTH CRASH CANDIDATE — worker continuing",
+            f"worker={session.worker_id}",
+            f"session={session.session_id}",
+            f"generation={result.generation_id}",
+            f"execution={execution.execution_id}",
+            f"outcome={execution.outcome}",
+            f"signal={execution.signal_name or 'none'}",
+            f"profile={execution.profile}",
+            f"program_sha256={execution.program_sha256}",
+            "corpus_window_sha256="
+            + (session.corpus.sha256 if session.corpus is not None else "none"),
+        ]
+        lines.extend(
+            f"corpus_source={source.name}@{source.sha256}"
+            for source in corpus_sources
+        )
+        if diagnostic is not None:
+            lines.append(f"triage=suspected_harness_misuse:{diagnostic.code}")
+        lines.append("action=evidence_saved_worker_continuing_no_automatic_replay")
+        return "\n".join(lines)
     if result.pause_reason:
         return "\n".join(
             (
@@ -170,13 +189,31 @@ class TelegramCampaignNotifier:
         credentials: TelegramCredentials,
         *,
         sender: Sender | None = None,
+        state_root: Path | None = None,
     ):
         self.credentials = credentials
         self.sender = sender or (
             lambda creds, message: send_telegram_message(creds, message)
         )
+        self.store = (
+            ArtifactStore(state_root.resolve() / "artifacts")
+            if state_root is not None
+            else None
+        )
 
     def __call__(self, session: SessionRecord, result: TurnResult) -> None:
-        message = build_campaign_alert(session, result)
+        corpus_sources: tuple[CorpusReference, ...] = ()
+        if self.store is not None and session.corpus is not None:
+            try:
+                corpus_sources = extract_corpus_references(
+                    self.store.read(session.corpus)
+                )
+            except (OSError, ArtifactIntegrityError):
+                corpus_sources = ()
+        message = build_campaign_alert(
+            session,
+            result,
+            corpus_sources=corpus_sources,
+        )
         if message is not None:
             self.sender(self.credentials, message)

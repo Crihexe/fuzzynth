@@ -140,6 +140,47 @@ class CampaignServiceTests(unittest.TestCase):
         self.assertEqual(result.session.next_turn, 3)
         self.assertEqual(result.session.status, "active")
 
+    def test_crash_candidate_notifies_and_same_session_remains_active(self) -> None:
+        notifications = []
+
+        def crashing_executor(_program, **_kwargs):
+            return RecordedExecution(
+                execution_id="exec-candidate",
+                profile="release_symbolized",
+                image_id="sha256:" + "a" * 64,
+                d8_sha256="b" * 64,
+                program_sha256="c" * 64,
+                stdout_sha256="d" * 64,
+                stderr_sha256="e" * 64,
+                duration_ms=5,
+                outcome="v8_fatal",
+                bug_candidate=True,
+                exit_code=134,
+                signal_name=None,
+                timed_out=False,
+                oom_killed=False,
+                output_truncated=False,
+                stdout=b"",
+                stderr=b"Check failed: synthetic",
+            )
+
+        self.service.executor = crashing_executor
+        self.service.event_notifier = (
+            lambda session, result: notifications.append((session, result))
+        )
+        session = self.service.start_session(
+            "spark-custom-iterative-js",
+            seed=7,
+            corpus_window=b"// selected historical example",
+        )
+
+        result = self.service.run_session(session.session_id, max_turns=1)
+
+        self.assertEqual(result.session.status, "active")
+        self.assertEqual(result.session.next_turn, 2)
+        self.assertEqual(result.turns[0].stop_reason, "bug_candidate")
+        self.assertEqual(len(notifications), 1)
+
     def test_unconditioned_control_requires_explicit_switch(self) -> None:
         session = self.service.start_session(
             "gpt-4o-mini-official-temperature-js",

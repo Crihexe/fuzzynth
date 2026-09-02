@@ -254,10 +254,10 @@ This is the living operational memory for the project. Read it together with
 
 ### D-026 — No automatic crash replay in initial campaigns
 
-- Status: accepted by owner on 2026-09-02.
-- Decision: on a crash candidate, persist all available evidence, make the
-  session terminal, and notify Telegram. Do not replay, validate, minimize, or
-  invoke another model automatically.
+- Status: superseded by D-029 on 2026-09-02.
+- Decision: the original policy made a crash-candidate session terminal after
+  persisting evidence and notifying Telegram. It did not replay, validate,
+  minimize, or invoke another model automatically.
 - Why: the initial experiment measures discovery. Human triage can deliberately
   reproduce a preserved candidate later without multiplying cost or risk.
 
@@ -280,6 +280,20 @@ This is the living operational memory for the project. Read it together with
   require the exact `CONFIRM` word and do not kill an already running `d8` process.
 - Why: owner commands must affect the actual scheduler boundary without exposing
   a shell, losing repeated updates, or corrupting an in-flight evidence record.
+
+### D-029 — Preserve and continue after crash candidates
+
+- Status: accepted by owner on 2026-09-02; supersedes only D-026's terminal
+  session transition, not its prohibition on automatic replay.
+- Decision: persist and alert every crash candidate, then continue the same
+  bounded model conversation with the factual d8 observation. Record the exact
+  corpus-window hash and constituent dataset `.js` names and hashes on every
+  generation. A deterministic recognizer may attach a corrective hint only for
+  narrowly proved d8 intrinsic-contract mistakes; the record remains a bug
+  candidate. Do not automatically replay, validate, minimize, or reproduce it.
+- Why: an uninteresting generated misuse should not disable a productive lane,
+  while conservative classification preserves every native failure for later
+  human review and lets the model avoid repeating an identified harness mistake.
 
 ## Work completed
 

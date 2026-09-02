@@ -23,6 +23,30 @@ class CorpusSample:
     data: bytes
 
 
+@dataclass(frozen=True, slots=True)
+class CorpusReference:
+    name: str
+    sha256: str
+
+    def as_dict(self) -> dict[str, str]:
+        return {"name": self.name, "sha256": self.sha256}
+
+
+_REFERENCE_TAG = re.compile(
+    rb'<historical-js-example name="([A-Za-z0-9._-]{1,128})" '
+    rb'sha256="([0-9a-f]{64})">'
+)
+
+
+def extract_corpus_references(window: bytes | None) -> tuple[CorpusReference, ...]:
+    if not window:
+        return ()
+    return tuple(
+        CorpusReference(name=name.decode("ascii"), sha256=digest.decode("ascii"))
+        for name, digest in _REFERENCE_TAG.findall(window)
+    )
+
+
 class CorpusPool:
     def __init__(self, samples: tuple[CorpusSample, ...]):
         if not samples:

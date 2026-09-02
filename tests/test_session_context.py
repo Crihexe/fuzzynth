@@ -52,6 +52,30 @@ class ExecutionFeedbackTests(unittest.TestCase):
 
         self.assertIn("\ufffd", encoded.decode())
 
+    def test_suspected_harness_misuse_guidance_is_bounded_feedback(self) -> None:
+        encoded = build_execution_feedback(
+            ExecutionFeedback(
+                outcome="v8_fatal",
+                exit_code=134,
+                signal_name=None,
+                timed_out=False,
+                oom_killed=False,
+                output_truncated=False,
+                duration_ms=2,
+                stdout=b"",
+                stderr=b"Check failed: EnsureCompiledAndFeedbackVector",
+                suspected_harness_misuse="invalid_percent_gc_intrinsic",
+                triage_guidance="Use gc() instead.",
+            ),
+            max_feedback_bytes=1024,
+        )
+
+        decoded = json.loads(encoded)
+        self.assertEqual(
+            decoded["triage_hint"]["code"],
+            "invalid_percent_gc_intrinsic",
+        )
+
 
 class TurnInputTests(unittest.TestCase):
     @staticmethod
