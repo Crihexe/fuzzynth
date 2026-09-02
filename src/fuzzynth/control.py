@@ -143,6 +143,44 @@ class ControlLedger:
     def dispatch_allowed(self, worker_id: str) -> bool:
         return self.effective_state(worker_id) == "running"
 
+    def telegram_offset(self) -> int:
+        row = self.connection.execute(
+            "SELECT value FROM setting WHERE key = 'telegram_offset'"
+        ).fetchone()
+        if row is None:
+            return 0
+        try:
+            offset = int(row[0])
+        except (TypeError, ValueError) as exc:
+            raise ControlStateError("Telegram update offset is invalid") from exc
+        if offset < 0:
+            raise ControlStateError("Telegram update offset is invalid")
+        return offset
+
+    def advance_telegram_offset(self, offset: int) -> int:
+        if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
+            raise ValueError("Telegram update offset must be non-negative")
+        try:
+            self.connection.execute("BEGIN IMMEDIATE")
+            current = self.telegram_offset()
+            selected = max(current, offset)
+            now = datetime.now(timezone.utc).isoformat()
+            self.connection.execute(
+                """
+                INSERT INTO setting(key, value, updated_at)
+                VALUES ('telegram_offset', ?, ?)
+                ON CONFLICT(key) DO UPDATE SET
+                  value = excluded.value,
+                  updated_at = excluded.updated_at
+                """,
+                (str(selected), now),
+            )
+            self.connection.commit()
+        except sqlite3.Error as exc:
+            self.connection.rollback()
+            raise ControlStateError("Telegram update offset could not be saved") from exc
+        return selected
+
     def snapshot(self, worker_ids: tuple[str, ...] = ()) -> ControlSnapshot:
         configured = {
             str(row[0]): str(row[1])

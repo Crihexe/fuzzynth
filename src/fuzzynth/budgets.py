@@ -500,5 +500,8 @@ class BudgetLedger:
             "output_tokens": output,
             "total_microunits": microunits,
             "hard_total_microunits": policy.hard_total_microunits,
+            "hard_uncached_input_tokens": policy.hard_uncached_input_tokens,
+            "hard_cached_input_tokens": policy.hard_cached_input_tokens,
+            "hard_output_tokens": policy.hard_output_tokens,
             "uncertain_reservations": int(uncertain),
         }

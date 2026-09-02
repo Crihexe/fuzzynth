@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+import tempfile
 import unittest
 
 from fuzzynth.campaign_turn import TurnResult
@@ -8,6 +10,7 @@ from fuzzynth.notifications import (
     TelegramCampaignNotifier,
     TelegramCredentials,
     build_campaign_alert,
+    load_telegram_credentials,
 )
 from fuzzynth.sessions import SessionRecord
 
@@ -96,6 +99,22 @@ class CampaignNotificationTests(unittest.TestCase):
         self.assertEqual(len(sent), 1)
         self.assertNotIn("secret-token", sent[0])
         self.assertNotIn("secret-chat", sent[0])
+
+    def test_credentials_accept_optional_owner_user_id(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "telegram.env"
+            path.write_text(
+                "TELEGRAM_BOT_TOKEN=test-token\n"
+                "TELEGRAM_CHAT_ID=00100\n"
+                "TELEGRAM_USER_ID=00200\n",
+                encoding="utf-8",
+            )
+            path.chmod(0o600)
+
+            credentials = load_telegram_credentials(path)
+
+        self.assertEqual(credentials.chat_id, "100")
+        self.assertEqual(credentials.user_id, "200")
 
 
 if __name__ == "__main__":

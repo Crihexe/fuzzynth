@@ -27,6 +27,7 @@ class NotificationError(RuntimeError):
 class TelegramCredentials:
     token: str = field(repr=False)
     chat_id: str = field(repr=False)
+    user_id: str | None = field(default=None, repr=False)
 
 
 def load_telegram_credentials(path: Path | None = None) -> TelegramCredentials:
@@ -62,9 +63,22 @@ def load_telegram_credentials(path: Path | None = None) -> TelegramCredentials:
         values[name.strip()] = value
     token = values.get("TELEGRAM_BOT_TOKEN", "")
     chat_id = values.get("TELEGRAM_CHAT_ID", "")
+    user_id = values.get("TELEGRAM_USER_ID") or None
     if not token or not chat_id or any(character.isspace() for character in token):
         raise NotificationError("Telegram credentials are incomplete or invalid")
-    return TelegramCredentials(token=token, chat_id=chat_id)
+    normalized: dict[str, str] = {}
+    for name, value in (("chat ID", chat_id), ("user ID", user_id)):
+        if value is None:
+            continue
+        try:
+            normalized[name] = str(int(value))
+        except ValueError as exc:
+            raise NotificationError(f"Telegram {name} is invalid") from exc
+    return TelegramCredentials(
+        token=token,
+        chat_id=normalized["chat ID"],
+        user_id=normalized.get("user ID"),
+    )
 
 
 def send_telegram_message(

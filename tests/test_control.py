@@ -84,6 +84,14 @@ class ControlLedgerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.change_worker("stopped")
 
+    def test_telegram_offset_is_persistent_and_monotonic(self) -> None:
+        self.assertEqual(self.ledger.telegram_offset(), 0)
+        self.assertEqual(self.ledger.advance_telegram_offset(42), 42)
+        self.assertEqual(self.ledger.advance_telegram_offset(30), 42)
+
+        with ControlLedger(self.path) as second:
+            self.assertEqual(second.telegram_offset(), 42)
+
 
 if __name__ == "__main__":
     unittest.main()

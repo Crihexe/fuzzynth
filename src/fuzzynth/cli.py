@@ -27,6 +27,8 @@ from fuzzynth.execution_service import ExecutionServiceError, execute_file
 from fuzzynth.probe import PROBE_INPUT, PROBE_INSTRUCTIONS, run_probe
 from fuzzynth.responses import GenerationRequest
 from fuzzynth.sessions import SessionLedger, SessionStateError
+from fuzzynth.notifications import NotificationError, load_telegram_credentials
+from fuzzynth.telegram_control import TelegramControlService, run_control_loop
 
 
 def _doctor(credentials_path: Path | None) -> int:
@@ -189,6 +191,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     controls.add_argument("--state-root", type=Path, default=Path("state"))
     controls.add_argument("--repo-root", type=Path, default=Path("."))
+
+    telegram = subparsers.add_parser(
+        "telegram-control",
+        help="poll authenticated Telegram owner commands",
+    )
+    telegram.add_argument("--live", action="store_true", help="confirm network usage")
+    telegram.add_argument("--once", action="store_true", help="perform one poll")
+    telegram.add_argument("--poll-timeout", type=int, default=25)
+    telegram.add_argument("--credentials", type=Path)
+    telegram.add_argument("--state-root", type=Path, default=Path("state"))
+    telegram.add_argument("--repo-root", type=Path, default=Path("."))
     return parser
 
 
@@ -239,6 +252,26 @@ def main(argv: list[str] | None = None) -> int:
                 args.repo_root.resolve(),
                 args.state_root.resolve(),
             )
+        if args.command == "telegram-control":
+            if not args.live:
+                print("fuzzynth: telegram-control requires --live", file=sys.stderr)
+                return 2
+            telegram_credentials = load_telegram_credentials(args.credentials)
+            with TelegramControlService(
+                repo_root=args.repo_root,
+                state_root=args.state_root,
+                credentials=telegram_credentials,
+            ) as service:
+                run_control_loop(
+                    service,
+                    poll_timeout=args.poll_timeout,
+                    once=args.once,
+                    error_handler=lambda message: print(
+                        f"fuzzynth: Telegram control retrying: {message}",
+                        file=sys.stderr,
+                    ),
+                )
+            return 0
     except (
         BudgetConfigurationError,
         CampaignConfigurationError,
@@ -248,6 +281,7 @@ def main(argv: list[str] | None = None) -> int:
         ExecutionServiceError,
         SessionStateError,
         ControlStateError,
+        NotificationError,
         OSError,
         ValueError,
     ) as exc:

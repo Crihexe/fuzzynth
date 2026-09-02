@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 import io
 import json
 from pathlib import Path
@@ -62,6 +62,14 @@ class OfflineCliTests(unittest.TestCase):
                 for worker in document["workers"].values()
             )
         )
+
+    def test_telegram_control_requires_explicit_live_switch(self) -> None:
+        error = io.StringIO()
+        with redirect_stderr(error):
+            exit_code = main(["telegram-control", "--once"])
+
+        self.assertEqual(exit_code, 2)
+        self.assertIn("requires --live", error.getvalue())
 
 
 if __name__ == "__main__":
