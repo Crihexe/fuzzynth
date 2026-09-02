@@ -1,0 +1,32 @@
+[Unit]
+Description=Fuzzynth conservative Spark provider cooldown check
+After=fuzzynth-v2-campaign.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/fuzzynth
+Environment=PYTHONPATH=/root/fuzzynth/src
+ExecStart=/usr/bin/python3 /root/fuzzynth/scripts/resume_spark_after_cooldown.py
+UMask=0077
+SyslogIdentifier=fuzzynth-spark-cooldown
+
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=read-only
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+ReadWritePaths=/root/fuzzynth/state
+InaccessiblePaths=/root/red-sailor
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+SystemCallArchitectures=native

@@ -1,0 +1,13 @@
+[Unit]
+Description=Check whether the Spark five-hour provider cooldown elapsed
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+RandomizedDelaySec=60
+AccuracySec=1min
+Persistent=true
+Unit=fuzzynth-spark-cooldown.service
+
+[Install]
+WantedBy=timers.target

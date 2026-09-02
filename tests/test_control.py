@@ -72,6 +72,25 @@ class ControlLedgerTests(unittest.TestCase):
         self.assertEqual(second.new_state, "paused")
         self.assertEqual(self.ledger.global_state(), "paused")
 
+    def test_latest_change_preserves_pause_provenance(self) -> None:
+        self.ledger.set_worker(
+            "spark-custom-iterative-js",
+            "paused",
+            request_id="supervisor:quota",
+            source="supervisor",
+            actor="campaign-supervisor",
+            command="pause after provider_error",
+        )
+
+        latest = self.ledger.latest_change("spark-custom-iterative-js")
+
+        self.assertIsNotNone(latest)
+        assert latest is not None
+        self.assertEqual(latest.request_id, "supervisor:quota")
+        self.assertEqual(latest.source, "supervisor")
+        self.assertEqual(latest.command, "pause after provider_error")
+        self.assertEqual(latest.new_state, "paused")
+
     def test_state_persists_across_connections(self) -> None:
         self.change_global("stopped")
 

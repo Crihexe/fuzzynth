@@ -27,6 +27,18 @@ class ControlChange:
 
 
 @dataclass(frozen=True, slots=True)
+class ControlAuditEntry:
+    request_id: str
+    source: str
+    actor: str
+    command: str
+    target: str
+    previous_state: str
+    new_state: str
+    created_at: str
+
+
+@dataclass(frozen=True, slots=True)
 class ControlSnapshot:
     global_state: str
     workers: dict[str, str]
@@ -195,6 +207,20 @@ class ControlLedger:
             global_state=self.global_state(),
             workers=configured,
         )
+
+    def latest_change(self, target: str) -> ControlAuditEntry | None:
+        target = _validated_identifier(target, "target")
+        row = self.connection.execute(
+            """
+            SELECT request_id, source, actor, command, target,
+                   previous_state, new_state, created_at
+            FROM control_audit WHERE target = ? ORDER BY id DESC LIMIT 1
+            """,
+            (target,),
+        ).fetchone()
+        if row is None:
+            return None
+        return ControlAuditEntry(*(str(value) for value in row))
 
     def _existing_change(self, request_id: str) -> ControlChange | None:
         row = self.connection.execute(
