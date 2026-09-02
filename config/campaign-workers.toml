@@ -29,7 +29,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc"]
 
 [[workers]]
 id = "luna-custom-xhigh-iterative-js"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -44,6 +44,29 @@ history_turns = 4
 max_output_tokens = 2048
 # The alternate endpoint exceeded requested max_output_tokens in probes. Reserve
 # the full documented Luna output capacity before every custom Luna request.
+reservation_output_tokens = 128000
+v8_build_profile = "release_symbolized"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc"]
+
+# Xhigh repeatedly hit the alternate gateway's ~125 second HTTP 524 boundary,
+# including with max_output_tokens=2048. Preserve that lane for provenance and
+# continue the experiment at high effort under a distinct worker identity.
+[[workers]]
+id = "luna-custom-high-iterative-js"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_v1.txt"
+reasoning_efforts = ["high"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 4
+max_turns_per_session = 8
+history_turns = 4
+max_output_tokens = 2048
 reservation_output_tokens = 128000
 v8_build_profile = "release_symbolized"
 v8_worker_profile = "standard"
