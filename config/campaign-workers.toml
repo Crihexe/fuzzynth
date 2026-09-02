@@ -41,7 +41,7 @@ temperatures = []
 min_turns_per_session = 4
 max_turns_per_session = 8
 history_turns = 4
-max_output_tokens = 8192
+max_output_tokens = 2048
 # The alternate endpoint exceeded requested max_output_tokens in probes. Reserve
 # the full documented Luna output capacity before every custom Luna request.
 reservation_output_tokens = 128000
