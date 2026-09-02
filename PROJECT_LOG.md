@@ -795,3 +795,36 @@ This is the living operational memory for the project. Read it together with
 - The full offline suite passes with 136 tests after the exhausted-session
   transition fix. No bug candidate has been observed in the new official lanes
   at this checkpoint.
+
+### 2026-09-02 — continue-on-candidate policy and d8 misuse hints
+
+- Two official-worker `v8_fatal` candidates were manually reviewed by the owner
+  as uninteresting d8 intrinsic-contract mistakes: `%GC()` caused
+  `EnsureCompiledAndFeedbackVector`, and distinct inline arrow objects caused
+  `CheckMarkedForManualOptimization` after preparing one object and optimizing
+  another.
+- Changed candidate handling so the immutable execution and attempt retain
+  `bug_candidate`, Telegram alerts immediately, and the same bounded session
+  continues with the exact program as its prior `assistant` message and factual
+  d8 feedback as the following `user` message. No replay, reproduction,
+  validation, or minimization was added.
+- Added a deliberately narrow deterministic recognizer for only those two
+  explainable patterns. It emits `invalid_percent_gc_intrinsic` or
+  `fresh_function_optimization_target` as a suspected-harness-misuse hint in the
+  next turn and operational metadata. It never downgrades a native failure.
+- Every new generation now records its corpus-window SHA-256 plus each source
+  `.js` name and SHA-256. The same provenance was backfilled into the two
+  existing candidate generation records from their immutable session corpus.
+  Telegram candidate alerts and `/lastcrash` expose that provenance and any
+  recognized misuse label without exposing program or stderr contents.
+- The full offline suite passes with 143 tests. The two recognizers were also
+  checked against the exact preserved program and stderr artifacts and produced
+  the expected distinct labels.
+- Deployed commit `7cfb547` with a cooperative campaign restart and restarted
+  the Telegram controller. Recovered the original GPT-4.1 nano session at turn
+  3/6 and GPT-4o mini session at turn 2/3, then restored both worker controls to
+  running. Live request artifacts prove that both retained the candidate program
+  in role-correct history and returned its fatal stderr marker. Nano advanced in
+  the same session; 4o mini completed both remaining turns and began its next
+  session normally. Both services remained active, and Telegram update 68
+  reported the successful recovery.
