@@ -197,7 +197,7 @@ class CampaignService:
                 session_id,
                 limit=worker.history_turns,
             )
-            input_bytes = build_turn_input(
+            input_messages = build_turn_input(
                 turn_index=session.next_turn,
                 history=history,
                 history_turns=worker.history_turns,
@@ -211,7 +211,7 @@ class CampaignService:
                 turn_index=session.next_turn,
                 plan=plan,
                 instructions=instructions,
-                input_bytes=input_bytes,
+                input_messages=input_messages,
                 client=client,
             )
             completed.append(result)

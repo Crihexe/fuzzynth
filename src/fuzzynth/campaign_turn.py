@@ -22,7 +22,11 @@ from fuzzynth.responses import (
     extract_output_text,
     extract_usage,
 )
-from fuzzynth.session_context import ExecutionFeedback, build_execution_feedback
+from fuzzynth.session_context import (
+    ConversationMessage,
+    ExecutionFeedback,
+    build_execution_feedback,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,19 +147,15 @@ class CampaignTurnRunner:
         turn_index: int,
         plan: SessionPlan,
         instructions: str,
-        input_bytes: bytes,
+        input_messages: tuple[ConversationMessage, ...],
         client: ResponsesClient,
     ) -> TurnResult:
-        try:
-            input_text = input_bytes.decode("utf-8", errors="strict")
-        except UnicodeError as exc:
-            raise ValueError("turn input must be valid UTF-8") from exc
         generation_id = f"gen-{uuid.uuid4()}"
         streaming_transport = worker.provider == "alternate"
         request = GenerationRequest(
             model=worker.model,
             instructions=instructions,
-            input_text=input_text,
+            input_messages=input_messages,
             # The custom endpoint rejects remote output caps and sampling
             # controls. Local artifact/program limits and conservative budget
             # reservations remain enforced independently.

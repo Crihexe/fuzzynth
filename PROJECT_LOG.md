@@ -707,3 +707,19 @@ This is the living operational memory for the project. Read it together with
   incomplete-stream label. Partial deltas remain non-executable.
 - All 126 offline tests and systemd unit verification pass. No candidate crash
   has been observed at this checkpoint.
+
+### 2026-09-02 — role-correct conversation history and live Telegram state
+
+- The owner clarified that previous generated JavaScript should remain the
+  model's prior `assistant` message, not be copied into a newly synthesized user
+  prompt. Replaced the flat `<recent-turn>/<program-data>` text envelope with a
+  bounded Responses API message sequence: initial user corpus/context, exact
+  assistant program, then user d8 observation and next-program request. API
+  `store` remains false and the bounded history is reconstructed from immutable
+  local session evidence for every request.
+- The Telegram control service had kept a startup-time worker configuration
+  snapshot from 08:33, so it incorrectly reported the newly enabled custom Luna
+  high lane as disabled. Authorized commands now reload the TOML before reading
+  or mutating worker state. `/workers` separately reports static configuration,
+  persistent control, and effective schedulability; a disabled worker can no
+  longer misleadingly appear to be dispatching.

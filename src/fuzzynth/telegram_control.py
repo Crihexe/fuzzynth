@@ -190,12 +190,26 @@ class TelegramControlService:
     def __exit__(self, *_args: object) -> None:
         self.close()
 
+    def _reload_configuration(self) -> None:
+        # This service is intentionally long-lived while campaign deployments
+        # may change the worker matrix. Never answer owner commands from a
+        # startup-time snapshot of the TOML.
+        self.configuration = load_campaign_configuration(
+            self.repo_root / "config/campaign-workers.toml",
+            repo_root=self.repo_root,
+        )
+
     def _status(self) -> str:
         worker_ids = tuple(self.configuration.workers)
         snapshot = self.control.snapshot(worker_ids)
         counts = Counter(session.status for session in self.sessions.list_sessions())
         worker_states = Counter(
-            snapshot.effective_state(worker_id) for worker_id in worker_ids
+            (
+                snapshot.effective_state(worker.worker_id)
+                if worker.enabled
+                else "disabled"
+            )
+            for worker in self.configuration.workers.values()
         )
         return "\n".join(
             (
@@ -222,9 +236,11 @@ class TelegramControlService:
         lines = ["FUZZYNTH WORKERS"]
         for worker in self.configuration.workers.values():
             configured = "enabled" if worker.enabled else "disabled"
+            control = snapshot.effective_state(worker.worker_id)
+            effective = control if worker.enabled else "disabled"
             lines.append(
-                f"{worker.worker_id}: {configured}, dispatch="
-                f"{snapshot.effective_state(worker.worker_id)}"
+                f"{worker.worker_id}: config={configured}, control={control}, "
+                f"effective={effective}"
             )
         return "\n".join(lines)
 
@@ -401,6 +417,7 @@ class TelegramControlService:
         command = authorize_command(update, self.credentials)
         if command is None:
             return None
+        self._reload_configuration()
         parts = command.text.split()
         raw_verb = parts[0]
         if not raw_verb.startswith("/"):

@@ -71,9 +71,17 @@ class TurnInputTests(unittest.TestCase):
             max_context_bytes=4096,
         )
 
-        self.assertNotIn(b"// turn 1", result)
-        self.assertIn(b"// turn 2", result)
-        self.assertIn(b"// turn 3", result)
+        payload = [message.as_dict() for message in result]
+        encoded = json.dumps(payload).encode()
+        self.assertNotIn(b"// turn 1", encoded)
+        self.assertIn(b"// turn 2", encoded)
+        self.assertIn(b"// turn 3", encoded)
+        self.assertEqual(
+            [message.role for message in result],
+            ["user", "assistant", "user", "assistant", "user"],
+        )
+        self.assertEqual(result[1].content, self.turn(2).program.decode())
+        self.assertNotIn("program-data", result[2].content)
 
     def test_drops_oldest_turns_to_fit_byte_limit(self) -> None:
         result = build_turn_input(
@@ -84,9 +92,10 @@ class TurnInputTests(unittest.TestCase):
             max_context_bytes=1200,
         )
 
-        self.assertNotIn(b"// turn 1", result)
-        self.assertNotIn(b"// turn 2", result)
-        self.assertIn(b"// turn 3", result)
+        encoded = json.dumps([message.as_dict() for message in result]).encode()
+        self.assertNotIn(b"// turn 1", encoded)
+        self.assertNotIn(b"// turn 2", encoded)
+        self.assertIn(b"// turn 3", encoded)
 
     def test_corpus_is_delimited_but_never_loaded_from_a_path(self) -> None:
         result = build_turn_input(
@@ -97,8 +106,8 @@ class TurnInputTests(unittest.TestCase):
             max_context_bytes=4096,
         )
 
-        self.assertIn(b"<historical-poc-corpus-data>", result)
-        self.assertIn(b"// public PoC example", result)
+        self.assertIn("<historical-poc-corpus-data>", result[0].content)
+        self.assertIn("// public PoC example", result[0].content)
 
     def test_rejects_oversized_corpus_instead_of_silently_truncating(self) -> None:
         with self.assertRaisesRegex(SessionContextError, "corpus"):

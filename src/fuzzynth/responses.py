@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 
 from fuzzynth.accounting import TokenUsage
 from fuzzynth.credentials import ProviderCredentials
+from fuzzynth.session_context import ConversationMessage
 from fuzzynth.sse import ResponsesStreamAssembler, SSEDecoder, StreamProtocolError
 
 
@@ -36,7 +37,8 @@ class ResponsesError(RuntimeError):
 class GenerationRequest:
     model: str
     instructions: str
-    input_text: str
+    input_text: str | None = None
+    input_messages: tuple[ConversationMessage, ...] = ()
     max_output_tokens: int | None = None
     temperature: float | None = None
     reasoning_effort: str | None = None
@@ -50,11 +52,17 @@ class GenerationRequest:
             raise ValueError("max_output_tokens must be positive")
         if self.temperature is not None and not 0 <= self.temperature <= 2:
             raise ValueError("temperature must be between 0 and 2")
+        if (self.input_text is None) == (not self.input_messages):
+            raise ValueError("exactly one input form must be provided")
 
         payload: dict[str, Any] = {
             "model": self.model,
             "instructions": self.instructions,
-            "input": self.input_text,
+            "input": (
+                self.input_text
+                if self.input_text is not None
+                else [message.as_dict() for message in self.input_messages]
+            ),
             "stream": self.stream,
             "store": False,
         }

@@ -17,6 +17,7 @@ from fuzzynth.campaign_turn import CampaignTurnRunner
 from fuzzynth.catalog import EvidenceCatalog
 from fuzzynth.execution_service import RecordedExecution
 from fuzzynth.responses import CreateResult, ResponsesError, StreamResult
+from fuzzynth.session_context import ConversationMessage
 
 
 class FakeClient:
@@ -121,6 +122,10 @@ class CampaignTurnTests(unittest.TestCase):
         )
 
     @staticmethod
+    def input_messages() -> tuple[ConversationMessage, ...]:
+        return (ConversationMessage(role="user", content="next program"),)
+
+    @staticmethod
     def response() -> dict:
         return {
             "id": "resp-test",
@@ -163,7 +168,7 @@ class CampaignTurnTests(unittest.TestCase):
             turn_index=1,
             plan=SessionPlan(7, 4, "xhigh", None),
             instructions="code only",
-            input_bytes=b"next program",
+            input_messages=self.input_messages(),
             client=client,
         )
 
@@ -216,7 +221,7 @@ class CampaignTurnTests(unittest.TestCase):
             turn_index=1,
             plan=SessionPlan(8, 1, "none", 1.5),
             instructions="code only",
-            input_bytes=b"next program",
+            input_messages=self.input_messages(),
             client=client,
         )
 
@@ -242,7 +247,7 @@ class CampaignTurnTests(unittest.TestCase):
             turn_index=1,
             plan=SessionPlan(9, 1, "xhigh", None),
             instructions="code only",
-            input_bytes=b"next program",
+            input_messages=self.input_messages(),
             client=client,
         )
 
@@ -272,7 +277,7 @@ class CampaignTurnTests(unittest.TestCase):
             turn_index=1,
             plan=SessionPlan(10, 1, "xhigh", None),
             instructions="code only",
-            input_bytes=b"next program",
+            input_messages=self.input_messages(),
             client=client,
         )
 
@@ -312,7 +317,7 @@ class CampaignTurnTests(unittest.TestCase):
             turn_index=1,
             plan=SessionPlan(11, 1, "high", None),
             instructions="code only",
-            input_bytes=b"next program",
+            input_messages=self.input_messages(),
             client=client,
         )
 
@@ -341,7 +346,7 @@ class CampaignTurnTests(unittest.TestCase):
             turn_index=1,
             plan=SessionPlan(7, 4, "xhigh", None),
             instructions="code only",
-            input_bytes=b"next program",
+            input_messages=self.input_messages(),
             client=client,
         )
 

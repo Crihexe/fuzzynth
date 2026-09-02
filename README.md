@@ -129,7 +129,9 @@ Unsupported custom controls (`max_output_tokens`, `max_completion_tokens`,
 `temperature`, and `top_p`) are never sent. A quota or provider failure pauses
 only its own worker; the other threads continue. When Spark is provider-paused,
 a managed custom Luna `none`/high-verbosity lane replaces it until Spark safely
-returns. Every request, raw response/stream, program, execution capture, and
+returns. Successive turns are sent as bounded alternating `user`/`assistant`
+messages with the generated JavaScript retained only in its original assistant
+message. Every request, raw response/stream, program, execution capture, and
 session transition is preserved under private `state/` storage while journald
 receives only safe identifiers and metrics.
 

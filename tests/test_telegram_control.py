@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 import tempfile
 import unittest
 
@@ -75,6 +76,25 @@ class TelegramControlServiceTests(unittest.TestCase):
             self.assertIsNotNone(reply)
             self.assertLess(len(reply), 4000)
             self.assertNotIn("secret", reply)
+
+    def test_workers_distinguishes_config_control_and_effective_state(self) -> None:
+        reply = self.service.handle_update(update(4, "/workers"))
+
+        self.assertIn(
+            "terra-custom-xhigh-tool-investigator: config=disabled, "
+            "control=running, effective=disabled",
+            reply,
+        )
+
+    def test_each_authorized_command_reloads_worker_configuration(self) -> None:
+        current = self.service.configuration
+        with patch(
+            "fuzzynth.telegram_control.load_campaign_configuration",
+            return_value=current,
+        ) as loader:
+            self.service.handle_update(update(5, "/workers"))
+
+        loader.assert_called_once()
 
     def test_pause_worker_is_idempotent_and_enforced(self) -> None:
         worker_id = "spark-custom-iterative-js"

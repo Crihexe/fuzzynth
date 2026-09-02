@@ -12,6 +12,7 @@ from fuzzynth.responses import (
     extract_output_text,
     extract_usage,
 )
+from fuzzynth.session_context import ConversationMessage
 
 
 class FakeResponse:
@@ -79,6 +80,38 @@ class GenerationRequestTests(unittest.TestCase):
         self.assertEqual(payload["max_output_tokens"], 512)
         self.assertEqual(payload["reasoning"], {"effort": "low"})
         self.assertEqual(payload["text"], {"verbosity": "high"})
+
+    def test_serializes_stateless_conversation_messages_with_roles(self) -> None:
+        payload = GenerationRequest(
+            model="gpt-test",
+            instructions="code only",
+            input_messages=(
+                ConversationMessage(role="user", content="first program"),
+                ConversationMessage(role="assistant", content="print(1);"),
+                ConversationMessage(role="user", content="d8 outcome: ok; next"),
+            ),
+        ).to_payload()
+
+        self.assertEqual(
+            payload["input"],
+            [
+                {"role": "user", "content": "first program"},
+                {"role": "assistant", "content": "print(1);"},
+                {"role": "user", "content": "d8 outcome: ok; next"},
+            ],
+        )
+        self.assertFalse(payload["store"])
+
+    def test_rejects_ambiguous_input_forms(self) -> None:
+        request = GenerationRequest(
+            model="gpt-test",
+            instructions="code only",
+            input_text="generate",
+            input_messages=(ConversationMessage(role="user", content="generate"),),
+        )
+
+        with self.assertRaisesRegex(ValueError, "exactly one"):
+            request.to_payload()
 
     def test_rejects_invalid_temperature(self) -> None:
         request = GenerationRequest(

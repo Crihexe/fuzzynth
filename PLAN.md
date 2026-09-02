@@ -116,7 +116,11 @@ executions, sanitizer executions, and triage replays.
 Spark sessions run for 8–16 turns; Luna sessions run for 4–8 turns. The exact
 length and official Luna temperature choice are sampled once per session and
 recorded. Recent history is bounded independently of the full
-archived history. A new session receives a newly sampled corpus window.
+archived history. Each stateless API request reconstructs that history as real
+alternating Responses API messages: the exact generated program is an
+`assistant` message and only its d8 observation plus the next request is a
+following `user` message. The program is never quoted again inside that user
+feedback. A new session receives a newly sampled corpus window.
 
 The first conditioned run uses four owner-approved examples selected from dataset
 v2. An explicit unconditioned control can bypass corpus selection. Every live

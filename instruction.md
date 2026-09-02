@@ -123,6 +123,11 @@ source-code analysis.
   memorization can be measured.
 - Keep normal contexts deliberately bounded. Randomize dataset windows and test
   short, medium, and long conversation lifetimes plus stateless fresh turns.
+- Within a multi-turn session, preserve actual chat roles. A generated program
+  re-enters context only as its original `assistant` message; the following
+  `user` message contains bounded d8 feedback and asks for the next program. Do
+  not duplicate the preceding JavaScript inside that feedback prompt. Keep API
+  storage disabled and reconstruct the bounded conversation from local evidence.
 - Compare frequent resets against rare resets: long-lived context may encourage
   novelty through accumulated feedback, but may also increase cost and mode
   collapse.

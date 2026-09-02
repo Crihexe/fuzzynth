@@ -129,9 +129,14 @@ class CampaignServiceTests(unittest.TestCase):
         self.assertEqual(len(result.turns), 2)
         self.assertEqual(len(self.requests), 2)
         self.assertTrue(all(request.stream for request in self.requests))
-        self.assertNotIn("print(1);", self.requests[0].input_text)
-        self.assertIn("print(1);", self.requests[1].input_text)
-        self.assertIn("execution-observation-json", self.requests[1].input_text)
+        first = self.requests[0].input_messages
+        second = self.requests[1].input_messages
+        self.assertEqual([message.role for message in first], ["user"])
+        self.assertNotIn("print(1);", first[0].content)
+        self.assertEqual([message.role for message in second], ["user", "assistant", "user"])
+        self.assertEqual(second[1].content, "print(1);")
+        self.assertIn("execution-observation-json", second[2].content)
+        self.assertNotIn("print(1);", second[2].content)
         self.assertEqual(result.session.next_turn, 3)
         self.assertEqual(result.session.status, "active")
 
