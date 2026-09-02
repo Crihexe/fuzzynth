@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import json
 from pathlib import Path
@@ -38,11 +38,14 @@ class RecordedExecution:
     timed_out: bool
     oom_killed: bool
     output_truncated: bool
+    stdout: bytes = field(repr=False)
+    stderr: bytes = field(repr=False)
 
     def as_dict(self) -> dict[str, object]:
         return {
-            field: getattr(self, field)
-            for field in self.__dataclass_fields__
+            name: getattr(self, name)
+            for name in self.__dataclass_fields__
+            if name not in {"stdout", "stderr"}
         }
 
 
@@ -56,9 +59,32 @@ def execute_file(
     state_root: Path = Path("state"),
     max_program_bytes: int = 2 * 1024 * 1024,
 ) -> RecordedExecution:
+    return execute_program(
+        program_path.read_bytes(),
+        build_profile=build_profile,
+        worker_profile=worker_profile,
+        flags=flags,
+        repo_root=repo_root,
+        state_root=state_root,
+        max_program_bytes=max_program_bytes,
+    )
+
+
+def execute_program(
+    program: bytes,
+    *,
+    generation_id: str | None = None,
+    build_profile: str = "release_symbolized",
+    worker_profile: str = "standard",
+    flags: tuple[str, ...] = (),
+    repo_root: Path = Path("."),
+    state_root: Path = Path("state"),
+    max_program_bytes: int = 2 * 1024 * 1024,
+) -> RecordedExecution:
     repo_root = repo_root.resolve()
     state_root = state_root.resolve()
-    program = program_path.read_bytes()
+    if not isinstance(program, bytes):
+        raise TypeError("program must be exact bytes")
     if len(program) > max_program_bytes:
         raise ExecutionServiceError("program exceeds local byte limit")
 
@@ -138,7 +164,7 @@ def execute_file(
         catalog.record_execution(
             ExecutionRecord(
                 execution_id=execution_id,
-                generation_id=None,
+                generation_id=generation_id,
                 program=program_ref,
                 stdout=stdout_ref,
                 stderr=stderr_ref,
@@ -175,4 +201,6 @@ def execute_file(
         timed_out=capture.observation.timed_out,
         oom_killed=capture.observation.oom_killed,
         output_truncated=capture.observation.output_truncated,
+        stdout=capture.stdout,
+        stderr=capture.stderr,
     )
