@@ -98,6 +98,15 @@ class TelegramControlServiceTests(unittest.TestCase):
         self.assertIn("use /start CONFIRM", resume_rejected)
         self.assertIn("global=running", started)
 
+    def test_resume_all_clears_individual_worker_pauses(self) -> None:
+        worker_id = "spark-custom-iterative-js"
+        self.service.handle_update(update(24, f"/pause {worker_id}"))
+
+        reply = self.service.handle_update(update(25, "/resume all"))
+
+        self.assertIn("effective=running", reply)
+        self.assertEqual(self.service.control.effective_state(worker_id), "running")
+
     def test_unknown_worker_and_text_do_not_execute_arbitrary_input(self) -> None:
         unknown = self.service.handle_update(update(30, "/pause not-a-worker"))
         plain = self.service.handle_update(update(31, "rm -rf something"))

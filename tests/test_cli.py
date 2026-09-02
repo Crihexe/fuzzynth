@@ -71,6 +71,16 @@ class OfflineCliTests(unittest.TestCase):
         self.assertEqual(exit_code, 2)
         self.assertIn("requires --live", error.getvalue())
 
+    def test_campaign_run_requires_explicit_live_switch(self) -> None:
+        error = io.StringIO()
+        with redirect_stderr(error):
+            exit_code = main(
+                ["campaign-run", "--corpus-file", "does-not-need-to-exist.js"]
+            )
+
+        self.assertEqual(exit_code, 2)
+        self.assertIn("requires --live", error.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

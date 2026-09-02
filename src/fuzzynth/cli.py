@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import signal
 import sys
 
 from fuzzynth import __version__
@@ -22,12 +23,19 @@ from fuzzynth.campaign_config import (
 from fuzzynth.catalog import CatalogError
 from fuzzynth.credentials import CredentialError, load_credentials
 from fuzzynth.control import ControlLedger, ControlStateError
+from fuzzynth.corpus import CorpusError, CorpusPool
 from fuzzynth.docker_executor import DockerExecutionError
 from fuzzynth.execution_service import ExecutionServiceError, execute_file
 from fuzzynth.probe import PROBE_INPUT, PROBE_INSTRUCTIONS, run_probe
 from fuzzynth.responses import GenerationRequest
 from fuzzynth.sessions import SessionLedger, SessionStateError
-from fuzzynth.notifications import NotificationError, load_telegram_credentials
+from fuzzynth.notifications import (
+    NotificationError,
+    TelegramCampaignNotifier,
+    load_telegram_credentials,
+    send_telegram_message,
+)
+from fuzzynth.supervisor import CampaignSupervisor
 from fuzzynth.telegram_control import TelegramControlService, run_control_loop
 
 
@@ -202,6 +210,23 @@ def build_parser() -> argparse.ArgumentParser:
     telegram.add_argument("--credentials", type=Path)
     telegram.add_argument("--state-root", type=Path, default=Path("state"))
     telegram.add_argument("--repo-root", type=Path, default=Path("."))
+
+    campaign = subparsers.add_parser(
+        "campaign-run",
+        help="run supervised iterative workers with an explicit corpus",
+    )
+    campaign.add_argument("--live", action="store_true", help="confirm provider usage")
+    campaign.add_argument("--corpus-file", type=Path, action="append", required=True)
+    campaign.add_argument("--window-size", type=int, default=2)
+    campaign.add_argument("--worker", action="append")
+    campaign.add_argument("--seed", type=int, default=1)
+    campaign.add_argument("--max-turns-per-worker", type=int)
+    campaign.add_argument("--max-sessions-per-worker", type=int)
+    campaign.add_argument("--exit-when-blocked", action="store_true")
+    campaign.add_argument("--credentials", type=Path)
+    campaign.add_argument("--telegram-credentials", type=Path)
+    campaign.add_argument("--state-root", type=Path, default=Path("state"))
+    campaign.add_argument("--repo-root", type=Path, default=Path("."))
     return parser
 
 
@@ -272,6 +297,57 @@ def main(argv: list[str] | None = None) -> int:
                     ),
                 )
             return 0
+        if args.command == "campaign-run":
+            if not args.live:
+                print("fuzzynth: campaign-run requires --live", file=sys.stderr)
+                return 2
+            repo_root = args.repo_root.resolve()
+            configuration = load_campaign_configuration(
+                repo_root / "config/campaign-workers.toml",
+                repo_root=repo_root,
+            )
+            worker_ids = tuple(args.worker or (
+                worker.worker_id
+                for worker in configuration.enabled_workers()
+            ))
+            corpus = CorpusPool.load(tuple(args.corpus_file))
+            provider_credentials = load_credentials(args.credentials)
+            telegram_credentials = load_telegram_credentials(
+                args.telegram_credentials
+            )
+            campaign_notifier = TelegramCampaignNotifier(telegram_credentials)
+            supervisor = CampaignSupervisor(
+                repo_root=repo_root,
+                state_root=args.state_root,
+                credentials=provider_credentials,
+                corpus=corpus,
+                worker_ids=worker_ids,
+                window_size=args.window_size,
+                base_seed=args.seed,
+                campaign_notifier=campaign_notifier,
+                operational_alert=lambda message: send_telegram_message(
+                    telegram_credentials,
+                    message,
+                ),
+            )
+            previous_term = signal.getsignal(signal.SIGTERM)
+            signal.signal(signal.SIGTERM, lambda *_args: supervisor.stop())
+            try:
+                summaries = supervisor.run(
+                    max_turns_per_worker=args.max_turns_per_worker,
+                    max_sessions_per_worker=args.max_sessions_per_worker,
+                    exit_when_blocked=args.exit_when_blocked,
+                )
+            finally:
+                signal.signal(signal.SIGTERM, previous_term)
+            print(
+                json.dumps(
+                    {"workers": [summary.as_dict() for summary in summaries]},
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+            return 0
     except (
         BudgetConfigurationError,
         CampaignConfigurationError,
@@ -281,6 +357,7 @@ def main(argv: list[str] | None = None) -> int:
         ExecutionServiceError,
         SessionStateError,
         ControlStateError,
+        CorpusError,
         NotificationError,
         OSError,
         ValueError,

@@ -331,13 +331,38 @@ class TelegramControlService:
         if target == "all":
             if verb == "resume" and self.control.global_state() == "stopped":
                 return f"Global state is stopped; use /start {CONFIRMATION_WORD}"
-            change = self.control.set_global(
-                state,
-                request_id=request_id,
-                source="telegram",
-                actor=actor,
-                command=normalized,
-            )
+            if verb == "resume":
+                changes = [
+                    self.control.set_global(
+                        state,
+                        request_id=request_id + ":global",
+                        source="telegram",
+                        actor=actor,
+                        command=normalized,
+                    )
+                ]
+                changes.extend(
+                    self.control.set_worker(
+                        worker_id,
+                        "running",
+                        request_id=request_id + ":" + worker_id,
+                        source="telegram",
+                        actor=actor,
+                        command=normalized,
+                    )
+                    for worker_id in self.configuration.workers
+                )
+                applied = any(item.applied for item in changes)
+                change = changes[0]
+            else:
+                change = self.control.set_global(
+                    state,
+                    request_id=request_id,
+                    source="telegram",
+                    actor=actor,
+                    command=normalized,
+                )
+                applied = change.applied
         else:
             if target not in self.configuration.workers:
                 return "Unknown worker. Use /workers for exact IDs."
@@ -349,14 +374,26 @@ class TelegramControlService:
                 actor=actor,
                 command=normalized,
             )
+            applied = change.applied
         effective = (
             self.control.global_state()
             if target == "all"
             else self.control.effective_state(target)
         )
+        resumed = 0
+        if verb == "resume":
+            for session in self.sessions.list_sessions():
+                if session.status != "paused":
+                    continue
+                if target != "all" and session.worker_id != target:
+                    continue
+                if self.control.dispatch_allowed(session.worker_id):
+                    self.sessions.resume(session.session_id)
+                    resumed += 1
         return (
             f"target={change.target}; configured={change.new_state}; "
-            f"effective={effective}; applied={str(change.applied).lower()}; "
+            f"effective={effective}; applied={str(applied).lower()}; "
+            f"sessions_resumed={resumed}; "
             "takes_effect_before_next_turn=true"
         )
 
