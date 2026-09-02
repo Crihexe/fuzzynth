@@ -31,6 +31,7 @@ class RecordedExecutionTests(unittest.TestCase):
         self.assertNotIn("stdout", safe)
         self.assertNotIn("stderr", safe)
         self.assertEqual(safe["stdout_sha256"], "d" * 64)
+        self.assertIsNone(safe["details_sha256"])
 
 
 if __name__ == "__main__":

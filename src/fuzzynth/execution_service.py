@@ -40,6 +40,7 @@ class RecordedExecution:
     output_truncated: bool
     stdout: bytes = field(repr=False)
     stderr: bytes = field(repr=False)
+    details_sha256: str | None = None
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -158,6 +159,36 @@ def execute_program(
         capture = DockerExecutor(image_id, limits).run(staged_program, flags)
     stdout_ref = store.put(capture.stdout)
     stderr_ref = store.put(capture.stderr)
+    details_ref = store.put(
+        json.dumps(
+            {
+                "build_profile": build_profile,
+                "capture": {
+                    "stderr_bytes": len(capture.stderr),
+                    "stdout_bytes": len(capture.stdout),
+                },
+                "container_id": capture.container_id,
+                "container_state": capture.container_state,
+                "core_dump_limit": 0,
+                "d8_flags": list(flags),
+                "d8_sha256": d8_sha256,
+                "image_id": image_id,
+                "schema_version": 1,
+                "worker_limits": {
+                    "cpus": limits.cpus,
+                    "max_output_bytes": limits.max_output_bytes,
+                    "memory_bytes": limits.memory_bytes,
+                    "pids": limits.pids,
+                    "tmpfs_bytes": limits.tmpfs_bytes,
+                    "wall_seconds": limits.wall_seconds,
+                },
+                "worker_profile": worker_profile,
+            },
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+    )
     execution_id = f"exec-{uuid.uuid4()}"
 
     with EvidenceCatalog(state_root / "catalog.sqlite3") as catalog:
@@ -182,6 +213,7 @@ def execute_program(
                 duration_ms=capture.duration_ms,
                 docker_error=capture.docker_error,
                 started_at=started_at,
+                details=details_ref,
             )
         )
 
@@ -203,4 +235,5 @@ def execute_program(
         output_truncated=capture.observation.output_truncated,
         stdout=capture.stdout,
         stderr=capture.stderr,
+        details_sha256=details_ref.sha256,
     )

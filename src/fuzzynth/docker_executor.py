@@ -48,6 +48,7 @@ class ExecutionCapture:
     observation: ProcessObservation
     outcome: ExecutionOutcome
     docker_error: str
+    container_state: dict[str, object]
 
 
 _IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}\Z")
@@ -126,6 +127,7 @@ class DockerExecutor:
                 observation=observation,
                 outcome=classify(observation),
                 docker_error=docker_error,
+                container_state=state,
             )
         except subprocess.TimeoutExpired as exc:
             raise DockerExecutionError("Docker control command timed out") from exc

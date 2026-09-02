@@ -61,6 +61,7 @@ class ExecutionRecord:
     duration_ms: int
     docker_error: str
     started_at: str
+    details: ArtifactRef | None = None
 
 
 _SCHEMA = """
@@ -113,13 +114,19 @@ CREATE TABLE execution (
   output_truncated INTEGER NOT NULL CHECK(output_truncated IN (0, 1)),
   duration_ms INTEGER NOT NULL CHECK(duration_ms >= 0),
   docker_error TEXT NOT NULL,
-  started_at TEXT NOT NULL
+  started_at TEXT NOT NULL,
+  details_sha256 TEXT REFERENCES artifact(sha256)
 ) STRICT;
 
 CREATE INDEX generation_campaign_idx ON generation(campaign_id, started_at);
 CREATE INDEX generation_provider_idx ON generation(provider, requested_model, started_at);
 CREATE INDEX execution_outcome_idx ON execution(outcome, bug_candidate, started_at);
-PRAGMA user_version = 1;
+PRAGMA user_version = 2;
+"""
+
+_MIGRATE_V1_TO_V2 = """
+ALTER TABLE execution ADD COLUMN details_sha256 TEXT REFERENCES artifact(sha256);
+PRAGMA user_version = 2;
 """
 
 
@@ -136,7 +143,9 @@ class EvidenceCatalog:
         version = self.connection.execute("PRAGMA user_version").fetchone()[0]
         if version == 0:
             self.connection.executescript(_SCHEMA)
-        elif version != 1:
+        elif version == 1:
+            self.connection.executescript(_MIGRATE_V1_TO_V2)
+        elif version != 2:
             self.connection.close()
             raise CatalogError(f"unsupported catalog schema version: {version}")
 
@@ -222,7 +231,14 @@ class EvidenceCatalog:
     def record_execution(self, record: ExecutionRecord) -> None:
         try:
             with self.connection:
-                for reference in (record.program, record.stdout, record.stderr):
+                for reference in (
+                    record.program,
+                    record.stdout,
+                    record.stderr,
+                    record.details,
+                ):
+                    if reference is None:
+                        continue
                     self._add_artifact(reference, record.started_at)
                 self.connection.execute(
                     """
@@ -231,9 +247,9 @@ class EvidenceCatalog:
                       stderr_sha256, profile, image_id, d8_sha256, flags_json,
                       outcome, bug_candidate, exit_code, signal_name, timed_out,
                       oom_killed, output_truncated, duration_ms, docker_error,
-                      started_at
+                      started_at, details_sha256
                     ) VALUES (
-                      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
                     )
                     """,
                     (
@@ -256,6 +272,7 @@ class EvidenceCatalog:
                         record.duration_ms,
                         record.docker_error,
                         record.started_at,
+                        record.details.sha256 if record.details else None,
                     ),
                 )
         except (sqlite3.Error, ValueError, TypeError) as exc:

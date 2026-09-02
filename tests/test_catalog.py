@@ -70,8 +70,14 @@ class EvidenceCatalogTests(unittest.TestCase):
                 duration_ms=50,
                 docker_error="",
                 started_at="2026-09-01T00:00:02Z",
+                details=self.store.put(b'{"container_state":{}}'),
             )
         )
+
+        details_sha256 = self.catalog.connection.execute(
+            "SELECT details_sha256 FROM execution WHERE id = 'exec-1'"
+        ).fetchone()[0]
+        self.assertIsNotNone(details_sha256)
 
         self.assertEqual(
             self.catalog.summary(),
