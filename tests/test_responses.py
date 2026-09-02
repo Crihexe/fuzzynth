@@ -8,6 +8,8 @@ from fuzzynth.responses import (
     GenerationRequest,
     ResponsesClient,
     ResponsesError,
+    extract_output_text,
+    extract_usage,
 )
 
 
@@ -77,6 +79,57 @@ class GenerationRequestTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "temperature"):
             request.to_payload()
+
+    def test_request_bytes_are_canonical_utf8(self) -> None:
+        request = GenerationRequest(
+            model="gpt-test",
+            instructions="caffè",
+            input_text="generate",
+        )
+
+        self.assertIn("caffè".encode(), request.to_bytes())
+        self.assertNotIn(b" ", request.to_bytes())
+
+
+class ResponseExtractionTests(unittest.TestCase):
+    def test_extracts_only_output_text_parts(self) -> None:
+        response = {
+            "output": [
+                {"type": "reasoning", "summary": []},
+                {
+                    "type": "message",
+                    "content": [
+                        {"type": "output_text", "text": "let x = 1;"},
+                        {"type": "output_text", "text": "\nprint(x);"},
+                    ],
+                },
+            ]
+        }
+
+        self.assertEqual(extract_output_text(response), b"let x = 1;\nprint(x);")
+
+    def test_rejects_missing_output_text(self) -> None:
+        with self.assertRaises(ResponsesError) as raised:
+            extract_output_text({"output": [{"type": "reasoning"}]})
+
+        self.assertEqual(raised.exception.code, "missing_output")
+
+    def test_extracts_cached_and_reasoning_usage(self) -> None:
+        usage = extract_usage(
+            {
+                "usage": {
+                    "input_tokens": 100,
+                    "input_tokens_details": {"cached_tokens": 80},
+                    "output_tokens": 40,
+                    "output_tokens_details": {"reasoning_tokens": 24},
+                }
+            }
+        )
+
+        self.assertEqual(usage.input_tokens, 100)
+        self.assertEqual(usage.cached_input_tokens, 80)
+        self.assertEqual(usage.output_tokens, 40)
+        self.assertEqual(usage.reasoning_tokens, 24)
 
 
 class StreamingClientTests(unittest.TestCase):

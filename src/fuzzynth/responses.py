@@ -8,6 +8,7 @@ import json
 from typing import Any, Callable
 from urllib.parse import urlsplit
 
+from fuzzynth.accounting import TokenUsage
 from fuzzynth.credentials import ProviderCredentials
 from fuzzynth.sse import ResponsesStreamAssembler, SSEDecoder, StreamProtocolError
 
@@ -56,6 +57,14 @@ class GenerationRequest:
             payload["text"] = {"verbosity": self.verbosity}
         return payload
 
+    def to_bytes(self) -> bytes:
+        return json.dumps(
+            self.to_payload(),
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+
 
 @dataclass(frozen=True, slots=True)
 class StreamResult:
@@ -63,6 +72,72 @@ class StreamResult:
     output: bytes
     terminal_type: str
     response: dict[str, Any] | None
+
+
+@dataclass(frozen=True, slots=True)
+class CreateResult:
+    raw_response: bytes
+    response: dict[str, Any]
+
+
+def extract_output_text(response: dict[str, Any]) -> bytes:
+    """Extract only semantic final-output text from a completed response."""
+
+    output = response.get("output")
+    if not isinstance(output, list):
+        raise ResponsesError("provider response has no output array", code="invalid_output")
+    fragments: list[str] = []
+    for item in output:
+        if not isinstance(item, dict) or item.get("type") != "message":
+            continue
+        content = item.get("content")
+        if not isinstance(content, list):
+            raise ResponsesError(
+                "provider message has invalid content", code="invalid_output"
+            )
+        for part in content:
+            if not isinstance(part, dict):
+                raise ResponsesError(
+                    "provider output content is invalid", code="invalid_output"
+                )
+            if part.get("type") != "output_text":
+                continue
+            value = part.get("text")
+            if not isinstance(value, str):
+                raise ResponsesError(
+                    "provider output text is invalid", code="invalid_output"
+                )
+            fragments.append(value)
+    if not fragments:
+        raise ResponsesError("provider response has no output text", code="missing_output")
+    try:
+        return "".join(fragments).encode("utf-8", errors="strict")
+    except UnicodeError as exc:
+        raise ResponsesError(
+            "provider output is not valid UTF-8", code="invalid_output"
+        ) from exc
+
+
+def extract_usage(response: dict[str, Any]) -> TokenUsage:
+    usage = response.get("usage")
+    if not isinstance(usage, dict):
+        return TokenUsage(input_tokens=None, output_tokens=None)
+    input_details = usage.get("input_tokens_details")
+    if not isinstance(input_details, dict):
+        input_details = {}
+    output_details = usage.get("output_tokens_details")
+    if not isinstance(output_details, dict):
+        output_details = {}
+
+    def integer(value: object) -> int | None:
+        return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+    return TokenUsage(
+        input_tokens=integer(usage.get("input_tokens")),
+        cached_input_tokens=integer(input_details.get("cached_tokens")),
+        output_tokens=integer(usage.get("output_tokens")),
+        reasoning_tokens=integer(output_details.get("reasoning_tokens")),
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,7 +161,7 @@ class ResponsesClient:
             raise ResponsesError("provider base URL is not a valid HTTPS endpoint")
 
         endpoint_path = f"{parsed.path.rstrip('/')}/responses"
-        payload = json.dumps(request.to_payload()).encode("utf-8")
+        payload = request.to_bytes()
         connection = http.client.HTTPSConnection(
             parsed.hostname,
             port=parsed.port,
@@ -153,12 +228,12 @@ class ResponsesClient:
             response=assembled.response,
         )
 
-    def create(
+    def create_raw(
         self,
         request: GenerationRequest,
         *,
         max_response_bytes: int = 4 * 1024 * 1024,
-    ) -> dict[str, Any]:
+    ) -> CreateResult:
         if request.stream:
             raise ValueError("non-streaming create requires stream=False")
         if max_response_bytes < 1:
@@ -168,7 +243,7 @@ class ResponsesClient:
             raise ResponsesError("provider base URL is not a valid HTTPS endpoint")
 
         endpoint_path = f"{parsed.path.rstrip('/')}/responses"
-        payload = json.dumps(request.to_payload()).encode("utf-8")
+        payload = request.to_bytes()
         connection = http.client.HTTPSConnection(
             parsed.hostname,
             port=parsed.port,
@@ -231,4 +306,15 @@ class ResponsesClient:
                 code=code,
             )
 
-        return decoded
+        return CreateResult(raw_response=response_body, response=decoded)
+
+    def create(
+        self,
+        request: GenerationRequest,
+        *,
+        max_response_bytes: int = 4 * 1024 * 1024,
+    ) -> dict[str, Any]:
+        return self.create_raw(
+            request,
+            max_response_bytes=max_response_bytes,
+        ).response
