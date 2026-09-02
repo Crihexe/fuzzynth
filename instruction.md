@@ -55,12 +55,15 @@ source-code analysis.
 - Support multiple campaign types running concurrently with independent worker,
   rate, token, and cost budgets.
 - The primary iterative workers are: alternate Spark with requested minimum
-  reasoning and high verbosity; alternate Luna `xhigh` and `low` comparison
+  reasoning and high verbosity; alternate Luna `high` and `low` comparison
   lanes with high verbosity; and official Luna with high verbosity, `none`
   reasoning, and high temperatures selected per session.
 - While Spark is paused by its five-hour or weekly provider quota, run a distinct
   alternate Luna lane with `none` reasoning and high verbosity. The fallback
   must not block other workers or override owner, crash, or provider pauses.
+- Retain the alternate Luna `xhigh` sample for comparison, but use `high` for the
+  sustained reasoning lane after the upstream service ended one realistic xhigh
+  stream with `request_timeout` near 535 seconds.
 - Keep a possible alternate Terra `xhigh` tool worker disabled until the initial
   workers establish validity, novelty, throughput, and cost baselines.
 - Do not replace `gpt-5.3-codex-spark` with another model automatically. Probe
@@ -69,9 +72,12 @@ source-code analysis.
   Do not require Markdown fences, JSON, explanatory prose, or function calls.
 - Use `stream: true` for the alternate endpoint to avoid its approximately
   125-second non-streaming Cloudflare boundary. Streaming is transport only:
-  buffer the entire SSE response, require a terminal completed response, verify
-  its semantic output against assembled deltas, archive it, and only then invoke
-  `d8`. Never execute partial output.
+  buffer until the stream terminates, archive it, and only then invoke `d8`. For
+  `response.completed`, verify semantic output against assembled deltas. If the
+  provider instead terminates with an error or incomplete response after emitting
+  text deltas, preserve and execute that exact bounded prefix once, mark it as
+  partial, retain unknown-usage reservations, and pause the affected lane. Never
+  execute bytes while a stream is still active.
 - The alternate endpoint does not support `max_output_tokens`,
   `max_completion_tokens`, `temperature`, or `top_p`; omit all four rather than
   sending defaults. Continue enforcing local response/program byte limits and

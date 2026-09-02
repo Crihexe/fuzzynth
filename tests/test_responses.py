@@ -28,6 +28,13 @@ class FakeResponse:
         return data if size is None else data[:size]
 
 
+class DisconnectingResponse(FakeResponse):
+    def read1(self, size: int) -> bytes:
+        if self.chunks:
+            return super().read1(size)
+        raise OSError("simulated disconnect")
+
+
 class FakeConnection:
     def __init__(self, response: FakeResponse):
         self.response = response
@@ -203,6 +210,21 @@ class StreamingClientTests(unittest.TestCase):
 
         self.assertEqual(raised.exception.status, 400)
         self.assertEqual(raised.exception.raw_response, raw)
+
+    def test_preserves_semantic_prefix_after_network_disconnect(self) -> None:
+        raw = b'data: {"type":"response.output_text.delta","delta":"print(1);"}\n\n'
+        connection = FakeConnection(DisconnectingResponse([raw]))
+
+        with patch(
+            "fuzzynth.responses.http.client.HTTPSConnection",
+            return_value=connection,
+        ):
+            with self.assertRaises(ResponsesError) as raised:
+                ResponsesClient(self.provider).stream(self.request())
+
+        self.assertEqual(raised.exception.code, "network_error")
+        self.assertEqual(raised.exception.raw_response, raw)
+        self.assertEqual(raised.exception.partial_output, b"print(1);")
 
     def test_custom_stream_payload_can_omit_unsupported_controls(self) -> None:
         terminal = {

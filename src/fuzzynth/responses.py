@@ -23,11 +23,13 @@ class ResponsesError(RuntimeError):
         status: int | None = None,
         code: str = "",
         raw_response: bytes = b"",
+        partial_output: bytes = b"",
     ):
         super().__init__(message)
         self.status = status
         self.code = code
         self.raw_response = raw_response
+        self.partial_output = partial_output
 
 
 @dataclass(frozen=True, slots=True)
@@ -219,25 +221,26 @@ class ResponsesClient:
             decoder.finish()
             assembled = assembler.finish()
         except ResponsesError as exc:
-            if exc.raw_response or not raw:
-                raise
             raise ResponsesError(
                 str(exc),
                 status=exc.status,
                 code=exc.code,
-                raw_response=bytes(raw),
+                raw_response=exc.raw_response or bytes(raw),
+                partial_output=exc.partial_output or assembler.output_so_far,
             ) from exc
         except StreamProtocolError as exc:
             raise ResponsesError(
                 f"provider stream protocol failed ({exc})",
                 code="stream_protocol_error",
                 raw_response=bytes(raw),
+                partial_output=assembler.output_so_far,
             ) from exc
         except (OSError, http.client.HTTPException) as exc:
             raise ResponsesError(
                 f"provider stream failed ({type(exc).__name__})",
                 code="network_error",
                 raw_response=bytes(raw),
+                partial_output=assembler.output_so_far,
             ) from exc
         finally:
             connection.close()

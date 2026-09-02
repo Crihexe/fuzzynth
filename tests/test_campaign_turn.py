@@ -255,11 +255,11 @@ class CampaignTurnTests(unittest.TestCase):
         self.assertEqual(generation[0], "failed")
         self.assertIsNotNone(generation[1])
 
-    def test_terminal_stream_error_code_is_preserved_and_never_executed(self) -> None:
+    def test_terminal_stream_error_executes_preserved_partial_output_once(self) -> None:
         client = FakeClient(
             StreamResult(
                 raw_sse=b'data: {"type":"error","code":"request_timeout"}\n\n',
-                output=b"partial and never executable",
+                output=b"print('partial');",
                 terminal_type="error",
                 response=None,
                 error_code="request_timeout",
@@ -277,15 +277,52 @@ class CampaignTurnTests(unittest.TestCase):
         )
 
         self.assertEqual(result.pause_reason, "provider_error")
-        self.assertIsNone(result.program)
-        self.assertIsNone(result.execution)
-        self.assertIsNone(self.executed_generation_id)
+        self.assertEqual(result.program, b"print('partial');")
+        self.assertIsNotNone(result.execution)
+        self.assertEqual(self.executed_generation_id, result.generation_id)
         row = self.catalog.connection.execute(
-            "SELECT effective_parameters_json, raw_stream_sha256 FROM generation"
+            "SELECT status, effective_parameters_json, raw_stream_sha256, "
+            "program_sha256 FROM generation"
         ).fetchone()
-        effective = json.loads(row[0])
+        self.assertEqual(row[0], "incomplete")
+        effective = json.loads(row[1])
         self.assertEqual(effective["error_code"], "request_timeout")
-        self.assertIsNotNone(row[1])
+        self.assertTrue(effective["partial_output_executable"])
+        self.assertIsNotNone(row[2])
+        self.assertIsNotNone(row[3])
+
+    def test_terminal_incomplete_response_is_metered_and_partial_is_executed(self) -> None:
+        response = self.response()
+        response["status"] = "incomplete"
+        response["incomplete_details"] = {"reason": "provider_limit"}
+        response["output"][0]["content"][0]["text"] = "print('prefix');"
+        client = FakeClient(
+            StreamResult(
+                raw_sse=b"complete terminal incomplete SSE",
+                output=b"print('prefix');",
+                terminal_type="response.incomplete",
+                response=response,
+            )
+        )
+
+        result = self.runner().run_turn(
+            worker=self.worker,
+            session_id="session-incomplete",
+            turn_index=1,
+            plan=SessionPlan(11, 1, "high", None),
+            instructions="code only",
+            input_bytes=b"next program",
+            client=client,
+        )
+
+        self.assertEqual(result.pause_reason, "incomplete_response")
+        self.assertEqual(result.program, b"print('prefix');")
+        self.assertIsNotNone(result.execution)
+        self.assertEqual(self.budgets.status("luna")["output_tokens"], 50)
+        status = self.catalog.connection.execute(
+            "SELECT status FROM generation"
+        ).fetchone()[0]
+        self.assertEqual(status, "incomplete")
 
     def test_provider_limit_error_is_preserved_and_pauses(self) -> None:
         client = FakeClient(

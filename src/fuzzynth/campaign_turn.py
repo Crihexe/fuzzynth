@@ -103,6 +103,38 @@ class CampaignTurnRunner:
         self.max_feedback_bytes = max_feedback_bytes
         self.executor = executor
 
+    def _execute(
+        self,
+        worker: CampaignWorker,
+        generation_id: str,
+        program: bytes,
+    ) -> tuple[RecordedExecution, bytes]:
+        execution = self.executor(
+            program,
+            generation_id=generation_id,
+            build_profile=worker.v8_build_profile,
+            worker_profile=worker.v8_worker_profile,
+            flags=worker.d8_flags,
+            repo_root=self.repo_root,
+            state_root=self.state_root,
+            max_program_bytes=self.max_program_bytes,
+        )
+        feedback = build_execution_feedback(
+            ExecutionFeedback(
+                outcome=execution.outcome,
+                exit_code=execution.exit_code,
+                signal_name=execution.signal_name,
+                timed_out=execution.timed_out,
+                oom_killed=execution.oom_killed,
+                output_truncated=execution.output_truncated,
+                duration_ms=execution.duration_ms,
+                stdout=execution.stdout,
+                stderr=execution.stderr,
+            ),
+            max_feedback_bytes=self.max_feedback_bytes,
+        )
+        return execution, feedback
+
     def run_turn(
         self,
         *,
@@ -158,7 +190,10 @@ class CampaignTurnRunner:
             "turn_index": turn_index,
             "verbosity": worker.verbosity,
         }
+        if streaming_transport:
+            requested_parameters["terminal_partial_output_policy"] = "execute_once"
 
+        stream_partial_output = b""
         try:
             stream_terminal_type: str | None = None
             stream_error_code: str | None = None
@@ -169,17 +204,20 @@ class CampaignTurnRunner:
                 )
                 stream_terminal_type = streamed.terminal_type
                 stream_error_code = streamed.error_code
+                stream_partial_output = streamed.output
                 if streamed.terminal_type == "error":
                     raise ResponsesError(
                         "provider returned a terminal stream error",
                         code=streamed.error_code or "stream_error",
                         raw_response=streamed.raw_sse,
+                        partial_output=streamed.output,
                     )
                 if streamed.response is None:
                     raise ResponsesError(
                         "provider stream did not yield a terminal response",
                         code="incomplete_stream",
                         raw_response=streamed.raw_sse,
+                        partial_output=streamed.output,
                     )
                 response = streamed.response
                 raw_response = streamed.raw_sse
@@ -206,6 +244,11 @@ class CampaignTurnRunner:
             self.budgets.mark_uncertain(reservation.reservation_id)
             finished_at = datetime.now(timezone.utc).isoformat()
             raw_ref = self.store.put(exc.raw_response) if exc.raw_response else None
+            partial_program = exc.partial_output if streaming_transport else b""
+            partial_ref = self.store.put(partial_program) if partial_program else None
+            partial_executable = bool(
+                partial_program and len(partial_program) <= self.max_program_bytes
+            )
             self.catalog.record_generation(
                 GenerationRecord(
                     generation_id=generation_id,
@@ -214,15 +257,17 @@ class CampaignTurnRunner:
                     provider=worker.provider,
                     requested_model=worker.model,
                     actual_model=None,
-                    status="failed",
+                    status="incomplete" if partial_program else "failed",
                     request=request_ref,
                     raw_stream=raw_ref,
-                    program=None,
+                    program=partial_ref,
                     response_id=None,
                     requested_parameters=requested_parameters,
                     effective_parameters={
                         "error_code": exc.code,
                         "http_status": exc.status,
+                        "partial_output_bytes": len(partial_program),
+                        "partial_output_executable": partial_executable,
                     },
                     input_tokens=None,
                     cached_input_tokens=None,
@@ -233,16 +278,41 @@ class CampaignTurnRunner:
                     finished_at=finished_at,
                 )
             )
+            pause_reason = (
+                "provider_quota_or_rate_limit"
+                if exc.status == 429
+                else "provider_error"
+            )
+            if partial_program and not partial_executable:
+                pause_reason = "program_too_large"
+            if partial_executable:
+                execution, feedback = self._execute(
+                    worker,
+                    generation_id,
+                    partial_program,
+                )
+                return TurnResult(
+                    generation_id=generation_id,
+                    execution=execution,
+                    program=partial_program,
+                    feedback=feedback,
+                    pause_reason=pause_reason,
+                    stop_reason=(
+                        "bug_candidate" if execution.bug_candidate else None
+                    ),
+                    response_status=None,
+                    input_tokens=None,
+                    cached_input_tokens=None,
+                    output_tokens=None,
+                    reasoning_tokens=None,
+                    actual_microunits=None,
+                )
             return TurnResult(
                 generation_id=generation_id,
                 execution=None,
-                program=None,
+                program=partial_program or None,
                 feedback=None,
-                pause_reason=(
-                    "provider_quota_or_rate_limit"
-                    if exc.status == 429
-                    else "provider_error"
-                ),
+                pause_reason=pause_reason,
                 stop_reason=None,
                 response_status=None,
                 input_tokens=None,
@@ -278,7 +348,15 @@ class CampaignTurnRunner:
         generation_status = "completed"
         output_error: ResponsesError | None = None
         if response_status != "completed":
-            generation_status = "incomplete"
+            if streaming_transport and stream_partial_output:
+                program = stream_partial_output
+                program_ref = self.store.put(program)
+                generation_status = "incomplete"
+                if len(program) > self.max_program_bytes:
+                    generation_status = "failed"
+                    pause_reason = pause_reason or "program_too_large"
+            else:
+                generation_status = "incomplete"
             pause_reason = pause_reason or "incomplete_response"
         else:
             try:
@@ -297,6 +375,11 @@ class CampaignTurnRunner:
         if streaming_transport:
             effective["stream_terminal_type"] = stream_terminal_type
             effective["stream_error_code"] = stream_error_code
+            effective["partial_output_bytes"] = (
+                len(program)
+                if generation_status == "incomplete" and program
+                else 0
+            )
         if output_error is not None:
             effective["output_error"] = output_error.code
         actual_microunits = (
@@ -330,7 +413,11 @@ class CampaignTurnRunner:
                 finished_at=finished_at,
             )
         )
-        if generation_status != "completed" or program is None:
+        if (
+            generation_status not in {"completed", "incomplete"}
+            or program is None
+            or len(program) > self.max_program_bytes
+        ):
             return TurnResult(
                 generation_id=generation_id,
                 execution=None,
@@ -346,30 +433,7 @@ class CampaignTurnRunner:
                 actual_microunits=actual_microunits,
             )
 
-        execution = self.executor(
-            program,
-            generation_id=generation_id,
-            build_profile=worker.v8_build_profile,
-            worker_profile=worker.v8_worker_profile,
-            flags=worker.d8_flags,
-            repo_root=self.repo_root,
-            state_root=self.state_root,
-            max_program_bytes=self.max_program_bytes,
-        )
-        feedback = build_execution_feedback(
-            ExecutionFeedback(
-                outcome=execution.outcome,
-                exit_code=execution.exit_code,
-                signal_name=execution.signal_name,
-                timed_out=execution.timed_out,
-                oom_killed=execution.oom_killed,
-                output_truncated=execution.output_truncated,
-                duration_ms=execution.duration_ms,
-                stdout=execution.stdout,
-                stderr=execution.stderr,
-            ),
-            max_feedback_bytes=self.max_feedback_bytes,
-        )
+        execution, feedback = self._execute(worker, generation_id, program)
         return TurnResult(
             generation_id=generation_id,
             execution=execution,

@@ -120,8 +120,11 @@ sudo ./scripts/install_telegram_control_service.sh
 
 The checked-in v2 service runs independent Spark, custom Luna, and official Luna
 threads over the four explicitly reviewed JavaScript corpus files. Custom API
-requests use SSE to keep the gateway connection alive, but the controller waits
-for and validates the complete terminal response before executing anything.
+requests use SSE to keep the gateway connection alive. The controller always
+waits until the stream terminates before executing anything. Completed output is
+cross-checked against the terminal response; a bounded text prefix from a failed
+or incomplete terminal stream is archived, explicitly marked partial, and may be
+executed once only after termination.
 Unsupported custom controls (`max_output_tokens`, `max_completion_tokens`,
 `temperature`, and `top_p`) are never sent. A quota or provider failure pauses
 only its own worker; the other threads continue. When Spark is provider-paused,

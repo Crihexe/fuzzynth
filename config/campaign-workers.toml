@@ -29,7 +29,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc"]
 
 [[workers]]
 id = "luna-custom-xhigh-iterative-js"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -50,11 +50,11 @@ v8_build_profile = "release_symbolized"
 v8_worker_profile = "standard"
 d8_flags = ["--allow-natives-syntax", "--expose-gc"]
 
-# Retained as a disabled comparison lane. Custom transport now uses SSE, so the
-# historical non-streaming HTTP 524 boundary is no longer an xhigh limitation.
+# High-effort replacement for xhigh. SSE removed the historical 125-second 524,
+# but xhigh still encountered an upstream request timeout near 535 seconds.
 [[workers]]
 id = "luna-custom-high-iterative-js"
-enabled = false
+enabled = true
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"

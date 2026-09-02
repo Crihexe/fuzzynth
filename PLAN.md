@@ -80,7 +80,8 @@ separates provider effects from model and generation effects:
 | Worker | Provider/model | Parameters | Session turns | Status |
 |---|---|---|---|---|
 | `spark-custom-iterative-js` | alternate Spark | `none`, high verbosity; unsupported controls omitted | randomized 8–16 | enabled; quota-paused independently |
-| `luna-custom-xhigh-iterative-js` | alternate GPT-5.6 Luna | `xhigh`, high verbosity; unsupported controls omitted | randomized 4–8 | enabled |
+| `luna-custom-xhigh-iterative-js` | alternate GPT-5.6 Luna | `xhigh`, high verbosity; unsupported controls omitted | randomized 4–8 | sampled, disabled after upstream timeout |
+| `luna-custom-high-iterative-js` | alternate GPT-5.6 Luna | `high`, high verbosity; unsupported controls omitted | randomized 4–8 | enabled replacement |
 | `luna-custom-low-iterative-js` | alternate GPT-5.6 Luna | `low`, high verbosity; unsupported controls omitted | randomized 4–8 | enabled baseline |
 | `luna-custom-none-spark-fallback-js` | alternate GPT-5.6 Luna | `none`, high verbosity; unsupported controls omitted | randomized 4–8 | managed fallback while Spark is paused |
 | `luna-official-high-temperature-none-js` | official GPT-5.6 Luna | `none`, high verbosity, temperature 1.2/1.5/1.8 per session | randomized 4–8 | enabled |
@@ -122,12 +123,14 @@ v2. An explicit unconditioned control can bypass corpus selection. Every live
 campaign entry point requires `--live`, durable control permission, and a budget
 reservation before provider dispatch.
 
-Streaming is a transport property, not an incremental-execution strategy. Custom
-responses must reach `response.completed`, and their assembled deltas must equal
-the semantic terminal output, before any program can reach d8. The custom request
-omits `max_output_tokens`, `max_completion_tokens`, `temperature`, and `top_p`;
-local response/program byte limits and worst-case token reservations remain in
-force.
+Streaming is a transport property, not an incremental-execution strategy. No
+bytes reach d8 while a custom stream is active. Completed responses require the
+assembled deltas to equal terminal semantic output. When an error or incomplete
+terminal event follows text deltas, the bounded exact prefix is marked partial
+and executed once after termination; absent usage remains conservatively
+reserved and the lane pauses. The custom request omits `max_output_tokens`,
+`max_completion_tokens`, `temperature`, and `top_p`; local response/program byte
+limits and worst-case token reservations remain in force.
 
 ### 4.3 Evidence and resource safeguards
 

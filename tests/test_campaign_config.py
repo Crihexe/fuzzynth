@@ -21,7 +21,7 @@ class CampaignConfigurationTests(unittest.TestCase):
             enabled,
             {
                 "spark-custom-iterative-js",
-                "luna-custom-xhigh-iterative-js",
+                "luna-custom-high-iterative-js",
                 "luna-custom-low-iterative-js",
                 "luna-custom-none-spark-fallback-js",
                 "luna-official-high-temperature-none-js",
@@ -44,8 +44,10 @@ class CampaignConfigurationTests(unittest.TestCase):
         self.assertEqual(worker.reasoning_efforts, ("low",))
         self.assertEqual(worker.max_output_tokens, 2048)
         self.assertEqual(worker.reservation_output_tokens, 128_000)
-        self.assertTrue(self.config.workers["luna-custom-xhigh-iterative-js"].enabled)
-        self.assertFalse(self.config.workers["luna-custom-high-iterative-js"].enabled)
+        high = self.config.workers["luna-custom-high-iterative-js"]
+        self.assertTrue(high.enabled)
+        self.assertEqual(high.reasoning_efforts, ("high",))
+        self.assertFalse(self.config.workers["luna-custom-xhigh-iterative-js"].enabled)
 
     def test_spark_fallback_requests_none_with_high_verbosity(self) -> None:
         worker = self.config.workers["luna-custom-none-spark-fallback-js"]

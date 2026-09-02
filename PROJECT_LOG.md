@@ -664,6 +664,16 @@ This is the living operational memory for the project. Read it together with
   observed complete-SSE xhigh sample is therefore three completions and one
   provider `request_timeout`; xhigh was then owner-control paused with no active
   reservation while lower-effort lanes continued.
+- The owner traced the remaining ~535-second timeout to upstream OpenAI and
+  changed the terminal-partial policy: after a stream has definitively ended,
+  Fuzzynth may execute the exact bounded output-text prefix once because even
+  syntactically incomplete generated code can exercise parsing paths. It still
+  never executes live stream fragments. Partial programs, raw SSE, provider code,
+  execution evidence, and the unknown-usage reservation remain linked, and the
+  affected lane pauses after the one execution.
+- The sustained reasoning lane changed from custom Luna `xhigh` to `high` to test
+  whether lower thinking latency improves terminal completion. The historical
+  xhigh worker and evidence remain configured but disabled.
 - Added a distinct custom Luna `none`/high-verbosity fallback lane managed by a
   local reconciler. It runs only while Spark has a supervisor-originated provider
   or quota pause and never overrides owner, crash, or provider control. Its first

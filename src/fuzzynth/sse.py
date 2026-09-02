@@ -94,6 +94,12 @@ class ResponsesStreamAssembler:
         self._response: dict[str, Any] | None = None
         self._error_code: str | None = None
 
+    @property
+    def output_so_far(self) -> bytes:
+        """Return an immutable snapshot of semantic deltas received so far."""
+
+        return bytes(self._output)
+
     def accept(self, event: SSEEvent) -> None:
         if event.data == b"[DONE]":
             self._terminal_type = self._terminal_type or "done"
