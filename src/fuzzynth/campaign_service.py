@@ -16,6 +16,7 @@ from fuzzynth.campaign_config import (
 )
 from fuzzynth.campaign_turn import CampaignTurnRunner, TurnResult
 from fuzzynth.catalog import EvidenceCatalog
+from fuzzynth.control import ControlLedger
 from fuzzynth.credentials import CredentialStore, ProviderCredentials
 from fuzzynth.execution_service import RecordedExecution, execute_program
 from fuzzynth.responses import ResponsesClient
@@ -91,10 +92,12 @@ class CampaignService:
             self.state_root / "sessions.sqlite3",
             self.store,
         )
+        self.control = ControlLedger(self.state_root / "control.sqlite3")
         self.executor = executor
         self.event_notifier = event_notifier
 
     def close(self) -> None:
+        self.control.close()
         self.sessions.close()
         self.budgets.close()
         self.catalog.close()
@@ -119,6 +122,7 @@ class CampaignService:
             raise CampaignServiceError(f"unknown campaign worker: {worker_id}") from exc
         if not worker.enabled:
             raise CampaignServiceError(f"campaign worker is disabled: {worker_id}")
+        self._require_dispatch(worker_id)
         if corpus_window is None and not allow_unconditioned:
             raise CampaignServiceError(
                 "a selected corpus window is required until an explicit unconditioned run"
@@ -139,6 +143,13 @@ class CampaignService:
         )
         return worker, plan
 
+    def _require_dispatch(self, worker_id: str) -> None:
+        state = self.control.effective_state(worker_id)
+        if state != "running":
+            raise CampaignServiceError(
+                f"campaign control blocks worker {worker_id}: {state}"
+            )
+
     def run_session(
         self,
         session_id: str,
@@ -150,6 +161,7 @@ class CampaignService:
         session = self.sessions.get(session_id)
         if session.status != "active":
             raise SessionStateError("only an active session can run")
+        self._require_dispatch(session.worker_id)
         worker, plan = self._worker_and_plan(session)
         try:
             meter_policy = self.policies[worker.meter]
@@ -179,6 +191,8 @@ class CampaignService:
         while session.status == "active" and (
             max_turns is None or len(completed) < max_turns
         ):
+            if not self.control.dispatch_allowed(session.worker_id):
+                break
             history = self.sessions.history(
                 session_id,
                 limit=worker.history_turns,
@@ -209,4 +223,6 @@ class CampaignService:
         return SessionRunResult(session=session, turns=tuple(completed))
 
     def resume_session(self, session_id: str) -> SessionRecord:
+        session = self.sessions.get(session_id)
+        self._require_dispatch(session.worker_id)
         return self.sessions.resume(session_id)

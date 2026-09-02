@@ -133,6 +133,30 @@ class CampaignServiceTests(unittest.TestCase):
         self.assertIn(session.temperature, (1.2, 1.5, 1.8))
         self.assertIn(session.reasoning_effort, ("none", "low"))
 
+    def test_paused_worker_cannot_start_or_advance(self) -> None:
+        session = self.service.start_session(
+            "spark-custom-iterative-js",
+            seed=7,
+            corpus_window=b"// selected historical example",
+        )
+        self.service.control.set_worker(
+            session.worker_id,
+            "paused",
+            request_id="test-pause",
+            source="test",
+            actor="owner",
+            command="pause worker",
+        )
+
+        with self.assertRaisesRegex(CampaignServiceError, "paused"):
+            self.service.run_session(session.session_id, max_turns=1)
+        with self.assertRaisesRegex(CampaignServiceError, "paused"):
+            self.service.start_session(
+                "spark-custom-iterative-js",
+                seed=8,
+                corpus_window=b"// selected historical example",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

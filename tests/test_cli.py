@@ -47,6 +47,22 @@ class OfflineCliTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertEqual(document, {"sessions": []})
 
+    def test_control_status_defaults_all_workers_to_running(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            exit_code, document = self.invoke(
+                ["control-status", "--state-root", temporary]
+            )
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(document["global_state"], "running")
+        self.assertEqual(len(document["workers"]), 4)
+        self.assertTrue(
+            all(
+                worker["effective_state"] == "running"
+                for worker in document["workers"].values()
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

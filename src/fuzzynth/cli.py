@@ -21,6 +21,7 @@ from fuzzynth.campaign_config import (
 )
 from fuzzynth.catalog import CatalogError
 from fuzzynth.credentials import CredentialError, load_credentials
+from fuzzynth.control import ControlLedger, ControlStateError
 from fuzzynth.docker_executor import DockerExecutionError
 from fuzzynth.execution_service import ExecutionServiceError, execute_file
 from fuzzynth.probe import PROBE_INPUT, PROBE_INSTRUCTIONS, run_probe
@@ -115,6 +116,18 @@ def _session_status(state_root: Path) -> int:
     return 0
 
 
+def _control_status(repo_root: Path, state_root: Path) -> int:
+    configuration = load_campaign_configuration(
+        repo_root / "config/campaign-workers.toml",
+        repo_root=repo_root,
+    )
+    worker_ids = tuple(configuration.workers)
+    with ControlLedger(state_root / "control.sqlite3") as ledger:
+        document = ledger.snapshot(worker_ids).as_dict()
+    print(json.dumps(document, indent=2, sort_keys=True))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="fuzzynth")
     parser.add_argument("--version", action="version", version=__version__)
@@ -170,6 +183,12 @@ def build_parser() -> argparse.ArgumentParser:
         "session-status", help="show durable campaign session state"
     )
     sessions.add_argument("--state-root", type=Path, default=Path("state"))
+
+    controls = subparsers.add_parser(
+        "control-status", help="show durable campaign dispatch controls"
+    )
+    controls.add_argument("--state-root", type=Path, default=Path("state"))
+    controls.add_argument("--repo-root", type=Path, default=Path("."))
     return parser
 
 
@@ -215,6 +234,11 @@ def main(argv: list[str] | None = None) -> int:
             )
         if args.command == "session-status":
             return _session_status(args.state_root.resolve())
+        if args.command == "control-status":
+            return _control_status(
+                args.repo_root.resolve(),
+                args.state_root.resolve(),
+            )
     except (
         BudgetConfigurationError,
         CampaignConfigurationError,
@@ -223,6 +247,7 @@ def main(argv: list[str] | None = None) -> int:
         DockerExecutionError,
         ExecutionServiceError,
         SessionStateError,
+        ControlStateError,
         OSError,
         ValueError,
     ) as exc:
