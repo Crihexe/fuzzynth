@@ -11,6 +11,7 @@ from fuzzynth.budgets import (
     BudgetLimitError,
     MeterPolicy,
     load_meter_policies,
+    load_request_caps,
 )
 
 
@@ -32,6 +33,13 @@ class BudgetConfigurationTests(unittest.TestCase):
             4_900_000,
         )
         self.assertNotIn("terra_alternate", policies)
+
+    def test_loads_bounded_non_streaming_request_caps(self) -> None:
+        caps = load_request_caps(Path("config/budgets.toml"))
+
+        self.assertEqual(caps.max_response_bytes, 2_097_152)
+        self.assertEqual(caps.max_program_bytes, 524_288)
+        self.assertEqual(caps.max_context_bytes, 131_072)
 
 
 class BudgetLedgerTests(unittest.TestCase):

@@ -61,6 +61,49 @@ class MeterPolicy:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class RequestCaps:
+    wall_seconds: float
+    max_response_bytes: int
+    max_program_bytes: int
+    max_feedback_bytes: int
+    max_context_bytes: int
+
+
+def load_request_caps(path: Path) -> RequestCaps:
+    try:
+        with path.open("rb") as stream:
+            document = tomllib.load(stream)
+    except (OSError, tomllib.TOMLDecodeError) as exc:
+        raise BudgetConfigurationError("unable to load request caps") from exc
+    if document.get("schema_version") != 2:
+        raise BudgetConfigurationError("unsupported budget configuration version")
+    raw = document.get("request_caps")
+    if not isinstance(raw, dict):
+        raise BudgetConfigurationError("request caps are missing")
+    wall_seconds = raw.get("wall_seconds")
+    if (
+        isinstance(wall_seconds, bool)
+        or not isinstance(wall_seconds, (int, float))
+        or wall_seconds <= 0
+    ):
+        raise BudgetConfigurationError("wall_seconds must be positive")
+
+    def positive(name: str) -> int:
+        value = raw.get(name)
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            raise BudgetConfigurationError(f"{name} must be a positive integer")
+        return value
+
+    return RequestCaps(
+        wall_seconds=float(wall_seconds),
+        max_response_bytes=positive("max_response_bytes"),
+        max_program_bytes=positive("max_program_bytes"),
+        max_feedback_bytes=positive("max_feedback_bytes"),
+        max_context_bytes=positive("max_context_bytes"),
+    )
+
+
 def _optional_nonnegative_int(value: object, name: str) -> int | None:
     if value is None:
         return None
