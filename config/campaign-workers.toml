@@ -54,13 +54,36 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc"]
 # continue the experiment at high effort under a distinct worker identity.
 [[workers]]
 id = "luna-custom-high-iterative-js"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
 mode = "iterative_raw_js"
 prompt = "prompts/iterative_js_v1.txt"
 reasoning_efforts = ["high"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 4
+max_turns_per_session = 8
+history_turns = 4
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "release_symbolized"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc"]
+
+# High effort reached the same alternate-provider HTTP 524 boundary as xhigh.
+# Low is the highest practical non-streaming lane still to test under that
+# gateway. It remains distinct so failed high/xhigh attempts are never obscured.
+[[workers]]
+id = "luna-custom-low-iterative-js"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_v1.txt"
+reasoning_efforts = ["low"]
 verbosity = "high"
 temperatures = []
 min_turns_per_session = 4
