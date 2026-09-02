@@ -842,3 +842,24 @@ This is the living operational memory for the project. Read it together with
   the same session; 4o mini completed both remaining turns and began its next
   session normally. Both services remained active, and Telegram update 68
   reported the successful recovery.
+
+### 2026-09-02 — mandatory `--fuzzing` rollout
+
+- After additional owner-reviewed `CheckMarkedForManualOptimization` false
+  positives, verified the pinned V8 implementation directly: the flag definition
+  documents silent invalid-intrinsic failure, and runtime-test optimization paths
+  bypass that particular fatal check when `v8_flags.fuzzing` is true.
+- Added `--fuzzing` to all ten configured workers, including currently disabled
+  comparison lanes, and made configuration loading fail closed if any worker
+  omits it. Updated the generation contract so models know that `undefined` from
+  invalid intrinsic use is harness behavior rather than a finding.
+- Re-executed one exact preserved owner-reviewed false-positive program through
+  the isolated release-symbolized worker with the new flag vector. The original
+  evidence was unchanged; the canary completed in 211 ms as `js_exception` with
+  `bug_candidate=false`, instead of the prior `v8_fatal` result.
+- The full offline suite passes with 145 tests. Commit `9e47134` was pushed and
+  deployed after a cooperative drain. The first four post-deploy executions span
+  official GPT-4.1 nano and custom Luna, all attest the exact flag vector
+  `--allow-natives-syntax`, `--expose-gc`, `--fuzzing`; they contain zero
+  candidates and zero executions missing the mandatory flag. Campaign and
+  Telegram services remain active.
