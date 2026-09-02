@@ -1,4 +1,4 @@
-"""Durable orchestration of iterative non-streaming campaign sessions."""
+"""Durable orchestration of iterative complete-response campaign sessions."""
 
 from __future__ import annotations
 

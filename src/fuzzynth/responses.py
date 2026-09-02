@@ -35,7 +35,7 @@ class GenerationRequest:
     model: str
     instructions: str
     input_text: str
-    max_output_tokens: int = 64
+    max_output_tokens: int | None = None
     temperature: float | None = None
     reasoning_effort: str | None = None
     verbosity: str | None = None
@@ -44,7 +44,7 @@ class GenerationRequest:
     def to_payload(self) -> dict[str, Any]:
         if not self.model.strip():
             raise ValueError("model must not be empty")
-        if self.max_output_tokens < 1:
+        if self.max_output_tokens is not None and self.max_output_tokens < 1:
             raise ValueError("max_output_tokens must be positive")
         if self.temperature is not None and not 0 <= self.temperature <= 2:
             raise ValueError("temperature must be between 0 and 2")
@@ -53,10 +53,11 @@ class GenerationRequest:
             "model": self.model,
             "instructions": self.instructions,
             "input": self.input_text,
-            "max_output_tokens": self.max_output_tokens,
             "stream": self.stream,
             "store": False,
         }
+        if self.max_output_tokens is not None:
+            payload["max_output_tokens"] = self.max_output_tokens
         if self.temperature is not None:
             payload["temperature"] = self.temperature
         if self.reasoning_effort is not None:
@@ -193,11 +194,12 @@ class ResponsesClient:
             )
             response = connection.getresponse()
             if response.status < 200 or response.status >= 300:
-                response.read(max_stream_bytes)
+                response_body = response.read(max_stream_bytes + 1)
                 raise ResponsesError(
                     f"provider rejected stream request (HTTP {response.status})",
                     status=response.status,
                     code="http_error",
+                    raw_response=response_body,
                 )
 
             while chunk := response.read1(64 * 1024):
@@ -206,6 +208,7 @@ class ResponsesClient:
                         "provider stream exceeded local byte limit",
                         status=response.status,
                         code="stream_too_large",
+                        raw_response=bytes(raw) + chunk,
                     )
                 raw.extend(chunk)
                 if on_raw_chunk is not None:
@@ -214,17 +217,26 @@ class ResponsesClient:
                     assembler.accept(event)
             decoder.finish()
             assembled = assembler.finish()
-        except ResponsesError:
-            raise
+        except ResponsesError as exc:
+            if exc.raw_response or not raw:
+                raise
+            raise ResponsesError(
+                str(exc),
+                status=exc.status,
+                code=exc.code,
+                raw_response=bytes(raw),
+            ) from exc
         except StreamProtocolError as exc:
             raise ResponsesError(
                 f"provider stream protocol failed ({exc})",
                 code="stream_protocol_error",
+                raw_response=bytes(raw),
             ) from exc
         except (OSError, http.client.HTTPException) as exc:
             raise ResponsesError(
                 f"provider stream failed ({type(exc).__name__})",
                 code="network_error",
+                raw_response=bytes(raw),
             ) from exc
         finally:
             connection.close()

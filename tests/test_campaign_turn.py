@@ -16,7 +16,7 @@ from fuzzynth.campaign_config import (
 from fuzzynth.campaign_turn import CampaignTurnRunner
 from fuzzynth.catalog import EvidenceCatalog
 from fuzzynth.execution_service import RecordedExecution
-from fuzzynth.responses import CreateResult, ResponsesError
+from fuzzynth.responses import CreateResult, ResponsesError, StreamResult
 
 
 class FakeClient:
@@ -26,6 +26,12 @@ class FakeClient:
         self.request = None
 
     def create_raw(self, request, *, max_response_bytes):
+        self.request = request
+        if self.error is not None:
+            raise self.error
+        return self.result
+
+    def stream(self, request, *, max_stream_bytes):
         self.request = request
         if self.error is not None:
             raise self.error
@@ -142,7 +148,14 @@ class CampaignTurnTests(unittest.TestCase):
     def test_completed_response_is_preserved_executed_and_metered(self) -> None:
         response = self.response()
         raw = json.dumps(response, separators=(",", ":")).encode()
-        client = FakeClient(CreateResult(raw_response=raw, response=response))
+        client = FakeClient(
+            StreamResult(
+                raw_sse=raw,
+                output=b"print('ok');",
+                terminal_type="response.completed",
+                response=response,
+            )
+        )
 
         result = self.runner().run_turn(
             worker=self.worker,
@@ -158,6 +171,10 @@ class CampaignTurnTests(unittest.TestCase):
         self.assertEqual(self.executed_generation_id, result.generation_id)
         self.assertIsNotNone(result.feedback)
         self.assertIsNone(result.pause_reason)
+        self.assertTrue(client.request.stream)
+        payload = client.request.to_payload()
+        self.assertNotIn("max_output_tokens", payload)
+        self.assertNotIn("temperature", payload)
         status = self.budgets.status("luna")
         self.assertEqual(status["cached_input_tokens"], 60)
         self.assertEqual(status["output_tokens"], 50)
@@ -167,6 +184,76 @@ class CampaignTurnTests(unittest.TestCase):
         self.assertEqual(generation[0], "completed")
         self.assertIsNotNone(generation[1])
         self.assertIsNotNone(generation[2])
+
+    def test_official_provider_uses_complete_json_with_supported_controls(self) -> None:
+        response = self.response()
+        raw = json.dumps(response, separators=(",", ":")).encode()
+        client = FakeClient(CreateResult(raw_response=raw, response=response))
+        official = CampaignWorker(
+            worker_id="official-test",
+            enabled=True,
+            provider="official",
+            model=self.worker.model,
+            meter=self.worker.meter,
+            mode=self.worker.mode,
+            prompt_path=self.worker.prompt_path,
+            reasoning_efforts=("none",),
+            verbosity="high",
+            temperatures=(1.5,),
+            min_turns_per_session=1,
+            max_turns_per_session=1,
+            history_turns=0,
+            max_output_tokens=8192,
+            reservation_output_tokens=8192,
+            v8_build_profile=self.worker.v8_build_profile,
+            v8_worker_profile=self.worker.v8_worker_profile,
+            d8_flags=self.worker.d8_flags,
+        )
+
+        result = self.runner().run_turn(
+            worker=official,
+            session_id="session-official",
+            turn_index=1,
+            plan=SessionPlan(8, 1, "none", 1.5),
+            instructions="code only",
+            input_bytes=b"next program",
+            client=client,
+        )
+
+        self.assertEqual(result.program, b"print('ok');")
+        self.assertFalse(client.request.stream)
+        self.assertEqual(client.request.max_output_tokens, 8192)
+        self.assertEqual(client.request.temperature, 1.5)
+
+    def test_stream_mismatch_is_archived_and_never_executed(self) -> None:
+        response = self.response()
+        client = FakeClient(
+            StreamResult(
+                raw_sse=b"raw-partial-or-conflicting-sse",
+                output=b"print('different');",
+                terminal_type="response.completed",
+                response=response,
+            )
+        )
+
+        result = self.runner().run_turn(
+            worker=self.worker,
+            session_id="session-mismatch",
+            turn_index=1,
+            plan=SessionPlan(9, 1, "xhigh", None),
+            instructions="code only",
+            input_bytes=b"next program",
+            client=client,
+        )
+
+        self.assertEqual(result.pause_reason, "provider_error")
+        self.assertIsNone(result.execution)
+        self.assertIsNone(self.executed_generation_id)
+        generation = self.catalog.connection.execute(
+            "SELECT status, raw_stream_sha256 FROM generation"
+        ).fetchone()
+        self.assertEqual(generation[0], "failed")
+        self.assertIsNotNone(generation[1])
 
     def test_provider_limit_error_is_preserved_and_pauses(self) -> None:
         client = FakeClient(

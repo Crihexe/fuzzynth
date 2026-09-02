@@ -22,11 +22,9 @@ source-code analysis.
 
 - The owner authorized implementation, official V8 checkout/build, bounded
   provider capability probes, and repository setup on 2026-09-01.
-- Do not start an unbounded or sustained-cost fuzzing campaign until the runner,
-  crash evidence path, and hard budget limits have passed their milestone gates.
-- Do not start the initial conditioned workers until the owner finishes the PoC
-  dataset and explicitly releases it for integration. Offline implementation and
-  synthetic tests may continue.
+- The runner, crash evidence path, and hard budget gates passed their initial
+  review. The owner authorized a supervised sustained campaign using selected
+  examples extracted from dataset v2 while dataset v3 is prepared.
 - Work only under `/root/fuzzynth` and project-owned containers.
 - Do not modify, move, build inside, or otherwise disturb `/root/red-sailor` or
   any of its files, containers, volumes, configuration, or processes.
@@ -56,19 +54,31 @@ source-code analysis.
 
 - Support multiple campaign types running concurrently with independent worker,
   rate, token, and cost budgets.
-- The first three enabled iterative workers are: alternate Spark with requested
-  minimum reasoning and high verbosity; alternate Luna with `xhigh` reasoning
-  and high verbosity; official Luna with high verbosity, `none`/`low` reasoning,
-  and high temperatures selected per session.
+- The primary iterative workers are: alternate Spark with requested minimum
+  reasoning and high verbosity; alternate Luna `xhigh` and `low` comparison
+  lanes with high verbosity; and official Luna with high verbosity, `none`
+  reasoning, and high temperatures selected per session.
+- While Spark is paused by its five-hour or weekly provider quota, run a distinct
+  alternate Luna lane with `none` reasoning and high verbosity. The fallback
+  must not block other workers or override owner, crash, or provider pauses.
 - Keep a possible alternate Terra `xhigh` tool worker disabled until the initial
   workers establish validity, novelty, throughput, and cost baselines.
 - Do not replace `gpt-5.3-codex-spark` with another model automatically. Probe
   and record the exact capabilities exposed by the custom provider first.
 - In raw mode, treat the complete assistant response as the canonical program.
   Do not require Markdown fences, JSON, explanatory prose, or function calls.
-- Use non-streaming Responses requests for the initial workers. Preserve the
-  exact request JSON, raw response JSON, and extracted semantic output separately
-  before any optional derived transformation.
+- Use `stream: true` for the alternate endpoint to avoid its approximately
+  125-second non-streaming Cloudflare boundary. Streaming is transport only:
+  buffer the entire SSE response, require a terminal completed response, verify
+  its semantic output against assembled deltas, archive it, and only then invoke
+  `d8`. Never execute partial output.
+- The alternate endpoint does not support `max_output_tokens`,
+  `max_completion_tokens`, `temperature`, or `top_p`; omit all four rather than
+  sending defaults. Continue enforcing local response/program byte limits and
+  worst-case budget reservations. The official endpoint remains a complete JSON
+  response path and may receive its supported temperature and output cap.
+- Preserve the exact request JSON, raw response JSON/SSE, and extracted semantic
+  output separately before any optional derived transformation.
 - Each completed model turn normally represents one new program.
 - Immediately execute each completed output in a fresh isolated `d8`, feed a
   bounded factual observation into the next turn, and reset after a randomized

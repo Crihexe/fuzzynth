@@ -5,12 +5,15 @@ id = "alternate"
 credential_key = "ALTERNATE_OPENAI_API_KEY"
 credential_base_url = "ALTERNATE_OPENAI_BASE_URL"
 temperature_policy = "omit"
+transport = "sse_complete_before_execute"
+unsupported_parameters = ["max_output_tokens", "max_completion_tokens", "temperature", "top_p"]
 
 [[providers]]
 id = "official"
 credential_key = "OPENAI_API_KEY"
 base_url_policy = "fixed_official"
 temperature_policy = "supported"
+transport = "json_complete_before_execute"
 
 [[models]]
 id = "spark-alternate"
@@ -48,7 +51,7 @@ verbosity = ["medium"]
 id = "spark-custom-iterative-js"
 enabled = true
 model = "spark-alternate"
-mode = "iterative_non_streaming"
+mode = "iterative_complete_response"
 format = "javascript"
 prompt = "prompts/iterative_js_v1.txt"
 turn_range = [8, 16]
@@ -57,7 +60,7 @@ turn_range = [8, 16]
 id = "luna-custom-xhigh-iterative-js"
 enabled = true
 model = "luna-alternate"
-mode = "iterative_non_streaming"
+mode = "iterative_complete_response"
 format = "javascript"
 prompt = "prompts/iterative_js_v1.txt"
 turn_range = [4, 8]
@@ -86,8 +89,8 @@ archive_full_history = true
 resend_full_history = false
 
 [safety]
-streaming_campaigns_enabled = false
-live_campaign_cli_exposed = false
+streaming_campaigns_enabled = true
+live_campaign_cli_exposed = true
 dataset_integration_required = true
 hard_budget_required = true
 crash_evidence_gate_required = true

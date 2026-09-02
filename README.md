@@ -3,9 +3,9 @@
 Fuzzynth is an LLM-driven JavaScript and WebAssembly fuzzing laboratory for
 V8's `d8` shell.
 
-The pinned V8 worker matrix and the non-streaming iterative controller are
-implemented. No fuzzing campaign is running while the owner finishes the PoC
-dataset.
+The pinned V8 worker matrix and the complete-response iterative controller are
+implemented. A supervised campaign is running against the owner-approved v2
+sample while the larger PoC dataset is prepared.
 
 Project documents:
 
@@ -13,8 +13,8 @@ Project documents:
 - [PLAN.md](PLAN.md) — architecture, campaign design, milestones, and open questions.
 - [PROJECT_LOG.md](PROJECT_LOG.md) — living status, decisions, completed work, and next work.
 
-Implementation is authorized. Live campaign startup remains intentionally absent
-from the CLI until dataset selection is integrated and reviewed.
+Implementation and supervised live campaign operation are authorized. Every
+live command still requires an explicit `--live` switch.
 
 ## Local checks
 
@@ -119,10 +119,16 @@ sudo ./scripts/install_telegram_control_service.sh
 ## Supervised v2 campaign
 
 The checked-in v2 service runs independent Spark, custom Luna, and official Luna
-threads over the four explicitly reviewed JavaScript corpus files. A quota or
-provider failure pauses only its own worker; the other threads continue. It preserves every request,
-raw response, program, execution capture, and session transition under private
-`state/` storage while emitting only safe identifiers and metrics to journald.
+threads over the four explicitly reviewed JavaScript corpus files. Custom API
+requests use SSE to keep the gateway connection alive, but the controller waits
+for and validates the complete terminal response before executing anything.
+Unsupported custom controls (`max_output_tokens`, `max_completion_tokens`,
+`temperature`, and `top_p`) are never sent. A quota or provider failure pauses
+only its own worker; the other threads continue. When Spark is provider-paused,
+a managed custom Luna `none`/high-verbosity lane replaces it until Spark safely
+returns. Every request, raw response/stream, program, execution capture, and
+session transition is preserved under private `state/` storage while journald
+receives only safe identifiers and metrics.
 
 ```bash
 sudo ./scripts/install_v2_campaign_service.sh

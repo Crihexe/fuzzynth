@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import unittest
 from unittest.mock import patch
 
@@ -52,6 +53,7 @@ class GenerationRequestTests(unittest.TestCase):
         ).to_payload()
 
         self.assertNotIn("temperature", payload)
+        self.assertNotIn("max_output_tokens", payload)
         self.assertNotIn("reasoning", payload)
         self.assertNotIn("text", payload)
 
@@ -60,12 +62,14 @@ class GenerationRequestTests(unittest.TestCase):
             model="gpt-test",
             instructions="code only",
             input_text="generate",
+            max_output_tokens=512,
             temperature=1.3,
             reasoning_effort="low",
             verbosity="high",
         ).to_payload()
 
         self.assertEqual(payload["temperature"], 1.3)
+        self.assertEqual(payload["max_output_tokens"], 512)
         self.assertEqual(payload["reasoning"], {"effort": "low"})
         self.assertEqual(payload["text"], {"verbosity": "high"})
 
@@ -183,7 +187,65 @@ class StreamingClientTests(unittest.TestCase):
                 )
 
         self.assertEqual(raised.exception.code, "stream_too_large")
+        self.assertEqual(raised.exception.raw_response, b"data: oversized\n\n")
         self.assertTrue(connection.closed)
+
+    def test_preserves_non_success_stream_response(self) -> None:
+        raw = b'{"error":{"code":"bad_request"}}'
+        connection = FakeConnection(FakeResponse([raw], status=400))
+
+        with patch(
+            "fuzzynth.responses.http.client.HTTPSConnection",
+            return_value=connection,
+        ):
+            with self.assertRaises(ResponsesError) as raised:
+                ResponsesClient(self.provider).stream(self.request())
+
+        self.assertEqual(raised.exception.status, 400)
+        self.assertEqual(raised.exception.raw_response, raw)
+
+    def test_custom_stream_payload_can_omit_unsupported_controls(self) -> None:
+        terminal = {
+            "id": "r1",
+            "status": "completed",
+            "output": [
+                {
+                    "type": "message",
+                    "content": [{"type": "output_text", "text": "print(1);"}],
+                }
+            ],
+        }
+        raw = (
+            b'data: {"type":"response.output_text.delta","delta":"print(1);"}\n\n'
+            + b"data: "
+            + json.dumps(
+                {"type": "response.completed", "response": terminal},
+                separators=(",", ":"),
+            ).encode()
+            + b"\n\n"
+        )
+        connection = FakeConnection(FakeResponse([raw]))
+        request = GenerationRequest(
+            model="gpt-test",
+            instructions="code only",
+            input_text="generate",
+            reasoning_effort="xhigh",
+            verbosity="high",
+            stream=True,
+        )
+
+        with patch(
+            "fuzzynth.responses.http.client.HTTPSConnection",
+            return_value=connection,
+        ):
+            ResponsesClient(self.provider).stream(request)
+
+        sent = json.loads(connection.request_data[2])
+        self.assertTrue(sent["stream"])
+        self.assertNotIn("max_output_tokens", sent)
+        self.assertNotIn("max_completion_tokens", sent)
+        self.assertNotIn("temperature", sent)
+        self.assertNotIn("top_p", sent)
 
     def test_requires_explicit_stream_request(self) -> None:
         request = GenerationRequest(

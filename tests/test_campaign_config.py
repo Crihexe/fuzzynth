@@ -15,13 +15,15 @@ class CampaignConfigurationTests(unittest.TestCase):
             Path("config/campaign-workers.toml")
         )
 
-    def test_enables_exactly_three_initial_raw_workers(self) -> None:
+    def test_enables_four_lanes_plus_managed_fallback(self) -> None:
         enabled = {worker.worker_id for worker in self.config.enabled_workers()}
         self.assertEqual(
             enabled,
             {
                 "spark-custom-iterative-js",
+                "luna-custom-xhigh-iterative-js",
                 "luna-custom-low-iterative-js",
+                "luna-custom-none-spark-fallback-js",
                 "luna-official-high-temperature-none-js",
             },
         )
@@ -37,13 +39,20 @@ class CampaignConfigurationTests(unittest.TestCase):
         self.assertEqual(worker.verbosity, "high")
         self.assertEqual((worker.min_turns_per_session, worker.max_turns_per_session), (8, 16))
 
-    def test_custom_luna_uses_gateway_compatible_low_effort(self) -> None:
+    def test_custom_luna_streaming_effort_lanes_are_enabled(self) -> None:
         worker = self.config.workers["luna-custom-low-iterative-js"]
         self.assertEqual(worker.reasoning_efforts, ("low",))
         self.assertEqual(worker.max_output_tokens, 2048)
         self.assertEqual(worker.reservation_output_tokens, 128_000)
-        self.assertFalse(self.config.workers["luna-custom-xhigh-iterative-js"].enabled)
+        self.assertTrue(self.config.workers["luna-custom-xhigh-iterative-js"].enabled)
         self.assertFalse(self.config.workers["luna-custom-high-iterative-js"].enabled)
+
+    def test_spark_fallback_requests_none_with_high_verbosity(self) -> None:
+        worker = self.config.workers["luna-custom-none-spark-fallback-js"]
+        self.assertEqual(worker.reasoning_efforts, ("none",))
+        self.assertEqual(worker.verbosity, "high")
+        self.assertEqual(worker.max_output_tokens, 2048)
+        self.assertEqual(worker.reservation_output_tokens, 128_000)
 
     def test_official_worker_rotates_high_temperature_with_no_reasoning(self) -> None:
         worker = self.config.workers["luna-official-high-temperature-none-js"]

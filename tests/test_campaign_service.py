@@ -8,14 +8,14 @@ import unittest
 from fuzzynth.campaign_service import CampaignService, CampaignServiceError
 from fuzzynth.credentials import CredentialStore, ProviderCredentials
 from fuzzynth.execution_service import RecordedExecution
-from fuzzynth.responses import CreateResult
+from fuzzynth.responses import CreateResult, StreamResult
 
 
 class FakeClient:
     def __init__(self, requests: list):
         self.requests = requests
 
-    def create_raw(self, request, *, max_response_bytes):
+    def _response(self, request):
         self.requests.append(request)
         index = len(self.requests)
         response = {
@@ -40,7 +40,20 @@ class FakeClient:
             },
         }
         raw = json.dumps(response, separators=(",", ":")).encode()
+        return raw, response
+
+    def create_raw(self, request, *, max_response_bytes):
+        raw, response = self._response(request)
         return CreateResult(raw_response=raw, response=response)
+
+    def stream(self, request, *, max_stream_bytes):
+        raw, response = self._response(request)
+        return StreamResult(
+            raw_sse=raw,
+            output=f"print({len(self.requests)});".encode(),
+            terminal_type="response.completed",
+            response=response,
+        )
 
 
 class CampaignServiceTests(unittest.TestCase):
@@ -115,6 +128,7 @@ class CampaignServiceTests(unittest.TestCase):
 
         self.assertEqual(len(result.turns), 2)
         self.assertEqual(len(self.requests), 2)
+        self.assertTrue(all(request.stream for request in self.requests))
         self.assertNotIn("print(1);", self.requests[0].input_text)
         self.assertIn("print(1);", self.requests[1].input_text)
         self.assertIn("execution-observation-json", self.requests[1].input_text)

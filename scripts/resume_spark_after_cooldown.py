@@ -14,6 +14,14 @@ from fuzzynth.sessions import SessionLedger
 STATE_ROOT = Path("/root/fuzzynth/state")
 WORKER_ID = "spark-custom-iterative-js"
 MINIMUM_COOLDOWN = timedelta(hours=5)
+PROVIDER_PAUSE_COMMANDS = {
+    "pause after provider_error",
+    "pause after provider_quota_or_rate_limit",
+}
+PROVIDER_PAUSE_REASONS = {
+    "provider_error",
+    "provider_quota_or_rate_limit",
+}
 
 
 def main() -> int:
@@ -29,7 +37,7 @@ def main() -> int:
             latest is None
             or latest.source != "supervisor"
             or latest.new_state != "paused"
-            or latest.command != "pause after provider_error"
+            or latest.command not in PROVIDER_PAUSE_COMMANDS
         ):
             print("spark_cooldown=skipped reason=owner_or_unknown_pause")
             return 0
@@ -46,7 +54,7 @@ def main() -> int:
                 ),
                 None,
             )
-            if session is None or session.pause_reason != "provider_error":
+            if session is None or session.pause_reason not in PROVIDER_PAUSE_REASONS:
                 print("spark_cooldown=skipped reason=no_provider_paused_session")
                 return 0
             updated_at = datetime.fromisoformat(session.updated_at)

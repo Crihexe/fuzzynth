@@ -1,0 +1,12 @@
+[Unit]
+Description=Reconcile Luna fallback against Spark provider state
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=1min
+AccuracySec=10s
+Persistent=true
+Unit=fuzzynth-spark-fallback.service
+
+[Install]
+WantedBy=timers.target

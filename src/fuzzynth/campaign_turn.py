@@ -1,4 +1,4 @@
-"""One budgeted non-streaming generation -> d8 execution -> feedback turn."""
+"""One complete budgeted generation -> d8 execution -> feedback turn."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ from fuzzynth.responses import (
     GenerationRequest,
     ResponsesClient,
     ResponsesError,
+    StreamResult,
     extract_output_text,
     extract_usage,
 )
@@ -118,15 +119,21 @@ class CampaignTurnRunner:
         except UnicodeError as exc:
             raise ValueError("turn input must be valid UTF-8") from exc
         generation_id = f"gen-{uuid.uuid4()}"
+        streaming_transport = worker.provider == "alternate"
         request = GenerationRequest(
             model=worker.model,
             instructions=instructions,
             input_text=input_text,
-            max_output_tokens=worker.max_output_tokens,
-            temperature=plan.temperature,
+            # The custom endpoint rejects remote output caps and sampling
+            # controls. Local artifact/program limits and conservative budget
+            # reservations remain enforced independently.
+            max_output_tokens=(
+                None if streaming_transport else worker.max_output_tokens
+            ),
+            temperature=None if streaming_transport else plan.temperature,
             reasoning_effort=plan.reasoning_effort,
             verbosity=worker.verbosity,
-            stream=False,
+            stream=streaming_transport,
         )
         request_bytes = request.to_bytes()
         request_ref = self.store.put(request_bytes)
@@ -140,19 +147,51 @@ class CampaignTurnRunner:
         started_at = datetime.now(timezone.utc).isoformat()
         requested_parameters = {
             "budget_reservation_id": reservation.reservation_id,
-            "max_output_tokens": worker.max_output_tokens,
+            "max_output_tokens_sent": request.max_output_tokens,
+            "max_program_bytes": self.max_program_bytes,
             "reasoning_effort": plan.reasoning_effort,
+            "reservation_output_tokens": worker.reservation_output_tokens,
             "session_seed": plan.seed,
-            "temperature": plan.temperature,
+            "stream": request.stream,
+            "temperature_sent": request.temperature,
+            "transport": "sse" if streaming_transport else "json",
             "turn_index": turn_index,
             "verbosity": worker.verbosity,
         }
 
         try:
-            created = client.create_raw(
-                request,
-                max_response_bytes=self.max_response_bytes,
-            )
+            if streaming_transport:
+                streamed: StreamResult = client.stream(
+                    request,
+                    max_stream_bytes=self.max_response_bytes,
+                )
+                if (
+                    streamed.terminal_type != "response.completed"
+                    or streamed.response is None
+                ):
+                    raise ResponsesError(
+                        "provider stream did not yield a completed response",
+                        code="incomplete_stream",
+                        raw_response=streamed.raw_sse,
+                    )
+                response = streamed.response
+                raw_response = streamed.raw_sse
+                # The completed response is authoritative. Comparing it with
+                # the assembled deltas prevents a truncated/malformed stream
+                # from silently becoming executable code.
+                if extract_output_text(response) != streamed.output:
+                    raise ResponsesError(
+                        "provider stream output disagrees with terminal response",
+                        code="stream_output_mismatch",
+                        raw_response=streamed.raw_sse,
+                    )
+            else:
+                created = client.create_raw(
+                    request,
+                    max_response_bytes=self.max_response_bytes,
+                )
+                response = created.response
+                raw_response = created.raw_response
         except ResponsesError as exc:
             self.budgets.mark_uncertain(reservation.reservation_id)
             finished_at = datetime.now(timezone.utc).isoformat()
@@ -203,8 +242,7 @@ class CampaignTurnRunner:
                 actual_microunits=None,
             )
 
-        response = created.response
-        raw_ref = self.store.put(created.raw_response)
+        raw_ref = self.store.put(raw_response)
         response_status = _string(response, "status")
         usage: TokenUsage
         usage_known = True

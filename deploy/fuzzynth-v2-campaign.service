@@ -8,10 +8,10 @@ Requires=docker.service
 Type=simple
 WorkingDirectory=/root/fuzzynth
 Environment=PYTHONPATH=/root/fuzzynth/src
-ExecStart=/usr/bin/python3 -m fuzzynth campaign-run --live --repo-root /root/fuzzynth --state-root /root/fuzzynth/state --seed 20260902 --window-size 2 --worker spark-custom-iterative-js --worker luna-custom-low-iterative-js --worker luna-official-high-temperature-none-js --corpus-file /root/fuzzynth/.local/datasets/v8_wasm_poc_handout_v2/samples_trigger_only/secbench_41494611.js --corpus-file /root/fuzzynth/.local/datasets/v8_wasm_poc_handout_v2/samples_trigger_only/secbench_430572435.js --corpus-file /root/fuzzynth/.local/datasets/v8_wasm_poc_handout_v2/samples_trigger_only/secbench_439771269.js --corpus-file /root/fuzzynth/.local/datasets/v8_wasm_poc_handout_v2/samples_trigger_only/secbench_443875388.js
+ExecStart=/usr/bin/python3 -m fuzzynth campaign-run --live --repo-root /root/fuzzynth --state-root /root/fuzzynth/state --seed 20260902 --window-size 2 --worker spark-custom-iterative-js --worker luna-custom-xhigh-iterative-js --worker luna-custom-low-iterative-js --worker luna-custom-none-spark-fallback-js --worker luna-official-high-temperature-none-js --corpus-file /root/fuzzynth/.local/datasets/v8_wasm_poc_handout_v2/samples_trigger_only/secbench_41494611.js --corpus-file /root/fuzzynth/.local/datasets/v8_wasm_poc_handout_v2/samples_trigger_only/secbench_430572435.js --corpus-file /root/fuzzynth/.local/datasets/v8_wasm_poc_handout_v2/samples_trigger_only/secbench_439771269.js --corpus-file /root/fuzzynth/.local/datasets/v8_wasm_poc_handout_v2/samples_trigger_only/secbench_443875388.js
 Restart=on-failure
 RestartSec=10s
-TimeoutStopSec=330s
+TimeoutStopSec=660s
 UMask=0077
 SyslogIdentifier=fuzzynth-v2-campaign
 

@@ -6,9 +6,9 @@ unknown_usage_policy = "reserve_worst_case_and_pause"
 automatic_budget_reset = false
 
 [request_caps]
-# Xhigh non-streaming generations on the alternate provider exceeded 90 seconds
-# during the first supervised canary. This is a socket timeout; the supervisor
-# remains interruptible and all budget reservations still happen before dispatch.
+# Custom generations use SSE and this remains the maximum period without socket
+# progress. The supervisor remains interruptible and every worst-case budget
+# reservation happens before dispatch.
 wall_seconds = 300
 max_response_bytes = 2097152
 max_program_bytes = 524288
