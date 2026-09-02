@@ -66,6 +66,7 @@ class CampaignSupervisor:
         operational_alert: OperationalAlert | None = None,
         event_sink: EventSink = json_event_sink,
         idle_seconds: float = 5.0,
+        startup_stagger_seconds: float = 0.75,
     ):
         if not worker_ids or len(set(worker_ids)) != len(worker_ids):
             raise ValueError("worker IDs must be non-empty and unique")
@@ -73,6 +74,8 @@ class CampaignSupervisor:
             raise ValueError("window size must be positive")
         if idle_seconds <= 0:
             raise ValueError("idle_seconds must be positive")
+        if startup_stagger_seconds < 0:
+            raise ValueError("startup_stagger_seconds must be non-negative")
         self.repo_root = repo_root.resolve()
         self.state_root = state_root.resolve()
         self.credentials = credentials
@@ -84,6 +87,7 @@ class CampaignSupervisor:
         self.operational_alert = operational_alert
         self.event_sink = event_sink
         self.idle_seconds = idle_seconds
+        self.startup_stagger_seconds = startup_stagger_seconds
         self.stop_event = threading.Event()
 
     def stop(self) -> None:
@@ -123,6 +127,13 @@ class CampaignSupervisor:
     ) -> WorkerRunSummary:
         turns = 0
         sessions_started = 0
+        startup_delay = (
+            self.worker_ids.index(worker_id) * self.startup_stagger_seconds
+        )
+        if self.stop_event.wait(startup_delay):
+            return WorkerRunSummary(
+                worker_id, turns, sessions_started, "stopped", "supervisor_stopped"
+            )
         with CampaignService(
             repo_root=self.repo_root,
             state_root=self.state_root,
@@ -233,14 +244,18 @@ class CampaignSupervisor:
         )
 
     def _guarded_worker(self, worker_id: str, **limits: object) -> WorkerRunSummary:
+        error_type = ""
         try:
             return self._run_worker(worker_id, **limits)
-        except BudgetLimitError:
+        except BudgetLimitError as exc:
             reason = "budget_limit"
-        except (CampaignServiceError, SessionStateError, ControlStateError):
+            error_type = type(exc).__name__
+        except (CampaignServiceError, SessionStateError, ControlStateError) as exc:
             reason = "campaign_state_error"
-        except Exception:
+            error_type = type(exc).__name__
+        except Exception as exc:
             reason = "unexpected_supervisor_error"
+            error_type = type(exc).__name__
         try:
             with CampaignService(
                 repo_root=self.repo_root,
@@ -252,9 +267,17 @@ class CampaignSupervisor:
             pass
         self._alert(
             "FUZZYNTH SUPERVISOR — worker paused\n"
-            f"worker={worker_id}\nreason={reason}\naction=manual_review_required"
+            f"worker={worker_id}\nreason={reason}\nerror_type={error_type}\n"
+            "action=manual_review_required"
         )
-        self.event_sink({"event": "worker_paused", "worker_id": worker_id, "reason": reason})
+        self.event_sink(
+            {
+                "event": "worker_paused",
+                "worker_id": worker_id,
+                "reason": reason,
+                "error_type": error_type,
+            }
+        )
         return WorkerRunSummary(worker_id, 0, 0, "paused", reason)
 
     def run(
