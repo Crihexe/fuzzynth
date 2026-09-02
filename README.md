@@ -3,8 +3,9 @@
 Fuzzynth is an LLM-driven JavaScript and WebAssembly fuzzing laboratory for
 V8's `d8` shell.
 
-The project is in its initial implementation phase. Official V8 checkout and the
-controller skeleton are in progress; no fuzzing campaign is running yet.
+The pinned V8 worker matrix and the non-streaming iterative controller are
+implemented. No fuzzing campaign is running while the owner finishes the PoC
+dataset.
 
 Project documents:
 
@@ -12,8 +13,8 @@ Project documents:
 - [PLAN.md](PLAN.md) — architecture, campaign design, milestones, and open questions.
 - [PROJECT_LOG.md](PROJECT_LOG.md) — living status, decisions, completed work, and next work.
 
-Implementation is authorized, but sustained fuzzing remains disabled
-until the evidence and hard-budget gates are complete.
+Implementation is authorized. Live campaign startup remains intentionally absent
+from the CLI until dataset selection is integrated and reviewed.
 
 ## Local checks
 
@@ -24,6 +25,15 @@ PYTHONPATH=src python3 -m fuzzynth doctor
 
 `doctor` validates the external dual-provider credential boundary without making
 network calls or displaying endpoint/key values.
+
+The active worker matrix, durable budgets, and session state are inspectable
+offline:
+
+```bash
+PYTHONPATH=src python3 -m fuzzynth workers --seed 7
+PYTHONPATH=src python3 -m fuzzynth budget-status
+PYTHONPATH=src python3 -m fuzzynth session-status
+```
 
 ## Pinned V8 build
 
@@ -67,9 +77,10 @@ PYTHONPATH=src python3 -m fuzzynth execute \
 ```
 
 The command resolves the tag to the image ID pinned in the local worker manifest,
-captures bounded stdout/stderr as content-addressed artifacts, records termination
-and build identity in the SQLite catalog, and prints metadata rather than program
-output. Runtime evidence stays under ignored `state/` storage.
+captures bounded stdout/stderr as content-addressed artifacts, records termination,
+build identity, final Docker state, and exact resource limits in the SQLite
+catalog, and prints metadata rather than program output. Runtime evidence stays
+under ignored `state/` storage.
 
 ## Development notifications
 

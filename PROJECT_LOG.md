@@ -5,15 +5,17 @@ This is the living operational memory for the project. Read it together with
 
 ## Current state
 
-- Phase: M2 pinned V8 builds and first end-to-end executor are complete.
+- Phase: M4 iterative campaign controller is complete offline; dataset integration
+  and live campaign startup remain gated.
 - Implementation authorization: granted by owner on 2026-09-01.
 - Repository: initialized from `git@github.com:Crihexe/fuzzynth.git`.
-- Provider calls made: three bounded, redacted capability probes.
+- Provider calls made: six bounded, redacted standalone capability/usage probes;
+  no multi-turn or campaign requests.
 - V8 source: exact Chrome 152 V8 revision checked out with dependencies; release,
   optdebug, and ASAN are built, smoke-tested, and packaged as isolated workers.
 - Fuzzing campaigns running: none.
-- Telegram development notifier: configured and tested; command/control bot not
-  implemented.
+- Telegram development notifier and crash/pause alerts: implemented and tested;
+  authenticated command/control is not yet implemented.
 - Historical PoC dataset available: no; owner is preparing it.
 - Remote status: implementation checkpoints are pushed frequently to
   `origin/main`; verify the exact head at each resume.
@@ -30,32 +32,34 @@ This is the living operational memory for the project. Read it together with
 
 ## Decision records
 
-### D-001 — Parallel campaign families
+### D-001 — Independently bounded campaign families
 
-- Status: proposed.
-- Decision: schedule independent raw-stream, tool-driven, mutation, replay, and
-  triage campaigns with separate budgets and concurrency.
+- Status: accepted and narrowed by owner.
+- Decision: schedule the three initial iterative workers independently, with a
+  possible later tool-driven Terra lane under a separate budget.
 - Why: enables controlled comparisons and prevents a failing or expensive lane
   from stopping the experiment.
 
 ### D-002 — Raw response is canonical
 
-- Status: proposed.
-- Decision: in continuous mode, archive and execute the assistant response bytes
+- Status: accepted by owner.
+- Decision: in iterative mode, archive and execute the assistant response bytes
   as the canonical program without a tool or JSON wrapper.
 - Why: minimizes protocol tokens and latency while preserving exact evidence.
 
 ### D-003 — Sealed stream before speculative execution
 
-- Status: proposed.
+- Status: superseded by D-023 on 2026-09-02.
 - Decision: implement byte-exact streaming capture followed by execution at
   response completion before experimenting with prefix/PTY execution.
 - Why: establishes reproducible semantics and a baseline for measuring the more
   aggressive stream variants.
+- Supersession: the owner explicitly excluded streaming from the initial worker
+  design in favor of one completed non-streaming response per executable turn.
 
 ### D-004 — Provider model identity is probed, not assumed
 
-- Status: proposed.
+- Status: accepted by owner.
 - Decision: preserve the requested `gpt-5.3-codex-spark` identifier and test it
   against the custom base URL. Do not substitute a public catalog model silently.
 - Why: public documentation confirms Codex-Spark as a product capability and
@@ -63,7 +67,7 @@ This is the living operational memory for the project. Read it together with
 
 ### D-005 — Corpus conditioning is an experiment matrix
 
-- Status: proposed.
+- Status: accepted by owner.
 - Decision: compare unconditioned, rotating, retrieved, technique-local, and
   large-context historical-PoC conditioning under matched budgets.
 - Why: distinguishes useful generalization from memorization and replay while
@@ -71,7 +75,7 @@ This is the living operational memory for the project. Read it together with
 
 ### D-006 — Internal syntax is allowed in dedicated lanes
 
-- Status: proposed.
+- Status: accepted by owner.
 - Decision: retain `%` intrinsics and useful `d8` helpers under versioned profiles,
   then annotate intentional abort primitives during triage rather than banning all
   internal syntax.
@@ -80,7 +84,7 @@ This is the living operational memory for the project. Read it together with
 
 ### D-007 — Controller and target are separate trust zones
 
-- Status: proposed.
+- Status: accepted by implementation authorization.
 - Decision: only the controller receives API/Telegram credentials. Disposable
   `d8` workers have no network or secrets and run within resource limits.
 - Why: generated programs are untrusted and crash collection must survive target
@@ -88,7 +92,7 @@ This is the living operational memory for the project. Read it together with
 
 ### D-008 — Runtime data stays out of Git
 
-- Status: proposed.
+- Status: accepted by implementation authorization.
 - Decision: do not commit V8 checkouts/builds, credentials, datasets by default,
   database state, generated corpus, or crash artifacts.
 - Why: avoids secret exposure, oversized history, and accidental publication of
@@ -162,20 +166,23 @@ This is the living operational memory for the project. Read it together with
 ### D-017 — Content-addressed exact evidence bytes
 
 - Status: accepted by implementation authorization.
-- Decision: store generated programs, raw provider events, stdout, stderr, and
+- Decision: store generated programs, raw provider responses, stdout, stderr, and
   other byte artifacts by SHA-256 with private file permissions and integrity
   verification; metadata refers to immutable artifact identities.
-- Why: raw streams may not be valid text, duplicate programs should not waste
-  storage, and later replay must use the exact bytes originally observed.
+- Why: provider bodies may not be valid semantic output, duplicate programs
+  should not waste storage, and later replay must use the exact bytes originally
+  observed.
 
 ### D-018 — Strict stream assembly
 
-- Status: accepted by implementation authorization.
+- Status: superseded/dormant under D-023.
 - Decision: preserve raw SSE bytes independently, decode events incrementally
   across arbitrary transport chunks, and assemble the canonical program only
   from explicit `response.output_text.delta` strings.
 - Why: transport chunk boundaries are not token or JavaScript boundaries, and
   protocol metadata must never be executed as part of the generated program.
+- Supersession: the tested implementation remains compatibility code, but the
+  active worker matrix uses non-streaming Responses and does not schedule it.
 
 ### D-019 — Fail-closed cost accounting
 
@@ -214,7 +221,54 @@ This is the living operational memory for the project. Read it together with
   usage/cost, binary, flags, execution, termination, and classification metadata.
 - Why: crashes must remain queryable across restarts without duplicating raw data,
   while foreign keys prevent a metadata record from silently losing its program,
-  request, stream, stdout, or stderr identity.
+  request, provider response, stdout, or stderr identity.
+
+### D-023 — Iterative non-streaming turns
+
+- Status: accepted by owner on 2026-09-02.
+- Decision: each initial request is non-streaming; its complete assistant output
+  is one canonical JavaScript program, executed immediately in a fresh `d8`, with
+  bounded factual feedback passed to the next turn.
+- Why: removes streaming/tool overhead while retaining clear program boundaries,
+  deterministic execution semantics, and exact evidence.
+
+### D-024 — Initial three-worker matrix
+
+- Status: accepted by owner on 2026-09-02.
+- Decision: start with alternate Spark at minimum requested reasoning/high
+  verbosity, alternate Luna at `xhigh`/high verbosity, and official Luna at
+  `none`/`low`, high verbosity, and high temperatures chosen per session.
+  Alternate temperature is omitted. Terra `xhigh` tools remain disabled.
+- Why: directly compares throughput, deep reasoning, provider, and sampling
+  behavior before paying for a much more expensive tool investigator.
+
+### D-025 — Cumulative multidimensional budgets
+
+- Status: accepted by owner on 2026-09-02.
+- Decision: cap alternate Luna at 1250 total credits and the separate owner-set
+  category ceilings; cap official Luna locally at `$4.90`; record Spark usage and
+  pause on alternate quota/rate errors. Reserve before every request and retain a
+  conservative reservation when usage is unknown.
+- Why: provider billing mixes input, cache, output, and reasoning at different
+  rates; no single token total can safely enforce the owner's limits.
+
+### D-026 — No automatic crash replay in initial campaigns
+
+- Status: accepted by owner on 2026-09-02.
+- Decision: on a crash candidate, persist all available evidence, make the
+  session terminal, and notify Telegram. Do not replay, validate, minimize, or
+  invoke another model automatically.
+- Why: the initial experiment measures discovery. Human triage can deliberately
+  reproduce a preserved candidate later without multiplying cost or risk.
+
+### D-027 — Dataset and live-start gate
+
+- Status: accepted by owner on 2026-09-02.
+- Decision: continue offline implementation, but do not expose a live campaign
+  command or start conditioned workers until the owner finishes and explicitly
+  releases `poc_dataset/` for integration.
+- Why: avoids premature token spend and prevents implementation code from reading
+  owner-managed corpus work while it is still changing.
 
 ## Work completed
 
@@ -386,12 +440,47 @@ This is the living operational memory for the project. Read it together with
 - Completed the three intended Chrome 152 worker variants: throughput-oriented
   release-symbolized, invariant-oriented optdebug, and memory-safety ASAN.
 
+### 2026-09-02 — Iterative non-streaming controller
+
+- Ran exactly one additional standalone request for each initial provider/model
+  lane to inspect usage fields, without a conversation, execution, or campaign:
+  alternate Spark reported 35 input, 286 total output, and 279 reasoning tokens;
+  alternate Luna `xhigh` reported 331 input, 99 total output, and 91 reasoning
+  tokens; official Luna at temperature 1.3 reported 35 input, 6 output, and zero
+  reasoning tokens. Generated output was not displayed, retained, or executed.
+- Added the three enabled worker definitions and the disabled Terra tool placeholder,
+  with deterministic per-session sampling of turn limits and official parameters.
+- Added a JavaScript-only system prompt that permits optimization intrinsics and
+  `gc()` for useful state construction while prohibiting deliberate target aborts,
+  exits, host access, and fabricated bug claims.
+- Implemented bounded non-streaming Responses capture with separate immutable
+  request JSON, raw HTTP response JSON, and semantic program artifacts. Bounded
+  error bodies are retained privately for diagnostics.
+- Implemented bounded session context, fresh isolated execution for every turn,
+  compact factual feedback, and durable SQLite session/attempt state that can be
+  inspected and resumed after controller restart.
+- Implemented a durable multidimensional budget ledger with pre-request
+  reservations, conservative unknown-usage handling, the owner-set custom Luna
+  limits, a `$4.90` official Luna cap, and Spark quota/rate pause behavior.
+- Implemented crash-terminal and pause transitions plus private Telegram alerts
+  that contain identifiers and hashes but never a generated program or captured
+  output. Delivery behavior was exercised with an injected fake sender; no fake
+  crash was sent to the live chat.
+- Extended every new execution record with a content-addressed detail manifest
+  containing the immutable image and `d8` identities, final Docker state, exact
+  flags, wall/CPU/RAM/PID/output/tmpfs limits, core policy, and capture sizes.
+  Existing schema-1 execution evidence migrates safely to schema 2.
+- Added offline `workers`, `budget-status`, and `session-status` CLI inspection.
+  A live campaign command is intentionally absent until corpus integration.
+- Kept streaming support dormant, made automatic crash replay unavailable, and
+  did not read or modify the owner-managed `poc_dataset/` directory.
+
 ## Verification performed
 
 - No secret values were printed or added to the repository.
-- Three explicitly capped model-provider requests were made; generated text was
-  neither printed nor stored, and only redacted capability/usage metadata was
-  retained.
+- Six explicitly capped standalone model-provider requests were made across the
+  project; generated text was neither printed nor stored, and only redacted
+  capability/usage metadata was retained. No campaign or multi-turn test ran.
 - Official V8 checkout/build state is tracked separately under `.local/`, which
   is ignored by Git.
 - No file under `/root/red-sailor` was modified.
@@ -400,30 +489,31 @@ This is the living operational memory for the project. Read it together with
   configured chat ID.
 - Credential tests pass and `fuzzynth doctor` validates both providers without
   making network calls or displaying endpoint/key values.
-- Forty-nine unit tests pass after adding request omission/serialization, process
-  outcome classification, artifact integrity, stream protocol, bounded HTTP
-  streaming, cost/budget, executor isolation, and catalog integrity checks.
+- Ninety-one unit tests pass after adding request omission/serialization, process
+  outcome classification, artifact integrity, non-streaming evidence capture,
+  budget reservations, session orchestration, alerts, executor isolation,
+  execution detail manifests, migrations, and offline status inspection.
 - All three pinned worker profiles pass local and isolated smoke verification.
 - All live probe output was restricted to capability, latency, effective
   parameters, response state, and usage metadata.
 
 ## Waiting on owner
 
-- Review and amend `instruction.md`, `PLAN.md`, and the proposed decisions above.
-- Historical V8 PoC dataset when ready.
+- Explicit release of the historical V8 PoC dataset when ready.
 - Telegram command/control policy and allowlisted actor validation at a later
   milestone; the one-way development notifier is already configured.
-- Answers to the open decisions in `PLAN.md` when convenient; reasonable defaults
-  can be proposed during review.
+- Dataset window sizes, initial worker concurrency, and the remaining open choices
+  in `PLAN.md` when convenient.
 
 ## Next work
 
-1. Connect the bounded provider stream directly to generation persistence and
-   one-shot worker execution in a restartable campaign scheduler.
-2. Add Telegram crash/cost/status alerts, then an allowlisted command poller for
-   status, pause, resume, and stop.
-3. Fill reviewed provider prices and explicit hard budget windows; zero-budget
-   defaults continue to prohibit sustained campaigns.
-4. Add replay/triage across release, optdebug, and ASAN with duplicate reduction.
-5. Integrate bounded randomized dataset windows only after the owner finishes and
-   explicitly releases `poc_dataset/` for use.
+1. After explicit owner release, index the dataset immutably and implement bounded
+   randomized corpus-window selection without silently editing source items.
+2. Connect corpus selection to the existing session service and expose a bounded
+   scheduler lifecycle only after its offline tests pass.
+3. Add an allowlisted Telegram command poller for status, cost, pause, resume,
+   and stop, with confirmation for global state changes.
+4. Run a synthetic incident drill, then one tightly bounded controlled session per
+   worker only when the owner confirms the dataset and live-start review gates.
+5. Keep replay, minimization, and Terra tools deferred until initial run results
+   justify those separately authorized activities.

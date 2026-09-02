@@ -1,8 +1,8 @@
 # Fuzzynth implementation and experiment plan
 
-Status: proposed for owner review
+Status: active implementation
 
-Date: 2026-09-01
+Date: 2026-09-02
 
 ## 1. Experiment statement
 
@@ -34,11 +34,11 @@ Primary outcome classes:
 Only the first three are initially treated as strong bug candidates. The final
 classification remains a triage decision, not a model decision.
 
-## 2. Proposed system shape
+## 2. System shape
 
 ```text
- custom OpenAI-compatible provider
-          | streaming / responses
+ alternate and official providers
+          | non-streaming Responses
           v
   +-----------------------+       +----------------------+
   | controller            |<----->| Telegram control     |
@@ -52,8 +52,8 @@ classification remains a triage decision, not a model decision.
   +-----+------------+----+
         |            |
         v            v
- raw-stream       tool/agent campaigns
- workers          and investigator
+ iterative JS     later tool/agent
+ workers          investigator
         |            |
         +-----+------+
               v
@@ -76,74 +76,64 @@ controller holds provider/Telegram secrets; `d8` workers never receive them.
 Weights will be configuration, not constants. The initial matrix deliberately
 separates provider effects from model and generation effects:
 
-| Campaign | Provider | Generator | Temperature | Primary comparison |
+| Worker | Provider/model | Parameters | Session turns | Status |
 |---|---|---|---|---|
-| Raw JS/Wasm stream | alternate | `gpt-5.3-codex-spark` | omitted | maximum throughput |
-| Raw JS/Wasm stream | alternate | GPT-5.6 Luna | omitted | model comparison |
-| Raw JS/Wasm stream | official | GPT-5.6 Luna | varied | sampling comparison |
-| Independent raw turns | all supported | Spark/Luna | provider-valid | fresh-context control |
-| Stateful raw turns | all supported | Spark/Luna | provider-valid | context lifetime |
-| Tool-driven JS/Wasm | alternate/official | GPT-5.6 Luna | provider-valid | agent feedback |
-| Mutation/recombination | configurable | Spark/Luna | provider-valid | selected parents |
-| Replay/differential triage | local | deterministic first | n/a | reproducibility |
-| Minimization/investigation | configurable | Luna + reducer | provider-valid | crash signature |
+| `spark-custom-iterative-js` | alternate Spark | requested minimum reasoning, high verbosity, temperature omitted | randomized 8–16 | enabled after dataset gate |
+| `luna-custom-xhigh-iterative-js` | alternate GPT-5.6 Luna | `xhigh`, high verbosity, temperature omitted | randomized 4–8 | enabled after dataset gate |
+| `luna-official-high-temperature-js` | official GPT-5.6 Luna | `none`/`low`, high verbosity, temperature 1.2/1.5/1.8 per session | randomized 4–8 | enabled after dataset gate |
+| `terra-custom-xhigh-tool-investigator` | alternate GPT-5.6 Terra | `xhigh`, tool-driven | separately bounded | disabled/deferred |
 
 The scheduler must be able to set a campaign to zero, pause it, or cap it without
 affecting the others. Parallelism is bounded separately for API requests, normal
 executions, sanitizer executions, and triage replays.
 
-## 4. Raw continuous-stream design
+## 4. Iterative non-streaming design
 
-### 4.1 Sealed-response mode (first implementation)
+### 4.1 Turn lifecycle
 
-1. Send a short stable instruction prefix plus the selected corpus context.
-2. Request plain text with no tool schema, JSON, or Markdown wrapper.
-3. Spool streaming deltas byte-for-byte to an append-only temporary artifact
-   while recording event type, order, and monotonic timestamp.
-4. On successful response completion, atomically seal the artifact, hash it, and
-   execute the entire response as one program in a fresh `d8` process.
-5. Store the response ID, finish reason, usage, model identifier returned by the
-   provider, request parameters, and complete execution result.
-6. Feed only a compact, bounded observation into the next turn when the campaign
-   is stateful. Stateless campaigns start from a fresh conversation every time.
+1. Select one bounded corpus window for the session and combine it with the
+   stable JavaScript-only generation contract.
+2. Make one non-streaming Responses request. Persist the exact request JSON, raw
+   provider response JSON, and extracted semantic output as separate immutable
+   artifacts.
+3. Treat the complete assistant output as the canonical program without repairing
+   prose, fences, or syntax.
+4. Execute it immediately in a fresh isolated `d8` process and persist the exact
+   program, output, termination facts, worker identity, and resource envelope.
+5. Return only a compact factual observation to the next turn. Do not ask the
+   model to classify a crash or claim a V8 bug.
+6. On an ordinary outcome, continue until the randomized session limit. On a
+   crash candidate, save evidence, stop the session, and alert the owner without
+   automatic replay or model investigation.
 
-Raw output is never silently repaired. If it contains prose or fences, that exact
-text is executed and likely classified as a syntax failure. A separate derived
-lane may later test explicitly named normalizers while retaining the raw parent.
+### 4.2 Session and context policy
 
-### 4.2 Speculative streaming execution (experimental)
+Spark sessions run for 8–16 turns; both Luna lanes run for 4–8 turns. The exact
+length and official Luna temperature/reasoning choice are sampled once per
+session and recorded. Recent history is bounded independently of the full
+archived history. A new session receives a newly sampled corpus window.
 
-Three variants need measurement:
+The first conditioned run remains gated on the owner releasing `poc_dataset/`.
+An explicit unconditioned control can bypass corpus selection, but there is no
+live campaign CLI yet, so no worker can start accidentally during integration.
 
-- **PTY feed:** forward deltas into an interactive `d8` process. Lowest latency,
-  but REPL parsing, scope, automatic semicolon insertion, and partial-token
-  boundaries can change program semantics.
-- **Complete-unit feed:** accumulate until a conservative lexical boundary, then
-  send complete top-level units to a PTY. Safer than raw deltas but requires a
-  boundary detector and still differs from file execution.
-- **Snapshot execution:** at selected byte/line thresholds, run immutable prefix
-  snapshots in fresh processes. Expensive, but deterministic and easy to replay.
+Streaming is explicitly excluded from the initial experiment. Previously written
+SSE/streaming support remains dormant compatibility code and is not referenced by
+the scheduled worker matrix. It may be removed or reconsidered later, but is not
+part of the current comparison.
 
-Every speculative finding must be reproduced from a sealed standalone artifact.
-When a speculative process crashes, record the exact consumed byte offset and
-either cancel the provider stream to save cost or continue spooling according to
-a campaign policy. Both choices will be tested.
+### 4.3 Evidence and resource safeguards
 
-Recommendation: ship sealed-response mode first, then add snapshot execution,
-and treat direct PTY feed as a research lane rather than the authoritative path.
-
-### 4.3 Stream protocol safeguards
-
-- Bound maximum output tokens, bytes, wall time, and idle time.
-- Preserve incomplete responses and network failures as artifacts but do not
-  confuse them with valid completed turns.
-- Apply backpressure: a fast model must not create an unbounded execution queue.
-- Record time-to-first-token, token/byte throughput, time-to-execution, queue
-  latency, and cancellations.
-- Avoid tool calls in the raw lane; use a compact textual observation only when
-  feedback is enabled.
-- Run A/B controls with identical prompts but no feedback to measure whether
-  stateful history helps or causes mode collapse.
+- Bound response bodies, extracted programs, feedback, retained context, worker
+  wall time, output bytes, memory, CPU, and PIDs.
+- Apply a durable reservation before each provider request and settle it only
+  from provider-reported usage.
+- Preserve bounded error bodies and incomplete/failed request evidence without
+  treating them as executable programs.
+- Pause on missing usage, unknown cost, quota/rate errors, or exhausted budgets;
+  never count unknown work as free.
+- Run A/B controls with matched budgets after dataset integration to measure
+  context lifetime and conditioning effects.
 
 ### 4.4 Parameter and context experiments
 
@@ -152,11 +142,11 @@ must omit `temperature`; the official Luna endpoint may test a bounded set of
 temperature values. Unsupported parameters are never sent merely to make rows
 look uniform.
 
-For Luna, compare `reasoning.effort` at `none`, `low`, and `medium` first. Add
-`high` or above only if measured novelty or validity improves enough to justify
-latency and reasoning-token cost. Compare `text.verbosity` at `low`, `medium`,
-and `high`; high verbosity is a hypothesis for richer program structure, not a
-guarantee, and may instead increase prose/fence failures in raw mode.
+The initial matrix intentionally fixes alternate Luna at `xhigh` and alternate
+Spark at its minimum accepted reasoning, both with high verbosity. Official Luna
+uses `none` or `low` reasoning and high verbosity while sampling temperatures
+1.2, 1.5, and 1.8 per session. Later fixed-budget experiments can isolate each
+factor; high effort or verbosity is a hypothesis, not an assumed improvement.
 
 Initial capability probes refine this matrix: the alternate endpoint accepts a
 requested `none` but reports effective effort `low`, reports temperature `1.0`
@@ -165,7 +155,7 @@ Luna endpoint preserves tested temperature, `none`, and verbosity values. Every
 case must store requested and effective parameters; HTTP success alone is not a
 capability assertion.
 
-Context lifetime policies:
+Later context-lifetime comparisons may include:
 
 - `fresh`: one program, then a new conversation;
 - `short`: reset after a small randomized number of programs;
@@ -291,9 +281,9 @@ Each authoritative case runs in a fresh process. A worker container should have:
 - explicit core-dump policy and a controlled artifact channel;
 - deterministic locale/timezone and recorded environment allowlist.
 
-The persistent REPL tool is secondary. Its transcript, generation, restart count,
-state lifetime, and final crash evidence are recorded; every interesting result
-is replayed as a standalone file.
+The later persistent REPL tool is secondary. Its transcript, generation, restart
+count, state lifetime, and final crash evidence will be recorded; replay remains
+a deliberate human-triggered triage action.
 
 ## 9. Finding classification and reproduction
 
@@ -307,32 +297,33 @@ The first-pass classifier consumes facts, not model judgments:
 - exact source scan annotations for explicit termination helpers;
 - differential output after normalizing only known nondeterministic fields.
 
-Candidate workflow:
+Initial candidate workflow:
 
-1. store the original artifact before any replay;
-2. rerun in fresh workers and require a configurable reproduction threshold;
-3. replay across release/debug/sanitizer and relevant differential profiles;
-4. symbolize and calculate a signature from failure type and stable stack frames;
-5. deduplicate against historical and current findings;
-6. minimize with deterministic reductions first, optionally followed by an LLM
-   investigator that cannot overwrite the original;
-7. emit a private alert containing metadata and artifact IDs, not the full PoC;
-8. prepare a separate responsible-disclosure bundle only after human review.
+1. store the original program, provider evidence, and execution evidence;
+2. mark the session terminal so it cannot generate another turn;
+3. emit a private alert containing metadata and artifact IDs, not the full PoC;
+4. leave replay, validation, symbolization, deduplication, minimization, and model
+   investigation to a later explicit human action.
+
+The later triage design may replay across release, optdebug, ASAN, and differential
+profiles, then calculate stable signatures and minimize immutable descendants.
+None of those actions runs automatically in the initial campaign phase.
 
 ## 10. Storage and project memory
 
-The first single-host implementation can use SQLite in WAL mode for structured
+The single-host implementation uses SQLite in WAL mode for structured
 state and content-addressed filesystem storage for large/raw artifacts. Database
 rows reference immutable artifact hashes.
 
 Minimum entities:
 
 - campaigns and configuration revisions;
-- model requests/responses and streaming events;
+- exact request JSON, raw provider response JSON, and semantic model output;
 - generated cases and parent/corpus relationships;
-- executions, environments, outputs, and resource samples;
+- executions, environments, outputs, resource limits, and exact detail manifests;
 - findings, signatures, reproductions, and minimization lineage;
-- provider usage, local usage estimates, price revisions, and budget events;
+- provider usage, price revisions, durable reservations, and budget events;
+- resumable campaign sessions, turn attempts, and terminal reasons;
 - Telegram/control actions and authenticated actor identity;
 - V8 build and flag-profile manifests.
 
@@ -349,16 +340,22 @@ Cost calculations use a versioned provider price configuration. Provider usage i
 stored raw; a local tokenizer/byte estimate is also recorded so missing or delayed
 usage is visible.
 
-Required controls:
+Implemented initial controls:
 
-- per-request maximum input/output;
-- concurrent request and tokens-per-minute governors;
-- campaign hourly/daily/total budgets;
-- global hourly/daily/total budgets;
-- warning thresholds, hard pause, and explicit owner resume;
-- spend projection using recent moving averages;
-- generation cost, execution cost, and cost per novel/reproduced finding;
-- cancellation accounting for speculative streams.
+- per-request response, program, feedback, context, and wall-time ceilings;
+- durable worst-case reservations before network access;
+- cumulative alternate-Luna ceilings of 1250 credits, 250M uncached-input
+  tokens, 2.5B cached-input tokens, and 42M output/reasoning tokens;
+- cumulative official-Luna local ceiling of `$4.90`, below the owner's external
+  `$5` account limit;
+- alternate Spark usage recording with quota/rate failures causing a pause;
+- conservative reservation retention and a pause when usage is missing or
+  ambiguous;
+- explicit owner-controlled resume rather than an automatic budget reset.
+
+Per-campaign concurrency, rolling-rate controls, spend projection, and cost per
+novel finding remain later scheduler/dashboard work. Terra stays disabled and
+will receive an independent budget before it is ever enabled.
 
 If the provider omits usage, policy chooses between conservative estimated billing
 and pause. It must never silently count the request as free.
@@ -371,7 +368,7 @@ and user IDs. Proposed commands:
 - `/status`, `/campaigns`, `/workers`, `/queue`;
 - `/cost`, `/budget`, `/rate`;
 - `/pause [campaign]`, `/resume [campaign]`, `/stop`;
-- `/lastcrash`, `/finding <id>`, `/replay <id>`;
+- `/lastcrash`, `/finding <id>`;
 - `/help`.
 
 State-changing commands are audited and idempotent; dangerous global actions may
@@ -389,55 +386,60 @@ PoCs and must not make campaign correctness depend on Telegram availability.
 - No provider calls, V8 download/build, or implementation.
 - Gate: owner approval received on 2026-09-01.
 
-### M1 — Skeleton and provider capability probe
+### M1 — Skeleton and provider capability probe (complete)
 
 - Configuration/secrets boundary, database skeleton, CLI, logging, and tests.
 - Probe exact alternate-provider support for `gpt-5.3-codex-spark`, Luna,
-  Responses, streaming event shape, cancellation, usage, reasoning controls,
-  verbosity, and prompt caching without exposing credentials. Record that
+  Responses, usage, reasoning controls, verbosity, and prompt caching without
+  exposing credentials. Record that
   alternate temperature is unsupported and omit it from requests.
-- Probe official Luna separately, including a bounded temperature matrix.
+- Probe official Luna separately with a bounded high-temperature check.
 - Gate: recorded capability matrix and bounded-cost smoke test.
 
-### M2 — Reproducible V8 build supply chain
+### M2 — Reproducible V8 build supply chain (complete)
 
 - Official V8 checkout and pinned release/debug/sanitizer `d8` builds.
 - Build manifests, hashes, symbols, smoke tests, and worker images.
 - Gate: identical test case reproducible across fresh workers.
 
-### M3 — Executor and evidence collector
+### M3 — Executor and evidence collector (complete)
 
-- Fresh-process runner, resource limits, classification, artifact storage, replay,
-  and synthetic crash/timeout/exception tests.
+- Fresh-process runner, resource limits, classification, artifact storage, and
+  synthetic crash/timeout/exception tests.
 - Gate: evidence completeness audit and no secrets inside worker.
 
-### M4 — Raw sealed-stream campaign
+### M4 — Iterative non-streaming campaign controller (offline complete)
 
-- Byte-exact streaming spool, sealed execution, budgets, scheduler, backpressure,
-  and JS/Wasm-via-JS campaigns.
-- Gate: controlled run with zero lost cases and reconciled usage.
+- Exact request/raw-response/program capture, bounded context feedback, fresh
+  execution per turn, durable sessions, multidimensional budgets, crash/pause
+  alerts, and offline status inspection are implemented.
+- Gate remaining: integrate reviewed corpus selection and expose an intentionally
+  bounded live start path; then run a controlled campaign with reconciled usage.
 
-### M5 — Tool-driven and REPL campaigns
-
-- Typed tools, batch execution, persistent console, reset/replay, and context
-  compaction.
-- Gate: all interesting REPL signals replayed standalone.
-
-### M6 — Dataset ingestion and conditioning experiment
+### M5 — Dataset ingestion and conditioning experiment
 
 - Provenance, deduplication, retrieval/window policies, replay detection, and
   unconditioned controls.
 - Gate: fixed-budget comparison report across conditioning policies.
 
-### M7 — Speculative stream execution
+### M6 — Controlled worker comparison
 
-- Snapshot mode first; complete-unit and PTY feed only after measured review.
-- Gate: byte-offset evidence and standalone reproduction semantics demonstrated.
+- Run Spark custom, Luna custom `xhigh`, and official Luna temperature sessions
+  under matched execution and recorded-token budgets.
+- Gate: validity, novelty, throughput, usage, and cost report with zero lost
+  evidence records.
 
-### M8 — Triage, minimization, cost dashboard, and Telegram
+### M7 — Tool-driven Terra investigator (deferred)
 
-- Finding lifecycle, reducer, symbolization, alerts, authenticated commands, and
-  development-update scripts.
+- Design a small, separately budgeted Terra `xhigh` tool lane only if initial
+  worker results justify its 10x credit cost.
+- Gate: explicit owner-reviewed budget and tool/evidence protocol.
+
+### M8 — Manual triage, dashboard, and Telegram control
+
+- Human-triggered finding lifecycle, reducer, symbolization, authenticated
+  commands, and cost dashboard. Crash/pause alerts and development updates are
+  already implemented.
 - Gate: end-to-end synthetic incident drill and owner review.
 
 ### M9 — Long-running experiment
@@ -459,7 +461,7 @@ PoCs and must not make campaign correctness depend on Telegram availability.
 - proportion of findings that are intentional aborts, OOMs, or other false leads;
 - stateful versus stateless yield;
 - conditioned versus unconditioned yield at equal token and execution budgets;
-- sealed versus speculative yield and cost.
+- short versus longer session yield and cost.
 
 ## 15. Open decisions for owner review
 
@@ -468,18 +470,19 @@ PoCs and must not make campaign correctness depend on Telegram availability.
 2. Whether the first long run prioritizes sanitizer yield or release throughput.
 3. Whether source inspection is exposed only to investigators or also to raw
    campaigns through `d8` file helpers.
-4. Initial campaign weights and total budget.
-5. Cancellation policy when speculative execution crashes before generation ends.
+4. Dataset window sizes, sampling policy, and context-lifetime comparison order.
+5. Initial concurrent session counts for each of the three workers.
 6. Dataset licensing/provenance requirements and whether private items must stay
    outside the Git repository.
 7. Retention period and encryption requirements for potentially sensitive crash
    artifacts.
-8. Telegram confirmation policy for global stop/resume and replay commands.
+8. Telegram confirmation policy for global stop/resume commands.
 
 ## 16. Immediate implementation action
 
-M1 and the long-running checkout/build portion of M2 may proceed in parallel.
-Implement a tested secrets/provider boundary and capped capability probe while
-official V8 source and dependencies are fetched into ignored project storage.
-Commit only redacted capability metadata and pinned V8 build manifests. Do not
-start an unbounded campaign until M3 evidence capture and budget gates pass.
+Keep live campaign startup absent while the owner finishes the dataset. After an
+explicit dataset release, implement immutable corpus indexing and bounded random
+window selection, connect that selector to the existing session service, and add
+an owner-visible live scheduler lifecycle. Then implement authenticated Telegram
+status/pause/resume/stop commands and run a synthetic incident drill before any
+sustained campaign. No additional provider calls are needed for this work.

@@ -1,4 +1,4 @@
-schema_version = 1
+schema_version = 2
 
 [[providers]]
 id = "alternate"
@@ -17,68 +17,78 @@ id = "spark-alternate"
 provider = "alternate"
 model = "gpt-5.3-codex-spark"
 temperature = []
-reasoning_effort_probe = ["none", "low"]
-verbosity_probe = ["low", "medium", "high"]
+reasoning_effort = ["none"]
+verbosity = ["high"]
 
 [[models]]
 id = "luna-alternate"
 provider = "alternate"
 model = "gpt-5.6-luna"
 temperature = []
-reasoning_effort_probe = ["none", "low", "medium"]
-verbosity_probe = ["low", "medium", "high"]
+reasoning_effort = ["xhigh"]
+verbosity = ["high"]
 
 [[models]]
 id = "luna-official"
 provider = "official"
 model = "gpt-5.6-luna"
-temperature = [0.4, 0.8, 1.0, 1.3]
-reasoning_effort_probe = ["none", "low", "medium"]
-verbosity_probe = ["low", "medium", "high"]
+temperature = [1.2, 1.5, 1.8]
+reasoning_effort = ["none", "low"]
+verbosity = ["high"]
+
+[[models]]
+id = "terra-alternate"
+provider = "alternate"
+model = "gpt-5.6-terra"
+temperature = []
+reasoning_effort = ["xhigh"]
+verbosity = ["medium"]
 
 [[campaigns]]
-id = "raw-js-spark-fresh"
-enabled = false
+id = "spark-custom-iterative-js"
+enabled = true
 model = "spark-alternate"
-mode = "sealed_response"
+mode = "iterative_non_streaming"
 format = "javascript"
-prompt = "prompts/raw_js_v1.txt"
-context_policy = "fresh"
+prompt = "prompts/iterative_js_v1.txt"
+turn_range = [8, 16]
 
 [[campaigns]]
-id = "raw-js-luna-stateful"
-enabled = false
+id = "luna-custom-xhigh-iterative-js"
+enabled = true
 model = "luna-alternate"
-mode = "sealed_response"
+mode = "iterative_non_streaming"
 format = "javascript"
-prompt = "prompts/raw_js_v1.txt"
-context_policy = "adaptive"
+prompt = "prompts/iterative_js_v1.txt"
+turn_range = [4, 8]
 
 [[campaigns]]
-id = "raw-wasm-spark-rotating"
-enabled = false
-model = "spark-alternate"
-mode = "sealed_response"
-format = "javascript_wasm_transport"
-prompt = "prompts/raw_wasm_v1.txt"
-context_policy = "short"
-
-[[campaigns]]
-id = "raw-js-luna-official-temperature"
-enabled = false
+id = "luna-official-high-temperature-js"
+enabled = true
 model = "luna-official"
-mode = "sealed_response"
+mode = "iterative_non_streaming"
 format = "javascript"
-prompt = "prompts/raw_js_v1.txt"
-context_policy = "fresh"
+prompt = "prompts/iterative_js_v1.txt"
+turn_range = [4, 8]
+
+[[campaigns]]
+id = "terra-custom-xhigh-tool-investigator"
+enabled = false
+model = "terra-alternate"
+mode = "tool_investigator"
+format = "javascript"
+turn_range = [1, 1]
 
 [context]
-policies = ["fresh", "short", "medium", "long", "adaptive"]
-dataset_window_policy = "randomized_versioned"
+policies = ["short_randomized", "unconditioned_control"]
+dataset_window_policy = "random_per_session"
 archive_full_history = true
 resend_full_history = false
 
 [safety]
-unbounded_campaigns_enabled = false
+streaming_campaigns_enabled = false
+live_campaign_cli_exposed = false
+dataset_integration_required = true
 hard_budget_required = true
 crash_evidence_gate_required = true
+automatic_replay_enabled = false

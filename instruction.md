@@ -1,6 +1,6 @@
 # Fuzzynth project instructions
 
-Last updated: 2026-09-01
+Last updated: 2026-09-02
 
 This file is the durable statement of the project owner's instructions and the
 decisions agreed during planning. It must be reviewed before making project
@@ -24,6 +24,9 @@ source-code analysis.
   provider capability probes, and repository setup on 2026-09-01.
 - Do not start an unbounded or sustained-cost fuzzing campaign until the runner,
   crash evidence path, and hard budget limits have passed their milestone gates.
+- Do not start the initial conditioned workers until the owner finishes the PoC
+  dataset and explicitly releases it for integration. Offline implementation and
+  synthetic tests may continue.
 - Work only under `/root/fuzzynth` and project-owned containers.
 - Do not modify, move, build inside, or otherwise disturb `/root/red-sailor` or
   any of its files, containers, volumes, configuration, or processes.
@@ -53,22 +56,25 @@ source-code analysis.
 
 - Support multiple campaign types running concurrently with independent worker,
   rate, token, and cost budgets.
-- Use GPT-5.6 Luna for tool-driven and investigative campaigns unless a later
-  decision changes that assignment.
-- Plan a high-throughput raw-stream campaign for the provider model named
-  `gpt-5.3-codex-spark`.
+- The first three enabled iterative workers are: alternate Spark with requested
+  minimum reasoning and high verbosity; alternate Luna with `xhigh` reasoning
+  and high verbosity; official Luna with high verbosity, `none`/`low` reasoning,
+  and high temperatures selected per session.
+- Keep a possible alternate Terra `xhigh` tool worker disabled until the initial
+  workers establish validity, novelty, throughput, and cost baselines.
 - Do not replace `gpt-5.3-codex-spark` with another model automatically. Probe
   and record the exact capabilities exposed by the custom provider first.
 - In raw mode, treat the complete assistant response as the canonical program.
   Do not require Markdown fences, JSON, explanatory prose, or function calls.
-- Preserve the exact response bytes and stream chunks before any optional
-  derived transformation.
+- Use non-streaming Responses requests for the initial workers. Preserve the
+  exact request JSON, raw response JSON, and extracted semantic output separately
+  before any optional derived transformation.
 - Each completed model turn normally represents one new program.
-- Investigate speculative execution while output is still streaming, but keep
-  it as a distinct experimental lane because partial programs and interactive
-  `d8` input do not have the same semantics as executing a sealed file.
+- Immediately execute each completed output in a fresh isolated `d8`, feed a
+  bounded factual observation into the next turn, and reset after a randomized
+  bounded session length with a newly selected PoC window.
 - Retain tool-based campaigns with file execution, batch execution, replay, and
-  an optional persistent `d8` console.
+  an optional persistent `d8` console as later, separately budgeted work.
 - Run Spark and Luna through the alternate endpoint with `temperature` omitted,
   because that provider does not support setting it.
 - Run Luna through the official OpenAI endpoint in separate campaigns that can
@@ -78,6 +84,8 @@ source-code analysis.
 - Experiment with Luna `reasoning.effort` and `text.verbosity`. Measure valid
   code, novelty, crash yield, output/reasoning tokens, throughput, and cost; do
   not assume that higher effort or verbosity is better.
+- Permit optimization-oriented `%` intrinsics and `gc()` under validated flags,
+  but instruct models never to use deliberate abort/crash/termination helpers.
 
 ## Dataset conditioning
 
@@ -130,7 +138,7 @@ source-code analysis.
   CPU, memory, process count, and wall time, and use a read-only root filesystem
   plus controlled temporary storage where practical.
 - A crash detector must be deterministic and independent of the model's opinion.
-- Preserve source/bytes, model request metadata, raw streamed events, exact
+- Preserve source/bytes, model request metadata, raw provider responses, exact
   binary identity, flags, environment, stdout, stderr, exit status, signal,
   resource use, sanitizer output, core/backtrace data, and reproduction results.
 - Distinguish expected JS exceptions, Wasm traps, explicit exits, timeouts, and
@@ -138,6 +146,9 @@ source-code analysis.
   differential mismatches.
 - Never publish a potentially security-sensitive new PoC automatically. Keep
   findings private until triaged and ready for responsible disclosure.
+- On a first-pass crash candidate, save all available evidence, stop that session,
+  and alert the owner. Do not automatically replay, validate, minimize, or ask a
+  model to investigate it in the initial campaign phase.
 
 ## Cost and control plane
 
@@ -146,6 +157,13 @@ source-code analysis.
 - Prices are configuration owned by the custom provider; do not assume official
   OpenAI prices apply.
 - Enforce per-campaign and global hourly, daily, and total soft/hard budgets.
+- The official Luna cumulative local ceiling is `$4.90`, leaving headroom below
+  the owner's external `$5` account cap.
+- Alternate Luna has a cumulative 1250-credit ceiling using owner-provided rates
+  of 5 credits/M uncached input, 0.5/M cached input, and 30/M output/reasoning,
+  plus hard category ceilings of 250M, 2.5B, and 42M tokens respectively.
+- Spark on the alternate subscription has no monetary/token budget, but quota or
+  rate-limit failures must pause its worker and trigger Telegram notification.
 - Fail closed or pause according to policy if usage accounting becomes unknown.
 - Add Telegram notifications and authenticated commands after the owner supplies
   bot credentials and an allowed chat ID.
