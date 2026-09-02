@@ -7,21 +7,17 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fuzzynth.artifacts import ArtifactStore
-from fuzzynth.control import ControlLedger
+from fuzzynth.control import (
+    PROVIDER_PAUSE_REASONS,
+    ControlLedger,
+    is_supervisor_provider_pause,
+)
 from fuzzynth.sessions import SessionLedger
 
 
 STATE_ROOT = Path("/root/fuzzynth/state")
 WORKER_ID = "spark-custom-iterative-js"
 MINIMUM_COOLDOWN = timedelta(hours=5)
-PROVIDER_PAUSE_COMMANDS = {
-    "pause after provider_error",
-    "pause after provider_quota_or_rate_limit",
-}
-PROVIDER_PAUSE_REASONS = {
-    "provider_error",
-    "provider_quota_or_rate_limit",
-}
 
 
 def main() -> int:
@@ -33,12 +29,7 @@ def main() -> int:
             print("spark_cooldown=skipped reason=worker_not_paused")
             return 0
         latest = control.latest_change(WORKER_ID)
-        if (
-            latest is None
-            or latest.source != "supervisor"
-            or latest.new_state != "paused"
-            or latest.command not in PROVIDER_PAUSE_COMMANDS
-        ):
+        if not is_supervisor_provider_pause(latest):
             print("spark_cooldown=skipped reason=owner_or_unknown_pause")
             return 0
 

@@ -5,17 +5,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fuzzynth.control import ControlLedger
+from fuzzynth.control import ControlLedger, is_supervisor_provider_pause
 
 
 STATE_ROOT = Path("/root/fuzzynth/state")
 SPARK_WORKER = "spark-custom-iterative-js"
 FALLBACK_WORKER = "luna-custom-none-spark-fallback-js"
 MANAGER_SOURCE = "spark-fallback"
-SPARK_PROVIDER_PAUSES = {
-    "pause after provider_error",
-    "pause after provider_quota_or_rate_limit",
-}
 
 
 def main() -> int:
@@ -30,10 +26,7 @@ def main() -> int:
         spark_provider_paused = (
             control.global_state() == "running"
             and control.worker_state(SPARK_WORKER) == "paused"
-            and spark_change is not None
-            and spark_change.source == "supervisor"
-            and spark_change.new_state == "paused"
-            and spark_change.command in SPARK_PROVIDER_PAUSES
+            and is_supervisor_provider_pause(spark_change)
         )
         desired = "running" if spark_provider_paused else "paused"
         current = control.worker_state(FALLBACK_WORKER)

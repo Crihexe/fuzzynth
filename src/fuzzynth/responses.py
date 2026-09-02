@@ -81,6 +81,7 @@ class StreamResult:
     output: bytes
     terminal_type: str
     response: dict[str, Any] | None
+    error_code: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -246,6 +247,7 @@ class ResponsesClient:
             output=assembled.output,
             terminal_type=assembled.terminal_type or "",
             response=assembled.response,
+            error_code=assembled.error_code,
         )
 
     def create_raw(

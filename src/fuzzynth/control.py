@@ -15,6 +15,9 @@ class ControlStateError(RuntimeError):
 
 GLOBAL_STATES = frozenset({"running", "paused", "stopped"})
 WORKER_STATES = frozenset({"running", "paused"})
+PROVIDER_PAUSE_REASONS = frozenset(
+    {"provider_error", "provider_quota_or_rate_limit"}
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +39,18 @@ class ControlAuditEntry:
     previous_state: str
     new_state: str
     created_at: str
+
+
+def is_supervisor_provider_pause(entry: ControlAuditEntry | None) -> bool:
+    """Recognize only a current provider-derived supervisor pause."""
+
+    return bool(
+        entry is not None
+        and entry.source == "supervisor"
+        and entry.new_state == "paused"
+        and entry.command
+        in {f"pause after {reason}" for reason in PROVIDER_PAUSE_REASONS}
+    )
 
 
 @dataclass(frozen=True, slots=True)

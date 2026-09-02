@@ -82,6 +82,7 @@ class AssembledResponse:
     output: bytes
     terminal_type: str | None
     response: dict[str, Any] | None
+    error_code: str | None = None
 
 
 class ResponsesStreamAssembler:
@@ -91,6 +92,7 @@ class ResponsesStreamAssembler:
         self._output = bytearray()
         self._terminal_type: str | None = None
         self._response: dict[str, Any] | None = None
+        self._error_code: str | None = None
 
     def accept(self, event: SSEEvent) -> None:
         if event.data == b"[DONE]":
@@ -121,6 +123,13 @@ class ResponsesStreamAssembler:
             response = payload.get("response")
             if isinstance(response, dict):
                 self._response = response
+            code = payload.get("code")
+            if not isinstance(code, str) and isinstance(response, dict):
+                error = response.get("error")
+                if isinstance(error, dict):
+                    code = error.get("code") or error.get("type")
+            if isinstance(code, str) and code:
+                self._error_code = code[:80]
 
     def finish(self) -> AssembledResponse:
         if self._terminal_type is None:
@@ -129,4 +138,5 @@ class ResponsesStreamAssembler:
             output=bytes(self._output),
             terminal_type=self._terminal_type,
             response=self._response,
+            error_code=self._error_code,
         )

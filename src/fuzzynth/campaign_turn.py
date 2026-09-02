@@ -160,17 +160,24 @@ class CampaignTurnRunner:
         }
 
         try:
+            stream_terminal_type: str | None = None
+            stream_error_code: str | None = None
             if streaming_transport:
                 streamed: StreamResult = client.stream(
                     request,
                     max_stream_bytes=self.max_response_bytes,
                 )
-                if (
-                    streamed.terminal_type != "response.completed"
-                    or streamed.response is None
-                ):
+                stream_terminal_type = streamed.terminal_type
+                stream_error_code = streamed.error_code
+                if streamed.terminal_type == "error":
                     raise ResponsesError(
-                        "provider stream did not yield a completed response",
+                        "provider returned a terminal stream error",
+                        code=streamed.error_code or "stream_error",
+                        raw_response=streamed.raw_sse,
+                    )
+                if streamed.response is None:
+                    raise ResponsesError(
+                        "provider stream did not yield a terminal response",
                         code="incomplete_stream",
                         raw_response=streamed.raw_sse,
                     )
@@ -179,7 +186,10 @@ class CampaignTurnRunner:
                 # The completed response is authoritative. Comparing it with
                 # the assembled deltas prevents a truncated/malformed stream
                 # from silently becoming executable code.
-                if extract_output_text(response) != streamed.output:
+                if (
+                    streamed.terminal_type == "response.completed"
+                    and extract_output_text(response) != streamed.output
+                ):
                     raise ResponsesError(
                         "provider stream output disagrees with terminal response",
                         code="stream_output_mismatch",
@@ -284,6 +294,9 @@ class CampaignTurnRunner:
 
         finished_at = datetime.now(timezone.utc).isoformat()
         effective = _effective_parameters(response)
+        if streaming_transport:
+            effective["stream_terminal_type"] = stream_terminal_type
+            effective["stream_error_code"] = stream_error_code
         if output_error is not None:
             effective["output_error"] = output_error.code
         actual_microunits = (

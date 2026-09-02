@@ -649,6 +649,14 @@ This is the living operational memory for the project. Read it together with
   were preserved separately. Usage was 1,356 input, 21,024 output including
   18,295 reasoning tokens, accounting for 0.637500 custom credits. d8 produced an
   ordinary JavaScript exception, not a candidate crash.
+- The following stateful xhigh turn stayed connected for about 535 seconds, then
+  the alternate provider emitted a terminal SSE `error` with code
+  `request_timeout` after 868 output-text deltas. Fuzzynth preserved the
+  554,595-byte partial stream, did not create or execute a program, retained the
+  worst-case reservation because usage was absent, and paused only xhigh. This
+  establishes two separate boundaries: SSE avoids Cloudflare's ~125-second 524,
+  while the provider can still end exceptionally long generations near 535
+  seconds.
 - Added a distinct custom Luna `none`/high-verbosity fallback lane managed by a
   local reconciler. It runs only while Spark has a supervisor-originated provider
   or quota pause and never overrides owner, crash, or provider control. Its first
@@ -665,5 +673,8 @@ This is the living operational memory for the project. Read it together with
   the observed canary size. The separately enforced executable program ceiling
   remains 512 KiB and every custom Luna request retains its 128k-token worst-case
   budget reservation.
-- All 123 offline tests and systemd unit verification pass. No candidate crash
+- Terminal SSE errors now retain their provider code (for example,
+  `request_timeout`) in generation metadata instead of collapsing to a generic
+  incomplete-stream label. Partial deltas remain non-executable.
+- All 126 offline tests and systemd unit verification pass. No candidate crash
   has been observed at this checkpoint.

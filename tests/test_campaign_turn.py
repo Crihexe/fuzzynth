@@ -255,6 +255,38 @@ class CampaignTurnTests(unittest.TestCase):
         self.assertEqual(generation[0], "failed")
         self.assertIsNotNone(generation[1])
 
+    def test_terminal_stream_error_code_is_preserved_and_never_executed(self) -> None:
+        client = FakeClient(
+            StreamResult(
+                raw_sse=b'data: {"type":"error","code":"request_timeout"}\n\n',
+                output=b"partial and never executable",
+                terminal_type="error",
+                response=None,
+                error_code="request_timeout",
+            )
+        )
+
+        result = self.runner().run_turn(
+            worker=self.worker,
+            session_id="session-timeout",
+            turn_index=1,
+            plan=SessionPlan(10, 1, "xhigh", None),
+            instructions="code only",
+            input_bytes=b"next program",
+            client=client,
+        )
+
+        self.assertEqual(result.pause_reason, "provider_error")
+        self.assertIsNone(result.program)
+        self.assertIsNone(result.execution)
+        self.assertIsNone(self.executed_generation_id)
+        row = self.catalog.connection.execute(
+            "SELECT effective_parameters_json, raw_stream_sha256 FROM generation"
+        ).fetchone()
+        effective = json.loads(row[0])
+        self.assertEqual(effective["error_code"], "request_timeout")
+        self.assertIsNotNone(row[1])
+
     def test_provider_limit_error_is_preserved_and_pauses(self) -> None:
         client = FakeClient(
             error=ResponsesError(

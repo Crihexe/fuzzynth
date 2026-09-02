@@ -6,7 +6,7 @@ import stat
 import tempfile
 import unittest
 
-from fuzzynth.control import ControlLedger
+from fuzzynth.control import ControlAuditEntry, ControlLedger, is_supervisor_provider_pause
 
 
 class ControlLedgerTests(unittest.TestCase):
@@ -90,6 +90,36 @@ class ControlLedgerTests(unittest.TestCase):
         self.assertEqual(latest.source, "supervisor")
         self.assertEqual(latest.command, "pause after provider_error")
         self.assertEqual(latest.new_state, "paused")
+
+    def test_provider_pause_recognizes_error_and_precise_quota_reason(self) -> None:
+        def entry(command: str, *, source: str = "supervisor") -> ControlAuditEntry:
+            return ControlAuditEntry(
+                request_id="request",
+                source=source,
+                actor="campaign-supervisor",
+                command=command,
+                target="spark-custom-iterative-js",
+                previous_state="running",
+                new_state="paused",
+                created_at="2026-09-02T00:00:00+00:00",
+            )
+
+        self.assertTrue(
+            is_supervisor_provider_pause(entry("pause after provider_error"))
+        )
+        self.assertTrue(
+            is_supervisor_provider_pause(
+                entry("pause after provider_quota_or_rate_limit")
+            )
+        )
+        self.assertFalse(
+            is_supervisor_provider_pause(entry("pause after crash_candidate"))
+        )
+        self.assertFalse(
+            is_supervisor_provider_pause(
+                entry("pause after provider_error", source="operator")
+            )
+        )
 
     def test_state_persists_across_connections(self) -> None:
         self.change_global("stopped")

@@ -87,6 +87,22 @@ class ResponsesStreamAssemblerTests(unittest.TestCase):
         with self.assertRaisesRegex(StreamProtocolError, "terminal"):
             assembler.finish()
 
+    def test_preserves_terminal_error_code_without_treating_deltas_as_output(self) -> None:
+        decoder = SSEDecoder()
+        assembler = ResponsesStreamAssembler()
+        raw = (
+            b'data: {"type":"response.output_text.delta","delta":"partial"}\n\n'
+            b'data: {"type":"error","code":"request_timeout"}\n\n'
+        )
+
+        for event in decoder.feed(raw):
+            assembler.accept(event)
+        result = assembler.finish()
+
+        self.assertEqual(result.terminal_type, "error")
+        self.assertEqual(result.error_code, "request_timeout")
+        self.assertEqual(result.output, b"partial")
+
 
 if __name__ == "__main__":
     unittest.main()
