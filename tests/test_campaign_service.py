@@ -123,7 +123,7 @@ class CampaignServiceTests(unittest.TestCase):
 
     def test_unconditioned_control_requires_explicit_switch(self) -> None:
         session = self.service.start_session(
-            "luna-official-high-temperature-js",
+            "luna-official-high-temperature-none-js",
             seed=99,
             corpus_window=None,
             allow_unconditioned=True,

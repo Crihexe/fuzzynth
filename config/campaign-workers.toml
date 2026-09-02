@@ -51,13 +51,37 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc"]
 
 [[workers]]
 id = "luna-official-high-temperature-js"
-enabled = true
+enabled = false
 provider = "official"
 model = "gpt-5.6-luna"
 meter = "luna_official"
 mode = "iterative_raw_js"
 prompt = "prompts/iterative_js_v1.txt"
 reasoning_efforts = ["none", "low"]
+verbosity = "high"
+temperatures = [1.2, 1.5, 1.8]
+min_turns_per_session = 4
+max_turns_per_session = 8
+history_turns = 4
+max_output_tokens = 8192
+reservation_output_tokens = 8192
+v8_build_profile = "release_symbolized"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc"]
+
+# The first campaign attempt showed that temperature plus low reasoning is
+# rejected even though the earlier none-reasoning capability probe succeeded.
+# Keep the failed configuration for evidence provenance and test the compatible
+# none-reasoning lane under a distinct identity.
+[[workers]]
+id = "luna-official-high-temperature-none-js"
+enabled = true
+provider = "official"
+model = "gpt-5.6-luna"
+meter = "luna_official"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_v1.txt"
+reasoning_efforts = ["none"]
 verbosity = "high"
 temperatures = [1.2, 1.5, 1.8]
 min_turns_per_session = 4

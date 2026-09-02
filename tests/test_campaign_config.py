@@ -22,7 +22,7 @@ class CampaignConfigurationTests(unittest.TestCase):
             {
                 "spark-custom-iterative-js",
                 "luna-custom-xhigh-iterative-js",
-                "luna-official-high-temperature-js",
+                "luna-official-high-temperature-none-js",
             },
         )
 
@@ -42,10 +42,13 @@ class CampaignConfigurationTests(unittest.TestCase):
         self.assertEqual(worker.reasoning_efforts, ("xhigh",))
         self.assertEqual(worker.reservation_output_tokens, 128_000)
 
-    def test_official_worker_rotates_high_temperature_and_low_reasoning(self) -> None:
-        worker = self.config.workers["luna-official-high-temperature-js"]
+    def test_official_worker_rotates_high_temperature_with_no_reasoning(self) -> None:
+        worker = self.config.workers["luna-official-high-temperature-none-js"]
         self.assertEqual(worker.temperatures, (1.2, 1.5, 1.8))
-        self.assertEqual(worker.reasoning_efforts, ("none", "low"))
+        self.assertEqual(worker.reasoning_efforts, ("none",))
+        self.assertFalse(
+            self.config.workers["luna-official-high-temperature-js"].enabled
+        )
 
     def test_session_choice_is_reproducible_and_in_range(self) -> None:
         worker = self.config.workers["spark-custom-iterative-js"]
