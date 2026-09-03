@@ -12,6 +12,9 @@ class CampaignConfigurationError(RuntimeError):
     """Worker configuration is incomplete or unsafe to execute."""
 
 
+_ALLOWED_SUPPORT_FILES = {"wasm_module_builder"}
+
+
 @dataclass(frozen=True, slots=True)
 class ContextPolicy:
     max_context_bytes: int
@@ -47,6 +50,7 @@ class CampaignWorker:
     prompt_variant: str = "legacy"
     corpus_pair_id: str = "legacy"
     corpus_strategy: str = "uniform"
+    support_files: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,6 +91,14 @@ def _string_list(raw: dict[str, object], name: str) -> tuple[str, ...]:
     ):
         raise CampaignConfigurationError(f"{name} must be a string array")
     return tuple(value)
+
+
+def _optional_string_list(
+    raw: dict[str, object], name: str
+) -> tuple[str, ...]:
+    if name not in raw:
+        return ()
+    return _string_list(raw, name)
 
 
 def _optional_bool(raw: dict[str, object], name: str, *, default: bool) -> bool:
@@ -173,6 +185,14 @@ def load_campaign_configuration(path: Path, *, repo_root: Path = Path(".")) -> C
         enabled = raw.get("enabled")
         if not isinstance(enabled, bool):
             raise CampaignConfigurationError(f"enabled must be boolean: {worker_id}")
+        support_files = _optional_string_list(raw, "support_files")
+        if (
+            len(set(support_files)) != len(support_files)
+            or not set(support_files) <= _ALLOWED_SUPPORT_FILES
+        ):
+            raise CampaignConfigurationError(
+                f"invalid support files: {worker_id}"
+            )
         worker = CampaignWorker(
             worker_id=worker_id,
             enabled=enabled,
@@ -202,6 +222,7 @@ def load_campaign_configuration(path: Path, *, repo_root: Path = Path(".")) -> C
             prompt_variant=_optional_string(raw, "prompt_variant") or "legacy",
             corpus_pair_id=_optional_string(raw, "corpus_pair_id") or worker_id,
             corpus_strategy=_optional_string(raw, "corpus_strategy") or "uniform",
+            support_files=support_files,
         )
         if worker.corpus_strategy not in {
             "uniform",
@@ -212,6 +233,7 @@ def load_campaign_configuration(path: Path, *, repo_root: Path = Path(".")) -> C
             "focus_memory",
             "focus_security",
             "focus_wasm",
+            "focus_wasm_builder",
         }:
             raise CampaignConfigurationError(
                 f"invalid corpus strategy: {worker_id}"
@@ -255,6 +277,7 @@ def load_campaign_configuration(path: Path, *, repo_root: Path = Path(".")) -> C
                 item.send_verbosity,
                 item.pricing_profile,
                 item.corpus_strategy,
+                item.support_files,
             )
             for item in variants
         }

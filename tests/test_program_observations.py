@@ -54,6 +54,23 @@ class ProgramObservationTests(unittest.TestCase):
         self.assertTrue(observation["subsystem_features"]["calls_export"])
         self.assertTrue(observation["runtime_path_completed"])
 
+    def test_builder_assisted_wasm_requires_pinned_load_and_builder(self) -> None:
+        observation = observe_program(
+            prompt_variant="wasm_builder_v1",
+            program=b"""
+              load('/input/wasm-module-builder.js');
+              const b = new WasmModuleBuilder();
+              const i = b.instantiate();
+              i.exports.run();
+            """,
+            outcome="ok",
+            stdout=b"",
+            stderr=b"",
+        )
+
+        self.assertTrue(observation["prompt_adherent"])
+        self.assertTrue(observation["runtime_path_completed"])
+
     def test_concurrency_wrong_notify_view_has_actionable_hint(self) -> None:
         observation = observe_program(
             prompt_variant="concurrency_v1",

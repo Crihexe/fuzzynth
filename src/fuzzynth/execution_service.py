@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -19,6 +20,14 @@ from fuzzynth.worker_config import load_worker_limits
 
 class ExecutionServiceError(RuntimeError):
     """Pinned worker identity or local execution configuration is unavailable."""
+
+
+_SUPPORT_FILES = {
+    "wasm_module_builder": (
+        Path("test/mjsunit/wasm/wasm-module-builder.js"),
+        "/input/wasm-module-builder.js",
+    ),
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,6 +68,7 @@ def execute_file(
     repo_root: Path = Path("."),
     state_root: Path = Path("state"),
     max_program_bytes: int = 2 * 1024 * 1024,
+    support_files: tuple[str, ...] = (),
 ) -> RecordedExecution:
     return execute_program(
         program_path.read_bytes(),
@@ -68,6 +78,7 @@ def execute_file(
         repo_root=repo_root,
         state_root=state_root,
         max_program_bytes=max_program_bytes,
+        support_files=support_files,
     )
 
 
@@ -81,6 +92,7 @@ def execute_program(
     repo_root: Path = Path("."),
     state_root: Path = Path("state"),
     max_program_bytes: int = 2 * 1024 * 1024,
+    support_files: tuple[str, ...] = (),
 ) -> RecordedExecution:
     repo_root = repo_root.resolve()
     state_root = state_root.resolve()
@@ -99,6 +111,7 @@ def execute_program(
         raise ExecutionServiceError(f"unknown V8 build profile: {build_profile}") from exc
 
     revision = target_config["v8_revision"]
+    v8_root = repo_root / ".local/v8-workspace/v8"
     build_manifest_path = (
         repo_root / ".local/build-manifests" / f"{build_profile}-{revision}.json"
     )
@@ -114,6 +127,52 @@ def execute_program(
         or build_manifest.get("profile") != build_profile
     ):
         raise ExecutionServiceError("build manifest identity does not match configuration")
+
+    selected_support: list[tuple[Path, str]] = []
+    support_evidence: list[dict[str, object]] = []
+    if len(set(support_files)) != len(support_files):
+        raise ExecutionServiceError("duplicate d8 support file")
+    if support_files:
+        try:
+            checked_revision = subprocess.run(
+                ["git", "-C", str(v8_root), "rev-parse", "HEAD"],
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=10,
+                text=True,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise ExecutionServiceError(
+                "unable to verify d8 support source revision"
+            ) from exc
+        if (
+            checked_revision.returncode != 0
+            or checked_revision.stdout.strip() != revision
+        ):
+            raise ExecutionServiceError(
+                "d8 support source does not match the pinned V8 revision"
+            )
+    for name in support_files:
+        try:
+            relative_source, target = _SUPPORT_FILES[name]
+        except KeyError as exc:
+            raise ExecutionServiceError(f"unknown d8 support file: {name}") from exc
+        source = (v8_root / relative_source).resolve()
+        try:
+            data = source.read_bytes()
+        except OSError as exc:
+            raise ExecutionServiceError(f"d8 support file is unavailable: {name}") from exc
+        selected_support.append((source, target))
+        support_evidence.append(
+            {
+                "name": name,
+                "sha256": hashlib.sha256(data).hexdigest(),
+                "size": len(data),
+                "target": target,
+                "v8_revision": revision,
+            }
+        )
 
     worker_manifest_path = (
         repo_root / ".local/worker-images" / f"{build_profile}-{revision}.json"
@@ -156,7 +215,11 @@ def execute_program(
         staged_program = Path(temporary) / "program.js"
         staged_program.write_bytes(program)
         staged_program.chmod(0o444)
-        capture = DockerExecutor(image_id, limits).run(staged_program, flags)
+        capture = DockerExecutor(image_id, limits).run(
+            staged_program,
+            flags,
+            tuple(selected_support),
+        )
     stdout_ref = store.put(capture.stdout)
     stderr_ref = store.put(capture.stderr)
     details_ref = store.put(
@@ -174,6 +237,7 @@ def execute_program(
                 "d8_sha256": d8_sha256,
                 "image_id": image_id,
                 "schema_version": 1,
+                "support_files": support_evidence,
                 "worker_limits": {
                     "cpus": limits.cpus,
                     "max_output_bytes": limits.max_output_bytes,

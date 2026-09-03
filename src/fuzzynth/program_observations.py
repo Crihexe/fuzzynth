@@ -80,21 +80,27 @@ def observe_program(
             "deopt_reasons": [reason[:160] for reason in deopt_reasons[:4]],
         }
 
-    if prompt_variant == "wasm_boundary_v1":
+    if prompt_variant in {"wasm_boundary_v1", "wasm_builder_v1"}:
+        builder_assisted = prompt_variant == "wasm_builder_v1"
         wasm = {
             "constructs_module": bool(
                 re.search(
                     r"(?:new\s+WebAssembly\.Module|WebAssembly\.instantiate)\s*\(",
                     source,
                 )
-            ),
+            ) or (builder_assisted and ".instantiate(" in source),
             "constructs_instance": bool(
                 re.search(
                     r"(?:new\s+WebAssembly\.Instance|WebAssembly\.instantiate)\s*\(",
                     source,
                 )
-            ),
+            ) or (builder_assisted and ".instantiate(" in source),
             "calls_export": _calls_wasm_export(source),
+            "loads_official_builder": (
+                "load('/input/wasm-module-builder.js')" in source
+                or 'load("/input/wasm-module-builder.js")' in source
+            ),
+            "uses_module_builder": "new WasmModuleBuilder" in source,
             "uses_percent_intrinsic": bool(_PERCENT_INTRINSIC.search(source)),
         }
         observation["subsystem"] = "wasm"
@@ -104,6 +110,13 @@ def observe_program(
             and wasm["constructs_instance"]
             and wasm["calls_export"]
             and not wasm["uses_percent_intrinsic"]
+            and (
+                not builder_assisted
+                or (
+                    wasm["loads_official_builder"]
+                    and wasm["uses_module_builder"]
+                )
+            )
         )
         observation["runtime_path_completed"] = bool(
             observation["prompt_adherent"] and outcome == "ok"

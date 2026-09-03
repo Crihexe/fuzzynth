@@ -207,3 +207,12 @@ observation into later turns with subsystem adherence, useful-path completion,
 known corrective guidance, and JIT compilation/deoptimization counts. Compiler
 and language lanes run with `--trace-opt` and `--trace-deopt`; exact raw output
 continues to be preserved and primary execution remains under `--fuzzing`.
+
+Because structured feedback cannot make a small model reliably hand-assemble
+binary section arithmetic, the live matrix now retains that raw-byte lane for
+diversity and adds a separate `WasmModuleBuilder` lane. The latter uses the
+official helper from the exact pinned V8 revision through a read-only allowlisted
+mount; every execution records the helper hash and revision. Its context pool is
+drawn from real builder-using examples rather than raw-byte examples. This tests
+the actual hypothesis that binary-construction precision—not lack of Wasm ideas—
+is suppressing useful executions.

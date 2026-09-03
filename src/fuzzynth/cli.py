@@ -74,6 +74,8 @@ def _workers(repo_root: Path, seed: int) -> int:
                 "pricing_profile": worker.pricing_profile,
                 "prompt_variant": worker.prompt_variant,
                 "corpus_pair_id": worker.corpus_pair_id,
+                "corpus_strategy": worker.corpus_strategy,
+                "support_files": worker.support_files,
                 "turn_range": [
                     worker.min_turns_per_session,
                     worker.max_turns_per_session,

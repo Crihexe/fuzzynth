@@ -27,6 +27,7 @@ class CampaignConfigurationTests(unittest.TestCase):
                 "luna-custom-low-security-asan-explicit-v3",
                 "terra-custom-high-security-asan-explicit-v3",
                 "luna-custom-low-wasm-asan-boundary-v1",
+                "luna-custom-low-wasm-builder-asan-v1",
                 "luna-custom-low-concurrency-asan-focused-v1",
                 "luna-custom-none-language-asan-focused-v1",
             },
@@ -42,6 +43,11 @@ class CampaignConfigurationTests(unittest.TestCase):
         for worker in self.config.enabled_workers():
             if worker.provider == "alternate":
                 self.assertEqual(worker.temperatures, ())
+
+    def test_wasm_builder_lane_mounts_only_the_pinned_helper(self) -> None:
+        worker = self.config.workers["luna-custom-low-wasm-builder-asan-v1"]
+        self.assertEqual(worker.support_files, ("wasm_module_builder",))
+        self.assertEqual(worker.corpus_strategy, "focus_wasm_builder")
 
     def test_every_worker_executes_d8_in_fuzzing_mode(self) -> None:
         for worker in self.config.workers.values():
@@ -62,6 +68,7 @@ class CampaignConfigurationTests(unittest.TestCase):
                 "luna-custom-low-memory-asan-explicit-v3",
                 "luna-custom-low-security-asan-explicit-v3",
                 "luna-custom-low-wasm-asan-boundary-v1",
+                "luna-custom-low-wasm-builder-asan-v1",
                 "luna-custom-low-concurrency-asan-focused-v1",
                 "luna-custom-none-language-asan-focused-v1",
             },

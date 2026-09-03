@@ -876,6 +876,30 @@ v8_worker_profile = "standard"
 d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing"]
 
 [[workers]]
+id = "luna-custom-low-wasm-builder-asan-v1"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_wasm_builder_v1.txt"
+prompt_variant = "wasm_builder_v1"
+corpus_pair_id = "wasm-builder-v1"
+corpus_strategy = "focus_wasm_builder"
+reasoning_efforts = ["low"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 2
+max_turns_per_session = 4
+history_turns = 3
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "asan"
+v8_worker_profile = "standard"
+support_files = ["wasm_module_builder"]
+d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-sync-tier-up", "--stress-wasm-memory-moving"]
+
+[[workers]]
 id = "luna-custom-none-language-asan-focused-v1"
 enabled = true
 provider = "alternate"

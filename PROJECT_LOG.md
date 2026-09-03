@@ -1107,4 +1107,12 @@ This is the living operational memory for the project. Read it together with
   Wasm and Atomics/deadlock failures, and summarized optimization/deoptimization
   traces. Enabled `--trace-opt`/`--trace-deopt` only on compiler and ordinary
   language lanes so later turns can distinguish real tiering/deoptimization from
-  a merely successful exit. The suite now passes 173 tests.
+  a merely successful exit.
+- Added a second, builder-assisted Wasm lane while retaining the raw-byte lane
+  as a control. It receives eight random examples from a clean pool of actual
+  `WasmModuleBuilder` users and loads the official helper from the pinned V8
+  revision through a read-only allowlisted container mount. The exact helper
+  SHA-256, size, mount target, and V8 revision are recorded in each execution's
+  immutable detail artifact. Ten corpus-window smokes covered 73 sources, and a
+  real ASan container smoke instantiated and called an export successfully.
+  The suite now passes 177 tests.

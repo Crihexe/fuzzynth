@@ -62,7 +62,12 @@ class DockerExecutor:
         self.image_id = image_id
         self.limits = limits or WorkerLimits()
 
-    def run(self, program_path: Path, flags: tuple[str, ...] = ()) -> ExecutionCapture:
+    def run(
+        self,
+        program_path: Path,
+        flags: tuple[str, ...] = (),
+        support_files: tuple[tuple[Path, str], ...] = (),
+    ) -> ExecutionCapture:
         source = program_path.resolve(strict=True)
         if not source.is_file():
             raise ValueError("program_path must be a regular file")
@@ -71,12 +76,26 @@ class DockerExecutor:
         for flag in flags:
             if not isinstance(flag, str) or not flag.startswith("--") or "\0" in flag:
                 raise ValueError("d8 flags must be NUL-free --options")
+        resolved_support: list[tuple[Path, str]] = []
+        targets: set[str] = set()
+        for support_source, target in support_files:
+            selected = support_source.resolve(strict=True)
+            if not selected.is_file():
+                raise ValueError("support source must be a regular file")
+            if "," in str(selected) or "\n" in str(selected):
+                raise ValueError("support source cannot be represented as a Docker mount")
+            if re.fullmatch(r"/input/[a-z0-9_-]+\.js", target) is None:
+                raise ValueError("support target must be a safe /input JavaScript path")
+            if target == "/input/program.js" or target in targets:
+                raise ValueError("support target conflicts with another mount")
+            targets.add(target)
+            resolved_support.append((selected, target))
 
         name = f"fuzzynth-{uuid.uuid4().hex}"
         container_id = ""
         try:
             created = subprocess.run(
-                self._create_command(name, source, flags),
+                self._create_command(name, source, flags, tuple(resolved_support)),
                 check=False,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -147,10 +166,14 @@ class DockerExecutor:
                     pass
 
     def _create_command(
-        self, name: str, source: Path, flags: tuple[str, ...]
+        self,
+        name: str,
+        source: Path,
+        flags: tuple[str, ...],
+        support_files: tuple[tuple[Path, str], ...] = (),
     ) -> list[str]:
         limits = self.limits
-        return [
+        command = [
             "docker",
             "create",
             "--name",
@@ -176,10 +199,16 @@ class DockerExecutor:
             f"/tmp:rw,noexec,nosuid,nodev,size={limits.tmpfs_bytes}",
             "--mount",
             f"type=bind,src={source},dst=/input/program.js,readonly",
-            self.image_id,
-            *flags,
-            "/input/program.js",
         ]
+        for support_source, target in support_files:
+            command.extend(
+                (
+                    "--mount",
+                    f"type=bind,src={support_source},dst={target},readonly",
+                )
+            )
+        command.extend((self.image_id, *flags, "/input/program.js"))
+        return command
 
     def _start_and_capture(
         self, container_id: str

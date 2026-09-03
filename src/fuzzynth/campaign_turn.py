@@ -123,6 +123,7 @@ class CampaignTurnRunner:
             build_profile=worker.v8_build_profile,
             worker_profile=worker.v8_worker_profile,
             flags=worker.d8_flags,
+            support_files=worker.support_files,
             repo_root=self.repo_root,
             state_root=self.state_root,
             max_program_bytes=self.max_program_bytes,

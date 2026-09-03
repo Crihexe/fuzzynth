@@ -31,6 +31,7 @@ _FOCUS_STRATEGIES = {
     "focus_memory",
     "focus_security",
     "focus_wasm",
+    "focus_wasm_builder",
 }
 
 
@@ -298,6 +299,14 @@ class CorpusPool:
                 and "wasm" in groups
                 and b"wasmmodulebuilder" not in source
                 and (b"webassembly" in source or b"wasm" in source)
+                and b"assert" not in source
+                and b"sandbox." not in source
+                and b"%" not in sample.data
+            )
+        if strategy == "focus_wasm_builder":
+            return (
+                "wasm" in groups
+                and b"new wasmmodulebuilder" in source
                 and b"assert" not in source
                 and b"sandbox." not in source
                 and b"%" not in sample.data

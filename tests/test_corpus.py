@@ -209,6 +209,34 @@ class CorpusPoolTests(unittest.TestCase):
             {"shared.js"},
         )
 
+    def test_wasm_builder_focus_draws_builder_using_examples(self) -> None:
+        samples = (
+            CorpusSample(
+                "builder.js",
+                "0" * 64,
+                b"d8.file.execute('wasm-module-builder.js'); new WasmModuleBuilder();",
+                contains_wasm_markers=True,
+            ),
+            CorpusSample(
+                "raw.js",
+                "1" * 64,
+                b"new WebAssembly.Module(bytes);",
+                contains_wasm_markers=True,
+            ),
+        )
+        pool = CorpusPool(samples)
+
+        window = pool.build_window(
+            seed=1,
+            size=1,
+            strategy="focus_wasm_builder",
+        )
+
+        self.assertEqual(
+            {item.name for item in extract_corpus_references(window)},
+            {"builder.js"},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

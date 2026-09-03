@@ -44,6 +44,20 @@ class DockerExecutorConfigurationTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "--options"):
                 DockerExecutor(IMAGE_ID).run(source, ("not-a-flag",))
 
+    def test_support_file_mount_is_bounded_to_input_javascript(self) -> None:
+        executor = DockerExecutor(IMAGE_ID)
+        command = executor._create_command(
+            "fuzzynth-test",
+            Path("/state/program.js"),
+            ("--fuzzing",),
+            ((Path("/v8/wasm-module-builder.js"), "/input/wasm-module-builder.js"),),
+        )
+
+        self.assertIn(
+            "type=bind,src=/v8/wasm-module-builder.js,dst=/input/wasm-module-builder.js,readonly",
+            command,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

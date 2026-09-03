@@ -8,7 +8,7 @@ Requires=docker.service
 Type=simple
 WorkingDirectory=/root/fuzzynth
 Environment=PYTHONPATH=/root/fuzzynth/src
-ExecStart=/usr/bin/python3 -m fuzzynth campaign-run --live --repo-root /root/fuzzynth --state-root /root/fuzzynth/state --seed 20260903 --window-size 8 --worker luna-custom-low-compiler-optdebug-explicit-v3 --worker luna-custom-low-memory-asan-explicit-v3 --worker luna-custom-low-security-asan-explicit-v3 --worker luna-custom-low-wasm-asan-boundary-v1 --worker luna-custom-low-concurrency-asan-focused-v1 --worker luna-custom-none-language-asan-focused-v1 --worker terra-custom-high-security-asan-explicit-v3 --corpus-index /root/fuzzynth/.local/datasets/v8_js_pocs_preview_v3/javascript_corpus/index.sqlite
+ExecStart=/usr/bin/python3 -m fuzzynth campaign-run --live --repo-root /root/fuzzynth --state-root /root/fuzzynth/state --seed 20260903 --window-size 8 --worker luna-custom-low-compiler-optdebug-explicit-v3 --worker luna-custom-low-memory-asan-explicit-v3 --worker luna-custom-low-security-asan-explicit-v3 --worker luna-custom-low-wasm-asan-boundary-v1 --worker luna-custom-low-wasm-builder-asan-v1 --worker luna-custom-low-concurrency-asan-focused-v1 --worker luna-custom-none-language-asan-focused-v1 --worker terra-custom-high-security-asan-explicit-v3 --corpus-index /root/fuzzynth/.local/datasets/v8_js_pocs_preview_v3/javascript_corpus/index.sqlite
 Restart=on-failure
 RestartSec=10s
 TimeoutStopSec=660s
