@@ -14,6 +14,7 @@ class StressReplayTests(unittest.TestCase):
         self.assertEqual(
             names,
             {
+                "undefined_behavior",
                 "compiler_verify",
                 "compiler_concurrent",
                 "forced_deopt",
@@ -32,6 +33,7 @@ class StressReplayTests(unittest.TestCase):
         self.assertEqual(
             names,
             {
+                "undefined_behavior",
                 "memory_gc",
                 "wasm_tiering_memory",
                 "wasm_stack_switching",
@@ -45,7 +47,7 @@ class StressReplayTests(unittest.TestCase):
             profile.name
             for profile in applicable_profiles(b"'abc'.replace(/a/, 'z')")
         }
-        self.assertEqual(names, {"experimental_regexp"})
+        self.assertEqual(names, {"undefined_behavior", "experimental_regexp"})
 
     def test_builder_wasm_and_exec_are_routed_to_specialized_profiles(self) -> None:
         builder_names = {
@@ -60,7 +62,10 @@ class StressReplayTests(unittest.TestCase):
 
         self.assertIn("wasm_tiering_memory", builder_names)
         self.assertIn("wasm_stack_switching", builder_names)
-        self.assertEqual(regexp_names, {"experimental_regexp"})
+        self.assertIn("undefined_behavior", builder_names)
+        self.assertEqual(
+            regexp_names, {"undefined_behavior", "experimental_regexp"}
+        )
 
 
 if __name__ == "__main__":

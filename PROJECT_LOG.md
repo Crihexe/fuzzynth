@@ -1180,3 +1180,19 @@ This is the living operational memory for the project. Read it together with
   prompt selects one exact corpus-demonstrated advanced family and one JS
   boundary; it retains eight examples because the 16-example ablation was more
   expensive and less valid.
+- Completed the second 16,520-execution sensitive replay with zero
+  infrastructure errors and zero candidates. Together with the prior round,
+  the specialized corpus has now received 22,273 alternate-flag executions
+  without a native finding.
+- The advanced Wasm lane immediately reached table/call-indirect, SIMD, and GC
+  programs and actual Liftoff/TurboFan compilation, but exposed repeatable
+  builder precision errors. Added exact, measured feedback for prefixed opcode
+  encoding, official `SimdInstr`/`GCInstr` spelling, table export kinds, and
+  element indices. A high-reasoning custom Terra companion lane produced its
+  first two table/SIMD programs successfully and is retained as a low-volume
+  depth comparison.
+- Built and packaged an optimized UBSan+vptr d8 image from the pinned Chrome
+  152 V8 revision. The isolated image smoke test passed. Native sanitizer/fatal
+  signatures now require nonzero termination and stderr evidence, preventing a
+  generated `print('runtime error: ...')` from forging a candidate. Every
+  preserved successful program is routed through the new UBSan replay oracle.

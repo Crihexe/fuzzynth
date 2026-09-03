@@ -27,3 +27,15 @@ extra_gn_args = [
   "is_asan=true",
   "symbol_level=1",
 ]
+
+[profiles.ubsan]
+description = "Optimized UndefinedBehaviorSanitizer build with vptr checks and fail-fast diagnostics"
+base_builder = "x64.release"
+output_dir = "fuzzynth-x64.ubsan"
+target = "d8"
+extra_gn_args = [
+  "is_ubsan=true",
+  "is_ubsan_no_recover=true",
+  "is_ubsan_vptr=true",
+  "symbol_level=1",
+]

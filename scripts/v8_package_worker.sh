@@ -56,10 +56,10 @@ install -d -m 0755 "$rootfs/opt/fuzzynth" "$rootfs/work"
 install -m 0755 "$binary" "$rootfs/opt/fuzzynth/d8"
 runtime_binaries=("$binary")
 
-if [[ "$profile" == asan ]]; then
+if [[ "$profile" == asan || "$profile" == ubsan ]]; then
   symbolizer="$v8_root/third_party/llvm-build/Release+Asserts/bin/llvm-symbolizer"
   if [[ ! -x "$symbolizer" ]]; then
-    printf 'ASAN profile requires llvm-symbolizer: %s\n' "$symbolizer" >&2
+    printf 'Sanitizer profile requires llvm-symbolizer: %s\n' "$symbolizer" >&2
     exit 1
   fi
   install -m 0755 "$symbolizer" "$rootfs/opt/fuzzynth/llvm-symbolizer"

@@ -335,3 +335,25 @@ requires one corpus-demonstrated advanced family. This preserves the empirical
 eight-example optimum while changing the context distribution; the earlier
 8-vs-16 experiment already showed that a larger mixed prompt raises cost by 28%
 without improving validity.
+
+The second replay subsequently completed all 16,520 executions with zero
+errors and zero candidates. The two specialized replay rounds total 22,273
+alternate-flag executions.
+
+The first live advanced-builder outputs validate the direction but also show
+why raw throughput is a poor metric. Valid programs reached table plus
+`call_indirect`, SIMD, GC/reference types, JS imports, Liftoff, TurboFan, and
+Wasm-to-JS wrappers. Invalid programs repeatedly misspelled the official
+`SimdInstr`/`GCInstr` helpers, encoded prefixed opcodes as direct bytes, or
+exported a table as a function. These exact failures are now returned as
+structured corrective feedback. A high-reasoning custom Terra comparison began
+with two consecutive valid table/SIMD programs; it is more precise but roughly
+an order of magnitude more expensive in owner credits, so it is a depth lane,
+not the throughput default.
+
+Finally, Fuzzynth now has a fourth native oracle: a pinned optimized UBSan build
+with fail-fast undefined-behavior and vptr checks. Its isolated worker image
+passed the d8 smoke test. The replay router applies it to every preserved
+successful program. Candidate classification requires a nonzero native process
+termination and a sanitizer/fatal marker on stderr, so model-generated stdout
+cannot impersonate an UBSan or V8 finding.

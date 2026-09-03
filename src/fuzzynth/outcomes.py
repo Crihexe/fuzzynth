@@ -146,8 +146,11 @@ def classify(observation: ProcessObservation) -> ExecutionOutcome:
     """Classify only captured facts; never ask the generating model to decide."""
 
     combined = observation.stdout + b"\n" + observation.stderr
-    sanitizer = _present_markers(combined, _SANITIZER_MARKERS)
-    if sanitizer:
+    # Native diagnostics are emitted on stderr and terminate the process. Do
+    # not let generated JavaScript forge a candidate merely by printing one of
+    # these strings to ordinary stdout.
+    sanitizer = _present_markers(observation.stderr, _SANITIZER_MARKERS)
+    if sanitizer and observation.exit_code != 0:
         return ExecutionOutcome(
             kind=OutcomeKind.SANITIZER,
             bug_candidate=True,
@@ -155,8 +158,8 @@ def classify(observation: ProcessObservation) -> ExecutionOutcome:
             markers=sanitizer,
         )
 
-    v8_fatal = _present_markers(combined, _V8_FATAL_MARKERS)
-    if v8_fatal:
+    v8_fatal = _present_markers(observation.stderr, _V8_FATAL_MARKERS)
+    if v8_fatal and observation.exit_code != 0:
         return ExecutionOutcome(
             kind=OutcomeKind.V8_FATAL,
             bug_candidate=True,

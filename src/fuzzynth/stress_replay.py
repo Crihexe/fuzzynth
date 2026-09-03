@@ -22,6 +22,14 @@ _CODE_MARKERS = (b"function", b"=>", b"class ", b"eval(")
 
 STRESS_PROFILES = (
     StressProfile(
+        name="undefined_behavior",
+        build_profile="ubsan",
+        flags=_COMMON + ("--jit-fuzzing",),
+        # UBSan is an independent native oracle, so every preserved exit-0
+        # program is relevant even if it has no easily recognized feature.
+        markers=(b"",),
+    ),
+    StressProfile(
         name="compiler_verify",
         build_profile="optdebug",
         flags=_COMMON
