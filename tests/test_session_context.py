@@ -76,6 +76,31 @@ class ExecutionFeedbackTests(unittest.TestCase):
             "invalid_percent_gc_intrinsic",
         )
 
+    def test_program_observation_is_preserved_as_structured_feedback(self) -> None:
+        encoded = build_execution_feedback(
+            ExecutionFeedback(
+                outcome="ok",
+                exit_code=0,
+                signal_name=None,
+                timed_out=False,
+                oom_killed=False,
+                output_truncated=False,
+                duration_ms=2,
+                stdout=b"",
+                stderr=b"",
+                program_observation={
+                    "subsystem": "wasm",
+                    "runtime_path_completed": True,
+                },
+            ),
+            max_feedback_bytes=1024,
+        )
+
+        decoded = json.loads(encoded)
+        self.assertTrue(
+            decoded["program_observation"]["runtime_path_completed"]
+        )
+
 
 class TurnInputTests(unittest.TestCase):
     @staticmethod

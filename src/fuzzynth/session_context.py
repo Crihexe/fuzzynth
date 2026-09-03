@@ -52,6 +52,7 @@ class ExecutionFeedback:
     stderr: bytes
     suspected_harness_misuse: str | None = None
     triage_guidance: str | None = None
+    program_observation: dict[str, object] | None = None
 
 
 def _utf8_tail(data: bytes, limit: int) -> str:
@@ -83,6 +84,8 @@ def build_execution_feedback(
             "code": feedback.suspected_harness_misuse,
             "guidance": feedback.triage_guidance,
         }
+    if feedback.program_observation is not None:
+        fixed["program_observation"] = feedback.program_observation
     # Divide remaining space evenly. JSON escaping may expand previews, so shrink
     # until the final canonical representation is within the exact byte ceiling.
     preview_limit = max(0, (max_feedback_bytes - 256) // 2)

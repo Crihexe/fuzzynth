@@ -181,3 +181,29 @@ The infrastructure is working and some generated programs reach deep optimized
 paths. The generator policy is not yet broad or directed enough to call the
 overall fuzzing strategy effective. The next campaign should optimize for
 distinct, verified engine paths per credit rather than raw program count.
+
+## Specialized canary after the audit
+
+The first 62 outputs from the replacement matrix confirm that subsystem-specific
+prompts fix the most serious mode-collapse defect. Direct inspection found:
+
+| Lane | Programs | Prompt-adherent | Completed useful path | Other outcomes |
+|---|---:|---:|---:|---|
+| Wasm boundary | 16 | 16 | 6 | 10 rejected binaries |
+| concurrency | 20 | 20 | 13 | 1 JS error, 2 other nonzero, 4 timeouts |
+| ordinary language | 26 | 26 | 26 | none |
+
+All 62 program hashes are unique. In contrast with `interaction_v1`, every Wasm
+output now constructs a module and instance and uses an export, every
+concurrency output uses SAB and Atomics (normally a real d8 Worker), and the
+language lane avoids `%` intrinsics, Wasm, SAB, and Worker. This is strong
+evidence that the old failure was prompt-level semantic collapse, not a broken
+corpus sampler.
+
+The canary also exposes the next bottleneck. Ten of sixteen Wasm programs failed
+binary validation, while concurrency failures came from invalid Atomics view
+types or incomplete message protocols. Fuzzynth now feeds a compact structured
+observation into later turns with subsystem adherence, useful-path completion,
+known corrective guidance, and JIT compilation/deoptimization counts. Compiler
+and language lanes run with `--trace-opt` and `--trace-deopt`; exact raw output
+continues to be preserved and primary execution remains under `--fuzzing`.

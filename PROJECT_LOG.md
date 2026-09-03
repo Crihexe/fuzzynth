@@ -1091,3 +1091,20 @@ This is the living operational memory for the project. Read it together with
   intrinsic contamination. Ten deterministic eight-example smoke windows per
   cleaned pool passed provenance validation; the full suite remains at 165
   passing tests.
+- Inspected the first specialized canary programs directly rather than relying
+  on routing metadata. Across 62 outputs, all 16 Wasm programs constructed a
+  module/instance and reached for an export, all 20 concurrency programs used
+  SharedArrayBuffer plus Atomics, and all 26 language programs avoided native
+  intrinsics, Wasm, SAB, and Worker. All 62 program hashes were unique. The
+  specialization therefore breaks the prior subsystem mode collapse.
+- Canary validity differs sharply by subsystem: language completed 26/26,
+  concurrency 13/20, and Wasm 6/16. Wasm failures were rejected raw binaries;
+  concurrency failures were invalid wait/notify views or worker-protocol
+  deadlocks. These are generator precision failures, not V8 candidates.
+- Added compact deterministic program observations to iterative feedback. The
+  next turn now sees prompt adherence, relevant static features, whether a
+  successful Wasm/worker path completed, known corrective guidance for malformed
+  Wasm and Atomics/deadlock failures, and summarized optimization/deoptimization
+  traces. Enabled `--trace-opt`/`--trace-deopt` only on compiler and ordinary
+  language lanes so later turns can distinguish real tiering/deoptimization from
+  a merely successful exit. The suite now passes 173 tests.

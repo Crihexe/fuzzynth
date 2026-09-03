@@ -17,6 +17,7 @@ from fuzzynth.catalog import EvidenceCatalog, GenerationRecord
 from fuzzynth.corpus import CorpusReference
 from fuzzynth.execution_service import RecordedExecution, execute_program
 from fuzzynth.outcomes import diagnose_harness_misuse
+from fuzzynth.program_observations import observe_program
 from fuzzynth.responses import (
     GenerationRequest,
     ResponsesClient,
@@ -127,6 +128,13 @@ class CampaignTurnRunner:
             max_program_bytes=self.max_program_bytes,
         )
         diagnostic = diagnose_harness_misuse(program, execution.stderr)
+        program_observation = observe_program(
+            prompt_variant=worker.prompt_variant,
+            program=program,
+            outcome=execution.outcome,
+            stdout=execution.stdout,
+            stderr=execution.stderr,
+        )
         feedback = build_execution_feedback(
             ExecutionFeedback(
                 outcome=execution.outcome,
@@ -144,6 +152,7 @@ class CampaignTurnRunner:
                 triage_guidance=(
                     diagnostic.guidance if diagnostic is not None else None
                 ),
+                program_observation=program_observation,
             ),
             max_feedback_bytes=self.max_feedback_bytes,
         )

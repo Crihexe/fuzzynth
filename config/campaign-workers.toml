@@ -618,7 +618,7 @@ max_output_tokens = 2048
 reservation_output_tokens = 128000
 v8_build_profile = "optdebug"
 v8_worker_profile = "standard"
-d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing"]
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing", "--trace-opt", "--trace-deopt"]
 
 [[workers]]
 id = "luna-custom-low-compiler-optdebug-lean-v3"
@@ -896,7 +896,7 @@ max_output_tokens = 2048
 reservation_output_tokens = 128000
 v8_build_profile = "asan"
 v8_worker_profile = "standard"
-d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing"]
+d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing", "--trace-opt", "--trace-deopt"]
 
 # Bounded one-turn interaction-prompt experiment. These workers are omitted
 # from the continuous systemd campaign and are disabled again after the exact
