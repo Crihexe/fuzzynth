@@ -39,3 +39,13 @@ extra_gn_args = [
   "is_ubsan_vptr=true",
   "symbol_level=1",
 ]
+
+[profiles.tsan]
+description = "Optimized ThreadSanitizer build for Worker and shared-memory races"
+base_builder = "x64.release"
+output_dir = "fuzzynth-x64.tsan"
+target = "d8"
+extra_gn_args = [
+  "is_tsan=true",
+  "symbol_level=1",
+]

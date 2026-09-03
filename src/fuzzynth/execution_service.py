@@ -215,7 +215,12 @@ def execute_program(
         staged_program = Path(temporary) / "program.js"
         staged_program.write_bytes(program)
         staged_program.chmod(0o444)
-        capture = DockerExecutor(image_id, limits).run(
+        unconfined_seccomp = build_profile == "tsan"
+        capture = DockerExecutor(
+            image_id,
+            limits,
+            unconfined_seccomp=unconfined_seccomp,
+        ).run(
             staged_program,
             flags,
             tuple(selected_support),
@@ -237,6 +242,11 @@ def execute_program(
                 "d8_sha256": d8_sha256,
                 "image_id": image_id,
                 "schema_version": 1,
+                "seccomp_profile": (
+                    "unconfined_for_tsan_aslr"
+                    if unconfined_seccomp
+                    else "docker_default"
+                ),
                 "support_files": support_evidence,
                 "worker_limits": {
                     "cpus": limits.cpus,

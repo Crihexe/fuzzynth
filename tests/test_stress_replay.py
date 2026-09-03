@@ -49,6 +49,24 @@ class StressReplayTests(unittest.TestCase):
         }
         self.assertEqual(names, {"undefined_behavior", "experimental_regexp"})
 
+    def test_shared_memory_selects_thread_safety_oracle(self) -> None:
+        names = {
+            profile.name
+            for profile in applicable_profiles(
+                b"const s = new SharedArrayBuffer(8); new Worker('');"
+            )
+        }
+
+        self.assertEqual(
+            names,
+            {
+                "thread_safety",
+                "undefined_behavior",
+                "memory_gc",
+                "heap_verification",
+            },
+        )
+
     def test_builder_wasm_and_exec_are_routed_to_specialized_profiles(self) -> None:
         builder_names = {
             profile.name

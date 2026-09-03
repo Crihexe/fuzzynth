@@ -22,6 +22,18 @@ _CODE_MARKERS = (b"function", b"=>", b"class ", b"eval(")
 
 STRESS_PROFILES = (
     StressProfile(
+        name="thread_safety",
+        build_profile="tsan",
+        flags=_COMMON
+        + (
+            "--jit-fuzzing",
+            "--stress-concurrent-allocation",
+            "--stress-concurrent-inlining-attach-code",
+            "--stress-background-compile",
+        ),
+        markers=(b"sharedarraybuffer", b"worker("),
+    ),
+    StressProfile(
         name="undefined_behavior",
         build_profile="ubsan",
         flags=_COMMON + ("--jit-fuzzing",),

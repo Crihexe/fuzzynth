@@ -56,7 +56,7 @@ install -d -m 0755 "$rootfs/opt/fuzzynth" "$rootfs/work"
 install -m 0755 "$binary" "$rootfs/opt/fuzzynth/d8"
 runtime_binaries=("$binary")
 
-if [[ "$profile" == asan || "$profile" == ubsan ]]; then
+if [[ "$profile" == asan || "$profile" == ubsan || "$profile" == tsan ]]; then
   symbolizer="$v8_root/third_party/llvm-build/Release+Asserts/bin/llvm-symbolizer"
   if [[ ! -x "$symbolizer" ]]; then
     printf 'Sanitizer profile requires llvm-symbolizer: %s\n' "$symbolizer" >&2
@@ -106,11 +106,19 @@ mkdir -p "$manifest_dir"
 docker image inspect "$image_tag" > "$manifest_dir/$profile-$revision.json"
 image_id=$(docker image inspect --format '{{.Id}}' "$image_tag")
 
+smoke_security=(--security-opt no-new-privileges)
+if [[ "$profile" == tsan ]]; then
+  # TSan needs personality(ADDR_NO_RANDOMIZE) to reserve its shadow memory on
+  # hosts with high mmap ASLR entropy. Docker's default seccomp policy blocks
+  # that syscall; the remaining container isolation is unchanged.
+  smoke_security+=(--security-opt seccomp=unconfined)
+fi
+
 smoke_output=$(docker run --rm \
   --network none \
   --read-only \
   --cap-drop ALL \
-  --security-opt no-new-privileges \
+  "${smoke_security[@]}" \
   --pids-limit 64 \
   --memory 256m \
   --memory-swap 256m \

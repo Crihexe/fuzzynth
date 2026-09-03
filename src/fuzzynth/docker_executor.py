@@ -56,11 +56,18 @@ _RECEIVED_SIGNAL = re.compile(rb"Received signal\s+([0-9]{1,3})")
 
 
 class DockerExecutor:
-    def __init__(self, image_id: str, limits: WorkerLimits | None = None):
+    def __init__(
+        self,
+        image_id: str,
+        limits: WorkerLimits | None = None,
+        *,
+        unconfined_seccomp: bool = False,
+    ):
         if not _IMAGE_ID.fullmatch(image_id):
             raise ValueError("image_id must be an immutable sha256 Docker image ID")
         self.image_id = image_id
         self.limits = limits or WorkerLimits()
+        self.unconfined_seccomp = unconfined_seccomp
 
     def run(
         self,
@@ -200,6 +207,13 @@ class DockerExecutor:
             "--mount",
             f"type=bind,src={source},dst=/input/program.js,readonly",
         ]
+        if self.unconfined_seccomp:
+            # LLVM TSan must call personality(ADDR_NO_RANDOMIZE) before it can
+            # reserve shadow memory on hosts with high mmap ASLR entropy. The
+            # default Docker seccomp policy blocks that syscall. All other
+            # isolation (no network, read-only rootfs, no capabilities,
+            # no-new-privileges and resource limits) remains enforced.
+            command.extend(("--security-opt", "seccomp=unconfined"))
         for support_source, target in support_files:
             command.extend(
                 (

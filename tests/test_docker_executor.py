@@ -44,6 +44,16 @@ class DockerExecutorConfigurationTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "--options"):
                 DockerExecutor(IMAGE_ID).run(source, ("not-a-flag",))
 
+    def test_tsan_can_opt_out_of_default_seccomp_without_losing_other_guards(self) -> None:
+        executor = DockerExecutor(IMAGE_ID, unconfined_seccomp=True)
+
+        command = executor._create_command("fuzzynth-test", Path("/state/p.js"), ())
+
+        self.assertIn("seccomp=unconfined", command)
+        self.assertIn("no-new-privileges", command)
+        self.assertIn("--read-only", command)
+        self.assertIn("ALL", command)
+
     def test_support_file_mount_is_bounded_to_input_javascript(self) -> None:
         executor = DockerExecutor(IMAGE_ID)
         command = executor._create_command(
