@@ -57,7 +57,7 @@ class OfflineCliTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(document["global_state"], "running")
-        self.assertEqual(len(document["workers"]), 53)
+        self.assertEqual(len(document["workers"]), 54)
         self.assertTrue(
             all(
                 worker["effective_state"] == "running"

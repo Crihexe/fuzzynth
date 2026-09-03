@@ -237,6 +237,7 @@ def load_campaign_configuration(path: Path, *, repo_root: Path = Path(".")) -> C
             "focus_wasm",
             "focus_wasm_advanced_builder",
             "focus_wasm_builder",
+            "focus_wasm_staging_builder",
         }:
             raise CampaignConfigurationError(
                 f"invalid corpus strategy: {worker_id}"

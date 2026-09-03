@@ -264,6 +264,38 @@ class CorpusPoolTests(unittest.TestCase):
             {item.name for item in extract_corpus_references(window)}, {"gc.js"}
         )
 
+    def test_staging_wasm_focus_accepts_harness_context_with_real_proposal(self) -> None:
+        samples = (
+            CorpusSample(
+                "staging.js",
+                "0" * 64,
+                (
+                    b"d8.file.execute('wasm-module-builder.js'); "
+                    b"const b = new WasmModuleBuilder(); "
+                    b"b.addCont(kSig_v_v); assertTrue(true); kExprResume;"
+                ),
+                contains_wasm_markers=True,
+            ),
+            CorpusSample(
+                "ordinary.js",
+                "1" * 64,
+                b"new WasmModuleBuilder().addFunction('f', kSig_v_v);",
+                contains_wasm_markers=True,
+            ),
+        )
+        pool = CorpusPool(samples)
+
+        window = pool.build_window(
+            seed=1,
+            size=1,
+            strategy="focus_wasm_staging_builder",
+        )
+
+        self.assertEqual(
+            {item.name for item in extract_corpus_references(window)},
+            {"staging.js"},
+        )
+
     def test_buffer_and_regexp_focus_exclude_unrelated_samples(self) -> None:
         samples = (
             CorpusSample(

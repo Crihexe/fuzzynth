@@ -42,6 +42,12 @@ _MECHANISM_PATTERNS = (
     ("species", r"Symbol\.species"),
     ("typed_views", r"\b(?:DataView|(?:Big)?(?:Int|Uint|Float)\w*Array)\b"),
     ("wasm", r"WebAssembly|WasmModuleBuilder"),
+    ("wasm_fp16", r"\bF16x8\b|kExprF16x8"),
+    ("wasm_memory64", r"\.addMemory64\s*\(|\bmemory64\b"),
+    ("wasm_shared_types", r"\.addSharedType\s*\(|kWasmShared"),
+    ("wasm_stack_switching", r"\.addCont\s*\(|kExpr(?:ContNew|Resume|Switch)"),
+    ("wasm_stringref", r"kWasmStringRef|kExprString"),
+    ("wasm_wide_arithmetic", r"kExprI64Add128|wide[-_ ]arithmetic"),
     ("weak_lifetimes", r"\b(?:WeakRef|FinalizationRegistry)\b"),
     ("workers", r"\bnew\s+Worker\s*\("),
 )
@@ -159,10 +165,16 @@ def observe_program(
             "deopt_reasons": [reason[:160] for reason in deopt_reasons[:4]],
         }
 
-    if prompt_variant == "wasm_boundary_v1" or prompt_variant.startswith(
-        "wasm_builder_"
+    if (
+        prompt_variant == "wasm_boundary_v1"
+        or prompt_variant == "wasm_staging_v1"
+        or prompt_variant.startswith("wasm_builder_")
     ):
-        builder_assisted = prompt_variant.startswith("wasm_builder_")
+        builder_assisted = (
+            prompt_variant.startswith("wasm_builder_")
+            or prompt_variant == "wasm_staging_v1"
+        )
+        staging_variant = prompt_variant == "wasm_staging_v1"
         wasm_tiers = [tier.lower() for tier in _WASM_COMPILED_FUNCTION.findall(process_output)]
         wasm = {
             "constructs_module": bool(
@@ -211,6 +223,22 @@ def observe_program(
             "uses_wasm_exceptions": bool(
                 re.search(r"(?:\.addTag\s*\(|kExprTry|kExprThrow|kExprCatch)", source)
             ),
+            "uses_wasmfx": bool(
+                re.search(r"(?:\.addCont\s*\(|kExpr(?:ContNew|Resume|Switch))", source)
+            ),
+            "uses_stringref": bool(
+                re.search(r"(?:kWasmStringRef|kExprString)", source)
+            ),
+            "uses_fp16": bool(re.search(r"(?:\bF16x8\b|kExprF16x8)", source)),
+            "uses_shared_types": bool(
+                re.search(r"(?:\.addSharedType\s*\(|kWasmShared)", source)
+            ),
+            "uses_memory64": bool(
+                re.search(r"(?:\.addMemory64\s*\(|\bmemory64\b)", source)
+            ),
+            "uses_wide_arithmetic": bool(
+                re.search(r"(?:kExprI64Add128|wide[-_ ]arithmetic)", source)
+            ),
         }
         observation["subsystem"] = "wasm"
         observation["subsystem_features"] = wasm
@@ -224,6 +252,20 @@ def observe_program(
                 or (
                     wasm["loads_official_builder"]
                     and wasm["uses_module_builder"]
+                )
+            )
+            and (
+                not staging_variant
+                or any(
+                    wasm[name]
+                    for name in (
+                        "uses_wasmfx",
+                        "uses_stringref",
+                        "uses_fp16",
+                        "uses_shared_types",
+                        "uses_memory64",
+                        "uses_wide_arithmetic",
+                    )
                 )
             )
         )
@@ -240,7 +282,20 @@ def observe_program(
                     _WASM_COMPILED_WRAPPER.findall(process_output)
                 ),
             }
-        if builder_assisted and re.search(
+        if staging_variant and re.search(
+            r"ReferenceError: (?:d8|assert[A-Za-z0-9_]*) is not defined",
+            process_output,
+        ):
+            observation["corrective_hint"] = {
+                "code": "wasm_staging_harness_leak",
+                "guidance": (
+                    "A historical test-harness call leaked into the program. "
+                    "Use only load('/input/wasm-module-builder.js'), ordinary "
+                    "JavaScript checks, and direct exported-function calls; do "
+                    "not emit d8.file or assert* helpers."
+                ),
+            }
+        elif builder_assisted and re.search(
             r"(?:Invalid prefixed opcode|invalid simd opcode)",
             process_output,
             re.IGNORECASE,

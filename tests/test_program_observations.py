@@ -317,6 +317,41 @@ class ProgramObservationTests(unittest.TestCase):
         )
         self.assertTrue(observation["prompt_adherent"])
 
+    def test_staging_builder_requires_and_reports_a_proposal_family(self) -> None:
+        observation = observe_program(
+            prompt_variant="wasm_staging_v1",
+            program=b"""
+              load('/input/wasm-module-builder.js');
+              const b = new WasmModuleBuilder();
+              b.addMemory64(1, 2);
+              const i = b.instantiate();
+              i.exports.run();
+            """,
+            outcome="ok",
+            stdout=b"",
+            stderr=b"",
+        )
+
+        self.assertTrue(observation["subsystem_features"]["uses_memory64"])
+        self.assertTrue(observation["prompt_adherent"])
+        self.assertIn(
+            "wasm_memory64", observation["semantic_profile"]["mechanisms"]
+        )
+
+    def test_staging_builder_harness_leak_has_exact_hint(self) -> None:
+        observation = observe_program(
+            prompt_variant="wasm_staging_v1",
+            program=b"d8.file.execute('wasm-module-builder.js');",
+            outcome="js_exception",
+            stdout=b"ReferenceError: d8 is not defined",
+            stderr=b"",
+        )
+
+        self.assertEqual(
+            observation["corrective_hint"]["code"],
+            "wasm_staging_harness_leak",
+        )
+
     def test_builder_memory_export_failure_has_exact_contract_hint(self) -> None:
         observation = observe_program(
             prompt_variant="wasm_builder_v2",

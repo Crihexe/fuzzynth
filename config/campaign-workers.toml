@@ -857,7 +857,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing
 # Wasm and concurrency context and to force JIT into pure-language output.
 [[workers]]
 id = "luna-custom-low-wasm-asan-boundary-v1"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -877,6 +877,46 @@ reservation_output_tokens = 128000
 v8_build_profile = "asan"
 v8_worker_profile = "standard"
 d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-staging", "--wasm-sync-tier-up", "--wasm-assert-types", "--stress-wasm-memory-moving", "--stress-wasm-code-gc", "--trace-wasm-compilation-times"]
+
+[[workers]]
+id = "luna-custom-low-wasm-staging-builder-asan-v1"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_wasm_staging_v1.txt"
+prompt_variant = "wasm_staging_v1"
+corpus_pair_id = "wasm-staging-builder-v1"
+corpus_strategy = "focus_wasm_staging_builder"
+reasoning_efforts = ["low"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 2
+max_turns_per_session = 4
+history_turns = 3
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "asan"
+v8_worker_profile = "standard"
+support_files = ["wasm_module_builder"]
+d8_flags = [
+  "--expose-gc",
+  "--fuzzing",
+  "--jit-fuzzing",
+  "--wasm-staging",
+  "--wasm-wasmfx",
+  "--wasm-fp16",
+  "--wasm-shared",
+  "--wasm-stringref",
+  "--wasm-wide-arithmetic",
+  "--wasm-memory-control",
+  "--wasm-sync-tier-up",
+  "--wasm-assert-types",
+  "--stress-wasm-memory-moving",
+  "--stress-wasm-code-gc",
+  "--trace-wasm-compilation-times",
+]
 
 [[workers]]
 id = "luna-custom-low-concurrency-asan-focused-v1"

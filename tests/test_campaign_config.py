@@ -27,7 +27,7 @@ class CampaignConfigurationTests(unittest.TestCase):
                 "luna-custom-low-security-asan-explicit-v3",
                 "terra-custom-high-security-asan-explicit-v3",
                 "terra-custom-high-wasm-builder-advanced-asan-v1",
-                "luna-custom-low-wasm-asan-boundary-v1",
+                "luna-custom-low-wasm-staging-builder-asan-v1",
                 "luna-custom-low-wasm-builder-asan-v2",
                 "luna-custom-low-wasm-builder-advanced-asan-v1",
                 "luna-custom-low-concurrency-message-asan-v2",
@@ -72,7 +72,7 @@ class CampaignConfigurationTests(unittest.TestCase):
                 "luna-custom-low-compiler-optdebug-explicit-v3",
                 "luna-custom-low-memory-asan-explicit-v3",
                 "luna-custom-low-security-asan-explicit-v3",
-                "luna-custom-low-wasm-asan-boundary-v1",
+                "luna-custom-low-wasm-staging-builder-asan-v1",
                 "luna-custom-low-wasm-builder-asan-v2",
                 "luna-custom-low-wasm-builder-advanced-asan-v1",
                 "luna-custom-low-concurrency-message-asan-v2",
@@ -197,16 +197,19 @@ class CampaignConfigurationTests(unittest.TestCase):
 
     def test_focused_corpus_and_sensitive_build_lanes_are_explicit(self) -> None:
         wasm = self.config.workers[
-            "luna-custom-low-wasm-asan-boundary-v1"
+            "luna-custom-low-wasm-staging-builder-asan-v1"
         ]
         memory = self.config.workers[
             "luna-custom-low-memory-asan-explicit-v3"
         ]
-        self.assertEqual(wasm.corpus_strategy, "focus_wasm")
+        self.assertEqual(wasm.corpus_strategy, "focus_wasm_staging_builder")
         self.assertEqual(memory.corpus_strategy, "focus_memory")
         self.assertEqual(wasm.v8_build_profile, "asan")
         self.assertIn("--jit-fuzzing", wasm.d8_flags)
-        self.assertEqual(wasm.prompt_variant, "wasm_boundary_v1")
+        self.assertEqual(wasm.prompt_variant, "wasm_staging_v1")
+        self.assertEqual(wasm.support_files, ("wasm_module_builder",))
+        self.assertIn("--wasm-wasmfx", wasm.d8_flags)
+        self.assertIn("--wasm-stringref", wasm.d8_flags)
         self.assertFalse(
             self.config.workers["terra-custom-high-wasm-asan-explicit-v3"].enabled
         )

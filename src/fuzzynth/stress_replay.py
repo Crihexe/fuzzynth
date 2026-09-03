@@ -240,6 +240,12 @@ STRESS_PROFILES = (
         + (
             "--jit-fuzzing",
             "--wasm-staging",
+            "--wasm-wasmfx",
+            "--wasm-fp16",
+            "--wasm-shared",
+            "--wasm-stringref",
+            "--wasm-wide-arithmetic",
+            "--wasm-memory-control",
             "--wasm-sync-tier-up",
             "--wasm-assert-types",
             "--stress-wasm-code-gc",

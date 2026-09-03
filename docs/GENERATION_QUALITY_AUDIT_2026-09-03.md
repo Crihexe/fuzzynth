@@ -516,3 +516,30 @@ The adaptive reset policy gives one turn to respond to a globally repeated
 signature, then rotates the corpus after two consecutive successful but
 previously seen semantic paths. This preserves corrective multi-turn behavior
 while cutting off cross-session template loops.
+
+## Chrome 152 staging-proposal lane
+
+The raw-byte Wasm boundary lane was the weakest active source of useful paths:
+its historical snapshot completed only about 37% of generated programs, while
+the builder lanes were both more valid and capable of reaching compiled
+Liftoff/TurboFan code. It is therefore disabled in the sustained matrix rather
+than spending another equal share of Luna output on malformed section lengths
+and invented opcodes.
+
+Its replacement is a builder-backed Chrome 152 staging lane. A corpus audit
+found 86 indexed, deduplicated, non-Sandbox builder examples containing an
+actual staging proposal marker; 78 fit an eight-example context. The pool has
+25 WasmFX/stack-switching, 23 stringref, five fp16, eight shared-type, 22
+memory64, and four wide-arithmetic matches (examples can belong to more than
+one family). Historical mjsunit assertions and `d8.file` loader lines are
+permitted only inside the delimited untrusted corpus because excluding them
+would leave almost no proposal examples. Generated programs must instead load
+only the pinned builder and receive an exact corrective hint if a harness API
+leaks into output.
+
+The worker chooses one proposal family and one bounded JS/Wasm boundary, then
+must instantiate and call a compiled export. It runs under ASan with the
+separate Chrome 152 proposal flags enabled explicitly rather than assuming
+`--wasm-staging` covers every family. Staging families are now first-class
+semantic-fingerprint mechanisms, avoiding the prior false equivalence between
+programs whose builder method lists matched but whose proposal opcodes differed.

@@ -35,6 +35,7 @@ _FOCUS_STRATEGIES = {
     "focus_wasm",
     "focus_wasm_advanced_builder",
     "focus_wasm_builder",
+    "focus_wasm_staging_builder",
 }
 
 
@@ -339,6 +340,35 @@ class CorpusPool:
                     )
                 )
                 and b"assert" not in source
+                and b"sandbox." not in source
+                and b"%" not in sample.data
+            )
+        if strategy == "focus_wasm_staging_builder":
+            # Proposal tests normally depend on mjsunit assertions and
+            # d8.file.execute() to load WasmModuleBuilder. They are still useful
+            # as untrusted syntax references; the generated program receives a
+            # pinned standalone builder instead of either harness API.
+            return (
+                "wasm" in groups
+                and b"new wasmmodulebuilder" in source
+                and any(
+                    marker in source
+                    for marker in (
+                        b".addcont(",
+                        b"kexprcontnew",
+                        b"kexprresume",
+                        b"kexprswitch",
+                        b"kwasmstringref",
+                        b"kexprstring",
+                        b"f16x8",
+                        b".addsharedtype(",
+                        b"kwasmshared",
+                        b".addmemory64(",
+                        b"memory64",
+                        b"kexpri64add128",
+                        b"wide-arithmetic",
+                    )
+                )
                 and b"sandbox." not in source
                 and b"%" not in sample.data
             )
