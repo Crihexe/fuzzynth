@@ -102,6 +102,26 @@ class ProgramObservationTests(unittest.TestCase):
             observation["wasm_trace"]["compiled_wasm_to_js_wrappers"], 1
         )
 
+    def test_advanced_builder_variant_uses_wasm_observation(self) -> None:
+        observation = observe_program(
+            prompt_variant="wasm_builder_advanced_v1",
+            program=b"""
+              load('/input/wasm-module-builder.js');
+              const b = new WasmModuleBuilder();
+              b.addStruct([]);
+              const i = b.instantiate();
+              i.exports.run();
+            """,
+            outcome="ok",
+            stdout=b"",
+            stderr=b"",
+        )
+
+        self.assertTrue(
+            observation["subsystem_features"]["uses_reference_or_gc_types"]
+        )
+        self.assertTrue(observation["prompt_adherent"])
+
     def test_builder_memory_export_failure_has_exact_contract_hint(self) -> None:
         observation = observe_program(
             prompt_variant="wasm_builder_v2",
@@ -181,6 +201,24 @@ class ProgramObservationTests(unittest.TestCase):
         self.assertEqual(
             observation["corrective_hint"]["code"],
             "atomics_wait_notify_wrong_view_type",
+        )
+
+    def test_concurrency_main_realm_message_misuse_has_hint(self) -> None:
+        observation = observe_program(
+            prompt_variant="concurrency_message_v2",
+            program=(
+                b"const s=new SharedArrayBuffer(8);"
+                b"Atomics.add(new Int32Array(s),0,1);"
+                b"const w=new Worker('postMessage(1)',{type:'string'});"
+                b"postMessage(s);"
+            ),
+            outcome="js_exception",
+            stdout=b"ReferenceError: postMessage is not defined",
+            stderr=b"",
+        )
+
+        self.assertEqual(
+            observation["corrective_hint"]["code"], "worker_message_wrong_realm"
         )
 
     def test_language_forbidden_features_are_reported(self) -> None:

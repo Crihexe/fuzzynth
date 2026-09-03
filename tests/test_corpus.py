@@ -237,6 +237,33 @@ class CorpusPoolTests(unittest.TestCase):
             {"builder.js"},
         )
 
+    def test_advanced_wasm_builder_focus_requires_an_advanced_family(self) -> None:
+        samples = (
+            CorpusSample(
+                "gc.js",
+                "0" * 64,
+                b"new WasmModuleBuilder().addStruct([]);",
+                contains_wasm_markers=True,
+            ),
+            CorpusSample(
+                "plain.js",
+                "1" * 64,
+                b"new WasmModuleBuilder().addFunction('f', kSig_v_v);",
+                contains_wasm_markers=True,
+            ),
+        )
+        pool = CorpusPool(samples)
+
+        window = pool.build_window(
+            seed=1,
+            size=1,
+            strategy="focus_wasm_advanced_builder",
+        )
+
+        self.assertEqual(
+            {item.name for item in extract_corpus_references(window)}, {"gc.js"}
+        )
+
     def test_buffer_and_regexp_focus_exclude_unrelated_samples(self) -> None:
         samples = (
             CorpusSample(

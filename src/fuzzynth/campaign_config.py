@@ -235,6 +235,7 @@ def load_campaign_configuration(path: Path, *, repo_root: Path = Path(".")) -> C
             "focus_security",
             "focus_regexp",
             "focus_wasm",
+            "focus_wasm_advanced_builder",
             "focus_wasm_builder",
         }:
             raise CampaignConfigurationError(

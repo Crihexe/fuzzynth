@@ -33,6 +33,7 @@ _FOCUS_STRATEGIES = {
     "focus_security",
     "focus_regexp",
     "focus_wasm",
+    "focus_wasm_advanced_builder",
     "focus_wasm_builder",
 }
 
@@ -309,6 +310,34 @@ class CorpusPool:
             return (
                 "wasm" in groups
                 and b"new wasmmodulebuilder" in source
+                and b"assert" not in source
+                and b"sandbox." not in source
+                and b"%" not in sample.data
+            )
+        if strategy == "focus_wasm_advanced_builder":
+            return (
+                "wasm" in groups
+                and b"new wasmmodulebuilder" in source
+                and any(
+                    marker in source
+                    for marker in (
+                        b".addstruct(",
+                        b".addarray(",
+                        b"kgcprefix",
+                        b"wasmreftype",
+                        b".addtable(",
+                        b"kexprcallindirect",
+                        b"ksimdprefix",
+                        b"i8x16",
+                        b"i16x8",
+                        b"i32x4",
+                        b"f32x4",
+                        b"f64x2",
+                        b".addtag(",
+                        b"kexprtry",
+                        b"kexprthrow",
+                    )
+                )
                 and b"assert" not in source
                 and b"sandbox." not in source
                 and b"%" not in sample.data

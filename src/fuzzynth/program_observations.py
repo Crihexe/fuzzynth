@@ -84,11 +84,9 @@ def observe_program(
             "deopt_reasons": [reason[:160] for reason in deopt_reasons[:4]],
         }
 
-    if prompt_variant in {
-        "wasm_boundary_v1",
-        "wasm_builder_v1",
-        "wasm_builder_v2",
-    }:
+    if prompt_variant == "wasm_boundary_v1" or prompt_variant.startswith(
+        "wasm_builder_"
+    ):
         builder_assisted = prompt_variant.startswith("wasm_builder_")
         wasm_tiers = [tier.lower() for tier in _WASM_COMPILED_FUNCTION.findall(process_output)]
         wasm = {
@@ -271,6 +269,15 @@ def observe_program(
                 "guidance": (
                     "Atomics.wait/notify require an Int32Array or BigInt64Array view; "
                     "use that same valid control view for the next bounded protocol."
+                ),
+            }
+        elif "ReferenceError: postMessage is not defined" in process_output:
+            observation["corrective_hint"] = {
+                "code": "worker_message_wrong_realm",
+                "guidance": (
+                    "Bare postMessage/getMessage are available inside the worker "
+                    "source. In the main d8 realm call worker.postMessage(value) "
+                    "and worker.getMessage() on the Worker object."
                 ),
             }
         elif outcome == "timeout":

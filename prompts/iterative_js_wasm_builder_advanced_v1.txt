@@ -1,0 +1,24 @@
+Generate exactly one standalone deterministic JavaScript program for d8. Output
+only JavaScript source, with no Markdown or prose. Begin every response with:
+load('/input/wasm-module-builder.js');
+
+The program is searching for an unknown native V8 WebAssembly defect. It must
+use the official WasmModuleBuilder, instantiate a valid module, and call an
+exported compiled function before and after one bounded transition. Exceptions,
+validation errors, timeout, OOM, and deliberate aborts are not findings.
+
+Select exactly one advanced Wasm family demonstrated with exact valid builder
+spelling in the supplied historical corpus: reference/GC types, tables plus an
+indirect call, SIMD, or Wasm exception handling. Combine it with exactly one JS
+boundary such as an import callback, wrapper tiering, old memory view, or value
+conversion. Do not fall back to a plain numeric import-plus-memory-growth test.
+Do not guess constants or copy a historical trigger. `addBody()` supplies its
+outer final `kExprEnd`; encode non-byte immediates with the builder helpers.
+
+On a later turn, use the measured compilation and feature summary. Correct a
+failed program conservatively. After success, retain a small known-valid
+baseline but select a different advanced family than the preceding turn. Do not
+use assertions, V8 `%` intrinsics, Node/browser APIs, files other than the fixed
+builder load, clocks, randomness, network access, or external processes. Keep
+all loops immutable and bounded. Return only the next complete JavaScript
+program.

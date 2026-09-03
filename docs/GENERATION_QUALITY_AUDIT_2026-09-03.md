@@ -303,3 +303,35 @@ sanitizer failure less likely. It does not make the generated inputs independent
 the dominant remaining limitation is semantic path entropy, compounded by the
 fact that Chrome 152 V8 is a mature target already exposed to much larger native
 fuzzing campaigns.
+
+### Controlled follow-up after feature feedback
+
+A second consecutive 100-program snapshot, frozen from
+`2026-09-03T02:15:42.564172+00:00` through
+`2026-09-03T02:22:04.812648+00:00`, tests the feature-aware prompts. It contains
+100 unique programs, 36 sessions/windows, and 208 distinct corpus sources.
+
+| Lane | Programs | Exit 0 | Useful path | Change from prior useful rate |
+|---|---:|---:|---:|---:|
+| Wasm builder v2 | 25 | 18 | 18 | 69.0% → 72.0% |
+| wait-free Worker v2 | 23 | 19 | 19 | 100% → 82.6% |
+| resizable buffers v1 | 22 | 22 | 22 | 81.8% → 100% |
+| RegExp v1 | 30 | 30 | 28 | 88.5% → 93.3% |
+| **Total** | **100** | **89** | **87** | **84% → 87%** |
+
+The aggregate gain is small but the mechanism shift is real. Buffer outputs go
+from zero to 4/22 transfer cases and from zero to 10/22 BigInt-view cases, with
+no execution failures. Concurrency goes from one to 6/23 BigInt-Atomics cases
+and from zero to one growable-SAB case. That exploration cost four failures: two
+wrong-realm `postMessage` calls, one invalid atomic index, and one protocol
+timeout. A realm-specific correction is now fed to the next turn.
+
+Builder Wasm remains stuck on the old prior despite being told which families
+are absent: 21/25 use imports, 17/25 memory, and none use GC/reference types,
+tables, SIMD, or exceptions. Merely adding instructions to the same prompt has
+therefore failed. The next live lane instead draws eight examples only from an
+advanced-builder pool (70 distinct sources across ten smoke windows) and
+requires one corpus-demonstrated advanced family. This preserves the empirical
+eight-example optimum while changing the context distribution; the earlier
+8-vs-16 experiment already showed that a larger mixed prompt raises cost by 28%
+without improving validity.

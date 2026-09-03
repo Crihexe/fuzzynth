@@ -1168,3 +1168,15 @@ This is the living operational memory for the project. Read it together with
   launched a second 16,520-execution matrix using the corrected routing and four
   new sensitive profiles. The complete quantitative interpretation is in
   `docs/GENERATION_QUALITY_AUDIT_2026-09-03.md`.
+- Froze a second exact 100-program snapshot after feature-aware feedback. Exit-0
+  rose from 86% to 89% and useful paths from 84% to 87%. Buffer validity reached
+  22/22 while producing four transfer and ten BigInt-view cases, previously
+  absent. Concurrency broadened into BigInt and growable SAB at a modest validity
+  cost. Builder Wasm still produced zero table/GC/SIMD/exception cases, proving
+  that more instructions alone do not overcome its memory/import prior.
+- Added a separate advanced-builder Wasm lane backed by clean corpus examples
+  that actually contain GC/reference, table/indirect-call, SIMD, or exception
+  builder constructs. Ten deterministic windows cover 70 distinct sources. The
+  prompt selects one exact corpus-demonstrated advanced family and one JS
+  boundary; it retains eight examples because the 16-example ablation was more
+  expensive and less valid.
