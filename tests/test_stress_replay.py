@@ -23,7 +23,10 @@ class StressReplayTests(unittest.TestCase):
                 b"new WebAssembly.Memory({initial:1}); gc(); /x/.test('x')"
             )
         }
-        self.assertEqual(names, {"memory_gc", "wasm_tiering_memory"})
+        self.assertEqual(
+            names,
+            {"memory_gc", "wasm_tiering_memory", "experimental_regexp"},
+        )
 
     def test_regexp_operations_select_experimental_engine(self) -> None:
         names = {
@@ -31,6 +34,20 @@ class StressReplayTests(unittest.TestCase):
             for profile in applicable_profiles(b"'abc'.replace(/a/, 'z')")
         }
         self.assertEqual(names, {"experimental_regexp"})
+
+    def test_builder_wasm_and_exec_are_routed_to_specialized_profiles(self) -> None:
+        builder_names = {
+            profile.name
+            for profile in applicable_profiles(
+                b"load('/input/wasm-module-builder.js'); new WasmModuleBuilder();"
+            )
+        }
+        regexp_names = {
+            profile.name for profile in applicable_profiles(b"pattern.exec(text)")
+        }
+
+        self.assertIn("wasm_tiering_memory", builder_names)
+        self.assertEqual(regexp_names, {"experimental_regexp"})
 
 
 if __name__ == "__main__":

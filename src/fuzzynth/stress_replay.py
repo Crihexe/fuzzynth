@@ -79,7 +79,7 @@ STRESS_PROFILES = (
             "--stress-wasm-memory-moving",
             "--stress-wasm-code-gc",
         ),
-        markers=(b"webassembly",),
+        markers=(b"webassembly", b"wasmmodulebuilder", b"wasm-module-builder"),
     ),
     StressProfile(
         name="experimental_regexp",
@@ -91,7 +91,17 @@ STRESS_PROFILES = (
             "--default-to-experimental-regexp-engine",
             "--experimental-regexp-engine-capture-group-opt",
         ),
-        markers=(b"regexp", b".replace(", b".match(", b".search(", b".split("),
+        markers=(
+            b"regexp",
+            b".exec(",
+            b".test(",
+            b".replace(",
+            b".replaceall(",
+            b".match(",
+            b".matchall(",
+            b".search(",
+            b".split(",
+        ),
     ),
 )
 

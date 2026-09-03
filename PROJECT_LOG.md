@@ -1139,4 +1139,9 @@ This is the living operational memory for the project. Read it together with
   static adherence feedback, an eight-source clean focus pool, and ASan primary
   execution; the RegExp lane is also eligible for the experimental-engine stress
   replay. Ten window smokes covered 56 distinct buffer sources and 59 distinct
-  RegExp sources. The full suite now passes 181 tests.
+  RegExp sources. The full suite now passes 182 tests.
+- Expanded stress routing so builder-only Wasm programs receive the Wasm tiering
+  profile even if their generated source never spells `WebAssembly`, and RegExp
+  programs using `exec`, `test`, `matchAll`, or `replaceAll` reach the
+  experimental-engine replay. This closes two static-routing blind spots found
+  while reviewing the first specialized outputs.
