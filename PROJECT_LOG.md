@@ -1214,3 +1214,35 @@ This is the living operational memory for the project. Read it together with
   plus the Terra depth lane completed 51.4%; no native candidate appeared. This
   localizes the remaining validity bottleneck to Wasm construction rather than
   the executor, corpus rotation, or general JS generation.
+- Completed the 8,831-execution delta/stress matrix with zero errors and zero
+  candidates. Its 1,725 TSan executions produced 1,660 clean exits, 59 bounded
+  timeouts, six ordinary nonzero/JS outcomes, and no TSan data-race diagnostic.
+- Classified the current advanced-Wasm failures and added exact next-turn
+  feedback for direct-call and SIMD-memory aliases, the official S128 constant
+  helper, builder objects used instead of numeric indices, `call_indirect`
+  stack/immediate order, and undeclared function references. This targets the
+  measured error modes without further enlarging the system prompt.
+- Built and packaged the pinned Chrome 152 V8 MSan/chained-origins profile.
+  Binary SHA-256 is
+  `4f0973f004b46c0e2262eb3e4a6c8fff17b03cc5774a9cd21c7af369583abfaf`;
+  image ID is
+  `sha256:e433aa8b9215364a4ab3d748514510ffaba65cc6884ec9657297194e4fd99f14`.
+  The instrumented loader requires the official checkout-relative runtime
+  layout and, like TSan on this host, an ASLR-capable unconfined seccomp profile.
+  Network isolation, read-only root, dropped capabilities, no-new-privileges,
+  PID/CPU/memory limits, exact manifests, and stderr-only candidate detection
+  remain enforced. Image smoke and a real preserved-program execution passed.
+- Added an ASan aggressive Wasm-inlining replay using sync tier-up,
+  call-count-independent Wasm inlining, JS-to-Wasm inlining, and optimized
+  inlined wrappers. The new replay matrix plans 19,320 executions over 8,066
+  preserved programs: 8,064 MSan and 2,449 aggressive-Wasm executions plus
+  ordinary deltas.
+- Replaced the stress planner's quadratic correlated success lookup with an
+  equivalent deduplicated SQLite selection. Planning the current 8,066-program
+  corpus now takes about four seconds instead of minutes.
+- Froze a post-correction advanced-Wasm canary at 04:10:42Z. Luna completed
+  52/85 programs; Terra high completed 70/75, including valid indirect calls,
+  SIMD, GC/reference types, Wasm exceptions, and memory cases. Settled cost per
+  successful result remains roughly nine times higher for Terra (0.822 credits
+  versus 0.089 for Luna), supporting its use as a depth rather than throughput
+  lane.

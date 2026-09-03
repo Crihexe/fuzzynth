@@ -419,16 +419,56 @@ at roughly nine times the cost. It remains a low-volume depth lane.
 
 The completed UBSan+vptr replay ran 11,853 executions over 5,854 preserved
 programs with zero infrastructure errors and zero candidates. A pinned TSan V8
-build has also passed image smoke and end-to-end execution on a real generated
+build also passed image smoke and end-to-end execution on a real generated
 Worker/SAB program. TSan alone needs `personality(ADDR_NO_RANDOMIZE)` to reserve
 shadow memory on this high-ASLR host, so only the TSan container uses an
 unconfined seccomp profile; it still has no network, a read-only root filesystem,
-zero Linux capabilities, no-new-privileges, and strict resource limits. The
-complete Worker/SAB replay is running separately and will treat only a native
-TSan diagnostic on stderr with nonzero termination as a candidate.
+zero Linux capabilities, no-new-privileges, and strict resource limits. Its
+replay completed all 1,725 TSan executions: 1,660 exited cleanly, 59 timed out,
+six ended with ordinary JavaScript/nonzero outcomes, and none emitted a TSan
+diagnostic. The surrounding delta matrix completed all 8,831 executions with
+zero infrastructure errors and zero candidates.
 
 One operational failure was also identified during the audit: a single generic
 provider error left the Terra advanced lane paused indefinitely. The supervisor
 now retries only generic transient provider failures with bounded 5/15/60-second
 backoff. Quota/rate-limit, unknown usage, budget stops, and owner pauses remain
 non-retriable. The previously paused Terra session was recovered by this path.
+
+Inspection of the recent advanced-Wasm failures identified four correctable
+families rather than random noise: invented opcode/helper aliases, builder
+objects used where numeric function indices are required, wrong stack or
+immediate order around `call_indirect`, and undeclared `ref.func` targets. These
+now receive distinct measured feedback on the following turn instead of the
+old generic “binary rejected” response. This keeps the system prompt from
+growing into another overconstrained recipe while still teaching exact API
+contracts after an observed failure.
+
+A post-correction live canary frozen at `2026-09-03T04:10:42Z` shows where that
+precision is worth buying. Luna completed 52/85 advanced-builder programs;
+Terra high completed 70/75. Terra's successful outputs included 34 table or
+indirect-call cases, 33 SIMD cases, three GC/reference-type cases, two Wasm
+exception cases, and eight memory cases. The corresponding settled cost was
+about 0.089 Luna credits per successful Luna result and 0.822 Terra credits per
+successful Terra result. Corrective feedback therefore made Terra both broad
+and reliable, while Luna remains the cheaper throughput lane with a substantial
+builder-precision loss. The roughly ninefold price ratio remains.
+
+The final complementary native oracle is now available as well. The exact V8
+revision was built with MemorySanitizer and chained-origin tracking; the d8
+binary SHA-256 is
+`4f0973f004b46c0e2262eb3e4a6c8fff17b03cc5774a9cd21c7af369583abfaf`.
+Its scratch image passed smoke and a real preserved-program execution. Like
+TSan, MSan must disable ASLR to reserve shadow memory on this host, so only
+those two sanitizer images opt out of Docker's default seccomp profile; all
+other isolation remains enabled. MSan receives a bounded 15-second/2-GiB
+worker profile because its instrumentation can make otherwise successful hot
+loops exceed the normal five-second limit.
+
+The MSan addition also exposed an unrelated scalability defect: selecting
+preserved successes used a correlated SQLite subquery whose runtime grew
+quadratically with replay history. The equivalent deduplicated selection now
+builds the 8,000-program replay plan in about four seconds. A 19,320-execution
+matrix is running across 8,066 preserved programs, including 8,064 MSan runs
+and 2,449 aggressive Wasm-inlining runs; only native diagnostics on stderr with
+nonzero termination are candidates.
