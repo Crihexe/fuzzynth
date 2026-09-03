@@ -1325,3 +1325,9 @@ This is the living operational memory for the project. Read it together with
   deterministic round-robin session target. The exact target is embedded in
   the preserved corpus window and generation metadata, checked in observations,
   and corrected on the next turn if the model uses the wrong family.
+- Focused the sustained custom campaign on eight higher-yield lanes. RegExp and
+  ordinary-language generation had the highest measured global semantic-repeat
+  rates; the low-validity basic builder was superseded by advanced/staging
+  builders; and Terra security competed with a much more precise Terra advanced
+  Wasm lane for the last 11% of its hard credit budget. Their configurations and
+  evidence remain preserved, but the live service no longer dispatches them.

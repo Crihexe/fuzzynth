@@ -601,3 +601,12 @@ session events. Program observations report assigned and observed families,
 make target adherence part of prompt adherence, and return an exact correction
 when output drifts to an easier proposal. This converts proposal coverage from
 an unmeasured suggestion into an auditable experimental variable.
+
+The sustained custom service was narrowed from twelve to eight generators after
+this audit. RegExp and ordinary-language lanes had the largest measured global
+semantic-repeat fractions, and the basic Wasm builder was both less valid and
+shallower than the advanced/staging replacements. The final Terra budget is now
+reserved for advanced builder generation, where the measured completion rate
+was 92.6%, rather than split with the generic security prompt. Compiler,
+memory/lifetime, security, staging Wasm, advanced Wasm, concurrency, and
+resizable-buffer Luna lanes remain active alongside Terra advanced Wasm.
