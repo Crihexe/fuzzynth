@@ -1196,3 +1196,21 @@ This is the living operational memory for the project. Read it together with
   signatures now require nonzero termination and stderr evidence, preventing a
   generated `print('runtime error: ...')` from forging a candidate. Every
   preserved successful program is routed through the new UBSan replay oracle.
+- Completed the UBSan+vptr matrix: 11,853 executions over 5,854 preserved
+  programs, zero infrastructure errors and zero native candidates.
+- Built and packaged a pinned optimized TSan d8 image. Docker's default seccomp
+  policy blocked TSan's required `personality(ADDR_NO_RANDOMIZE)` call on this
+  high-ASLR host, so only the TSan runner opts out of default seccomp while
+  retaining no network, read-only rootfs, all capabilities dropped,
+  no-new-privileges, and resource limits. Image smoke and an end-to-end
+  generated Worker/SAB execution passed; the full concurrency replay is active.
+- Fixed permanent pauses after a single generic provider failure. The supervisor
+  now performs at most three consecutive retries with 5/15/60-second backoff,
+  only for `provider_error`. It never auto-resumes quota/rate-limit, budget,
+  unknown-usage, or owner pauses. The stalled Terra advanced session was
+  recovered through the new path.
+- Froze a 2,902-program custom-only long-run snapshot of the specialized matrix.
+  Non-Wasm lanes completed 92.9% of programs, while the three Wasm strategies
+  plus the Terra depth lane completed 51.4%; no native candidate appeared. This
+  localizes the remaining validity bottleneck to Wasm construction rather than
+  the executor, corpus rotation, or general JS generation.

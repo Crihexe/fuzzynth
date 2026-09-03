@@ -1,5 +1,29 @@
 # Fuzzynth generation-quality audit — 2026-09-03
 
+## Executive verdict
+
+Fuzzynth is executing, rotating, preserving, and replaying generated programs
+correctly, but raw generation count substantially overstates search diversity.
+The original generic prompts converged on a handful of JIT/Proxy/TypedArray
+templates. The best policy observed is not one globally rich or globally lean
+prompt: it is a four-to-eight-example, subsystem-specific contract plus compact
+measured feedback. This change fixes cross-subsystem mode collapse and raises
+useful-path completion to 84–87% in controlled 100-program snapshots.
+
+The explicit prompt is better for compiler and security work, while the lean
+prompt is better for raw Wasm; neither is a statistically defensible universal
+winner. Increasing context from eight to sixteen PoCs makes a useful generation
+about 28% more expensive and slightly less reliable. More examples should
+therefore be used only to change the target distribution, not as a generic way
+to improve output.
+
+No real crash has been found. This is not surprising given current evidence:
+non-Wasm lanes reach deep engine paths and execute reliably, whereas Wasm loses
+roughly half its attempts to construction mistakes; within every lane, semantic
+templates remain much less diverse than hashes or source text suggest. The next
+gain must come from verified path diversity and stronger native oracles, not
+from merely increasing output length or PoC-window size.
+
 ## Scope and frozen evidence
 
 The focused-v3 snapshot is frozen at
@@ -357,3 +381,54 @@ passed the d8 smoke test. The replay router applies it to every preserved
 successful program. Candidate classification requires a nonzero native process
 termination and a sanitizer/fatal marker on stderr, so model-generated stdout
 cannot impersonate an UBSan or V8 finding.
+
+## Long-run specialized matrix and additional native oracles
+
+A fixed custom-provider-only snapshot from `2026-09-03T01:23:48Z` through
+`2026-09-03T03:14:10Z` contains 2,902 primary executions from the current
+subsystem matrix. It produced 2,386 exit-0 programs, 247 ordinary JavaScript
+exceptions, 246 other nonzero exits, 12 expected Wasm traps, ten timeouts, and
+zero native candidates. All prompt text and all constituent corpus hashes remain
+attached to each generation.
+
+The aggregate hides the main engineering fact. The compiler, memory, security,
+Worker/SAB, buffer, RegExp, and ordinary-language lanes completed 2,001 of 2,153
+programs (92.9%). The raw, builder, and advanced-builder Wasm lanes completed
+only 385 of 749 (51.4%). Within that snapshot:
+
+| Lane | Programs | Exit 0 | Exit-0 rate |
+|---|---:|---:|---:|
+| compiler explicit | 316 | 304 | 96.2% |
+| memory explicit | 285 | 264 | 92.6% |
+| security explicit | 273 | 248 | 90.8% |
+| wait-free Worker/SAB | 246 | 227 | 92.3% |
+| resizable buffers | 230 | 206 | 89.6% |
+| ordinary language | 376 | 353 | 93.9% |
+| RegExp | 318 | 300 | 94.3% |
+| raw Wasm boundary | 243 | 91 | 37.4% |
+| Wasm builder v2 | 301 | 193 | 64.1% |
+| Luna advanced Wasm builder | 173 | 79 | 45.7% |
+| Terra security depth | 109 | 99 | 90.8% |
+| Terra advanced Wasm depth | 32 | 22 | 68.8% |
+
+The advanced Wasm comparison supports using reasoning selectively. After the
+latest builder corrections, a short same-period check found Luna completing
+25/60 programs and Terra high completing 4/5. Estimated owner-credit cost per
+useful result was about 0.16 for Luna and 1.44 for Terra: Terra bought precision
+at roughly nine times the cost. It remains a low-volume depth lane.
+
+The completed UBSan+vptr replay ran 11,853 executions over 5,854 preserved
+programs with zero infrastructure errors and zero candidates. A pinned TSan V8
+build has also passed image smoke and end-to-end execution on a real generated
+Worker/SAB program. TSan alone needs `personality(ADDR_NO_RANDOMIZE)` to reserve
+shadow memory on this high-ASLR host, so only the TSan container uses an
+unconfined seccomp profile; it still has no network, a read-only root filesystem,
+zero Linux capabilities, no-new-privileges, and strict resource limits. The
+complete Worker/SAB replay is running separately and will treat only a native
+TSan diagnostic on stderr with nonzero termination as a candidate.
+
+One operational failure was also identified during the audit: a single generic
+provider error left the Terra advanced lane paused indefinitely. The supervisor
+now retries only generic transient provider failures with bounded 5/15/60-second
+backoff. Quota/rate-limit, unknown usage, budget stops, and owner pauses remain
+non-retriable. The previously paused Terra session was recovered by this path.
