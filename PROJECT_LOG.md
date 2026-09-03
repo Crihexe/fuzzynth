@@ -1025,3 +1025,11 @@ This is the living operational memory for the project. Read it together with
   focused Wasm tier/memory stress, and focused GC compaction/incremental stress.
   The focused campaign retains exact prompt pairing, custom Luna only, ASan as
   the main oracle, and optdebug for the compiler pair.
+- Added an idempotent, feature-routed replay matrix that spends no model tokens.
+  It schedules every preserved program with a prior successful execution under
+  applicable alternate V8 configurations: optdebug compiler verification,
+  concurrent compilation, forced deoptimization, ASan GC stress, Wasm
+  tiering/memory movement/code GC, and the experimental RegExp engine. Exact
+  profile/flag/program triples already in the catalog are skipped; every new
+  execution remains linked to its originating generation and candidate alerts
+  are sent immediately without stopping the matrix.

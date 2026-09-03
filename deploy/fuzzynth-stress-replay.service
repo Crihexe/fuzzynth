@@ -1,0 +1,34 @@
+[Unit]
+Description=Fuzzynth preserved-program V8 stress replay matrix
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/fuzzynth
+Environment=PYTHONPATH=/root/fuzzynth/src
+ExecStart=/usr/bin/python3 /root/fuzzynth/scripts/replay_stress_matrix.py --repo-root /root/fuzzynth --state-root /root/fuzzynth/state --jobs 12
+TimeoutStartSec=infinity
+UMask=0077
+SyslogIdentifier=fuzzynth-stress-replay
+
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=read-only
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+ReadWritePaths=/root/fuzzynth/state
+InaccessiblePaths=/root/red-sailor
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+SystemCallArchitectures=native
