@@ -1,11 +1,13 @@
 import unittest
 import json
+from unittest.mock import patch
 
 from pathlib import Path
 
 from fuzzynth.campaign_config import load_campaign_configuration
 from fuzzynth.session_context import TurnContext
 from fuzzynth.supervisor import (
+    CampaignSupervisor,
     _stable_seed,
     adaptive_session_reset_reason,
     transient_provider_retry_delay,
@@ -126,13 +128,40 @@ class ProviderRetryTests(unittest.TestCase):
         self.assertEqual(transient_provider_retry_delay("provider_error", 0), 5.0)
         self.assertEqual(transient_provider_retry_delay("provider_error", 1), 15.0)
         self.assertEqual(transient_provider_retry_delay("provider_error", 2), 60.0)
-        self.assertIsNone(transient_provider_retry_delay("provider_error", 3))
+        self.assertEqual(transient_provider_retry_delay("provider_error", 3), 300.0)
+        self.assertEqual(transient_provider_retry_delay("provider_error", 99), 300.0)
 
     def test_quota_and_other_pauses_are_never_retried(self):
         self.assertIsNone(
             transient_provider_retry_delay("provider_quota_or_rate_limit", 0)
         )
         self.assertIsNone(transient_provider_retry_delay("unknown_usage", 0))
+
+
+class SupervisorShutdownTests(unittest.TestCase):
+    def test_inflight_error_during_shutdown_does_not_pause_worker(self):
+        supervisor = CampaignSupervisor(
+            repo_root=Path("."),
+            state_root=Path("state"),
+            credentials=object(),
+            corpus=object(),
+            worker_ids=("worker",),
+        )
+
+        def fail_during_shutdown(*_args, **_kwargs):
+            supervisor.stop()
+            raise RuntimeError("executor disappeared during shutdown")
+
+        with patch.object(supervisor, "_run_worker", side_effect=fail_during_shutdown):
+            summary = supervisor._guarded_worker(
+                "worker",
+                max_turns=None,
+                max_sessions=None,
+                exit_when_blocked=False,
+            )
+
+        self.assertEqual(summary.final_state, "stopped")
+        self.assertEqual(summary.reason, "supervisor_stopped")
 
 
 if __name__ == "__main__":

@@ -25,7 +25,7 @@ from fuzzynth.sessions import SessionRecord, SessionStateError
 EventSink = Callable[[dict[str, object]], None]
 OperationalAlert = Callable[[str], None]
 
-_TRANSIENT_PROVIDER_RETRY_DELAYS = (5.0, 15.0, 60.0)
+_TRANSIENT_PROVIDER_RETRY_DELAYS = (5.0, 15.0, 60.0, 300.0)
 
 
 @dataclass(frozen=True, slots=True)
@@ -134,9 +134,9 @@ def transient_provider_retry_delay(
 
     if pause_reason != "provider_error" or prior_retries < 0:
         return None
-    if prior_retries >= len(_TRANSIENT_PROVIDER_RETRY_DELAYS):
-        return None
-    return _TRANSIENT_PROVIDER_RETRY_DELAYS[prior_retries]
+    return _TRANSIENT_PROVIDER_RETRY_DELAYS[
+        min(prior_retries, len(_TRANSIENT_PROVIDER_RETRY_DELAYS) - 1)
+    ]
 
 
 class CampaignSupervisor:
@@ -469,6 +469,10 @@ class CampaignSupervisor:
         except Exception as exc:
             reason = "unexpected_supervisor_error"
             error_type = type(exc).__name__
+        if self.stop_event.is_set():
+            return WorkerRunSummary(
+                worker_id, 0, 0, "stopped", "supervisor_stopped"
+            )
         try:
             with CampaignService(
                 repo_root=self.repo_root,

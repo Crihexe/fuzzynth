@@ -1302,3 +1302,10 @@ This is the living operational memory for the project. Read it together with
   five fp16 examples from being statistically starved by larger subsets.
 - Added a matching optdebug staging replay alongside ASan so generated proposal
   programs are checked both for memory safety and internal V8 invariants.
+- A provider-wide Cloudflare 502 outage exposed a liveness gap: generic provider
+  errors became permanent worker pauses after three tries. Generic transport/5xx
+  failures now retry indefinitely with 5/15/60-second then five-minute capped
+  backoff. Quota, budget, rate-limit, and unknown-usage pauses remain fail-closed
+  and are never auto-resumed.
+- Errors from an in-flight execution while the service is already shutting down
+  now return a clean stopped summary instead of leaving a durable worker pause.
