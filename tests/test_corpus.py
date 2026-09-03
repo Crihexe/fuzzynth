@@ -7,7 +7,12 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from fuzzynth.corpus import CorpusError, CorpusPool, extract_corpus_references
+from fuzzynth.corpus import (
+    CorpusError,
+    CorpusPool,
+    CorpusSample,
+    extract_corpus_references,
+)
 
 
 class CorpusPoolTests(unittest.TestCase):
@@ -30,7 +35,12 @@ class CorpusPoolTests(unittest.TestCase):
                   preserved_original_available INTEGER NOT NULL,
                   validation_status TEXT NOT NULL,
                   primary_category TEXT NOT NULL,
-                  engine_family TEXT NOT NULL
+                  engine_family TEXT NOT NULL,
+                  syntax_profile TEXT NOT NULL,
+                  contains_exploit_markers INTEGER NOT NULL,
+                  contains_wasm_markers INTEGER NOT NULL,
+                  tags TEXT NOT NULL,
+                  required_flags TEXT NOT NULL
                 );
                 """
             )
@@ -45,7 +55,7 @@ class CorpusPoolTests(unittest.TestCase):
                 filename = f"V8JS-{artifact_id}.js"
                 (files / filename).write_bytes(data)
                 connection.execute(
-                    "INSERT INTO artifacts VALUES (?,?,?,?,?,?,?,?,?)",
+                    "INSERT INTO artifacts VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (
                         artifact_id,
                         filename,
@@ -56,6 +66,11 @@ class CorpusPoolTests(unittest.TestCase):
                         "accepted",
                         category,
                         engine,
+                        "v8_d8_intrinsics" if artifact_id == "a" else "ecmascript",
+                        int(category == "poc_or_reproducer"),
+                        int(engine == "WebAssembly/V8"),
+                        "turbofan" if artifact_id == "a" else "",
+                        "--allow-natives-syntax" if artifact_id == "a" else "",
                     ),
                 )
         return index
@@ -113,6 +128,33 @@ class CorpusPoolTests(unittest.TestCase):
             with patch("fuzzynth.corpus.MIN_INDEX_POOL_SAMPLES", 2):
                 with self.assertRaisesRegex(CorpusError, "unexpected size|SHA-256"):
                     CorpusPool.load_index(index)
+
+    def test_stratified_window_is_deterministic_and_covers_rare_groups(self) -> None:
+        samples = (
+            CorpusSample("security.js", "0" * 64, b"print(0)", primary_category="exploit"),
+            CorpusSample("wasm.js", "1" * 64, b"print(1)", contains_wasm_markers=True),
+            CorpusSample("jit.js", "2" * 64, b"print(2)", tags=frozenset({"maglev"})),
+            CorpusSample("memory.js", "3" * 64, b"new ArrayBuffer(8)", tags=frozenset({"gc"})),
+            CorpusSample("threads.js", "4" * 64, b"new SharedArrayBuffer(8)"),
+            CorpusSample("regression.js", "5" * 64, b"print(5)", primary_category="regression_test"),
+            CorpusSample("other.js", "6" * 64, b"print(6)", primary_category="benchmark_reproducer"),
+            CorpusSample("wildcard.js", "7" * 64, b"print(7)"),
+        )
+        pool = CorpusPool(samples)
+
+        first = pool.build_window(seed=99, size=8, strategy="stratified_v8")
+        second = pool.build_window(seed=99, size=8, strategy="stratified_v8")
+
+        self.assertEqual(first, second)
+        self.assertEqual(
+            {reference.name for reference in extract_corpus_references(first)},
+            {sample.name for sample in samples},
+        )
+
+    def test_rejects_unknown_window_strategy(self) -> None:
+        pool = CorpusPool((CorpusSample("a.js", "0" * 64, b"print(0)"),))
+        with self.assertRaisesRegex(ValueError, "strategy"):
+            pool.build_window(seed=1, size=1, strategy="biased")
 
 
 if __name__ == "__main__":

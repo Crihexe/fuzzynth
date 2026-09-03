@@ -331,6 +331,23 @@ class SessionLedger:
             raise SessionStateError("only a legacy crash session can continue")
         return self.get(session_id)
 
+    def complete_early(self, session_id: str) -> SessionRecord:
+        """Close an active session so the supervisor can rotate its context."""
+
+        now = datetime.now(timezone.utc).isoformat()
+        with self.connection:
+            cursor = self.connection.execute(
+                """
+                UPDATE session SET status = 'completed', pause_reason = NULL,
+                                   updated_at = ?
+                WHERE id = ? AND status = 'active'
+                """,
+                (now, session_id),
+            )
+        if cursor.rowcount != 1:
+            raise SessionStateError("only an active session can complete early")
+        return self.get(session_id)
+
     def list_sessions(self) -> tuple[SessionRecord, ...]:
         session_ids = self.connection.execute(
             "SELECT id FROM session ORDER BY created_at"

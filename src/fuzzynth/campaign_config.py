@@ -46,6 +46,7 @@ class CampaignWorker:
     pricing_profile: str | None = None
     prompt_variant: str = "legacy"
     corpus_pair_id: str = "legacy"
+    corpus_strategy: str = "uniform"
 
 
 @dataclass(frozen=True, slots=True)
@@ -200,7 +201,12 @@ def load_campaign_configuration(path: Path, *, repo_root: Path = Path(".")) -> C
             pricing_profile=_optional_string(raw, "pricing_profile"),
             prompt_variant=_optional_string(raw, "prompt_variant") or "legacy",
             corpus_pair_id=_optional_string(raw, "corpus_pair_id") or worker_id,
+            corpus_strategy=_optional_string(raw, "corpus_strategy") or "uniform",
         )
+        if worker.corpus_strategy not in {"uniform", "stratified_v8"}:
+            raise CampaignConfigurationError(
+                f"invalid corpus strategy: {worker_id}"
+            )
         if enabled and worker.mode != "iterative_raw_js":
             raise CampaignConfigurationError(
                 f"enabled worker mode is not implemented: {worker_id}"
@@ -237,6 +243,7 @@ def load_campaign_configuration(path: Path, *, repo_root: Path = Path(".")) -> C
                 item.send_reasoning,
                 item.send_verbosity,
                 item.pricing_profile,
+                item.corpus_strategy,
             )
             for item in variants
         }

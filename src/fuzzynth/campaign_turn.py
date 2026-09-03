@@ -212,6 +212,7 @@ class CampaignTurnRunner:
             "prompt_sha256": hashlib.sha256(instructions.encode("utf-8")).hexdigest(),
             "prompt_variant": worker.prompt_variant,
             "corpus_pair_id": worker.corpus_pair_id,
+            "corpus_strategy": worker.corpus_strategy,
         }
         if streaming_transport:
             requested_parameters["terminal_partial_output_policy"] = "execute_once"

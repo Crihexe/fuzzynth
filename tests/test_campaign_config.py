@@ -17,24 +17,26 @@ class CampaignConfigurationTests(unittest.TestCase):
             Path("config/campaign-workers.toml")
         )
 
-    def test_enables_custom_lanes_and_two_official_baselines(self) -> None:
+    def test_enables_only_custom_adaptive_lanes(self) -> None:
         enabled = {worker.worker_id for worker in self.config.enabled_workers()}
         self.assertEqual(
             enabled,
             {
-                "spark-custom-iterative-js-rich",
-                "spark-custom-iterative-js-lean",
-                "luna-custom-high-iterative-js-rich",
-                "luna-custom-high-iterative-js-lean",
-                "luna-custom-low-iterative-js-rich",
-                "luna-custom-low-iterative-js-lean",
-                "luna-custom-none-spark-fallback-js-rich",
-                "luna-custom-none-spark-fallback-js-lean",
-                "gpt-4o-mini-official-temperature-js-rich",
-                "gpt-4o-mini-official-temperature-js-lean",
-                "gpt-4.1-nano-official-temperature-js-rich",
-                "gpt-4.1-nano-official-temperature-js-lean",
+                "luna-custom-low-asan-stratified-explicit-v2",
+                "luna-custom-low-asan-stratified-lean-v2",
+                "luna-custom-none-asan-stratified-explicit-v2",
+                "luna-custom-none-asan-stratified-lean-v2",
+                "luna-custom-low-asan-uniform-explicit-v2",
+                "luna-custom-low-asan-uniform-lean-v2",
+                "luna-custom-low-optdebug-stratified-explicit-v2",
+                "luna-custom-low-optdebug-stratified-lean-v2",
             },
+        )
+        self.assertTrue(
+            all(
+                worker.provider == "alternate"
+                for worker in self.config.enabled_workers()
+            )
         )
 
     def test_custom_workers_omit_temperature(self) -> None:
@@ -50,11 +52,11 @@ class CampaignConfigurationTests(unittest.TestCase):
         pairs = {}
         for worker in self.config.enabled_workers():
             pairs.setdefault(worker.corpus_pair_id, []).append(worker)
-        self.assertEqual(len(pairs), 6)
+        self.assertEqual(len(pairs), 4)
         for variants in pairs.values():
             self.assertEqual(
                 {worker.prompt_variant for worker in variants},
-                {"rich", "lean"},
+                {"explicit_v2", "lean_v2"},
             )
             self.assertEqual(len({worker.model for worker in variants}), 1)
 
@@ -95,13 +97,17 @@ class CampaignConfigurationTests(unittest.TestCase):
         self.assertEqual((worker.min_turns_per_session, worker.max_turns_per_session), (8, 16))
 
     def test_custom_luna_streaming_effort_lanes_are_enabled(self) -> None:
-        worker = self.config.workers["luna-custom-low-iterative-js-rich"]
+        worker = self.config.workers[
+            "luna-custom-low-asan-stratified-explicit-v2"
+        ]
         self.assertEqual(worker.reasoning_efforts, ("low",))
         self.assertEqual(worker.max_output_tokens, 2048)
         self.assertEqual(worker.reservation_output_tokens, 128_000)
-        high = self.config.workers["luna-custom-high-iterative-js-rich"]
-        self.assertTrue(high.enabled)
-        self.assertEqual(high.reasoning_efforts, ("high",))
+        no_reasoning = self.config.workers[
+            "luna-custom-none-asan-stratified-explicit-v2"
+        ]
+        self.assertTrue(no_reasoning.enabled)
+        self.assertEqual(no_reasoning.reasoning_efforts, ("none",))
         self.assertFalse(self.config.workers["luna-custom-xhigh-iterative-js"].enabled)
 
     def test_spark_fallback_requests_none_with_high_verbosity(self) -> None:
@@ -131,13 +137,32 @@ class CampaignConfigurationTests(unittest.TestCase):
         )
 
     def test_session_choice_is_reproducible_and_in_range(self) -> None:
-        worker = self.config.workers["spark-custom-iterative-js-rich"]
+        worker = self.config.workers[
+            "luna-custom-low-asan-stratified-explicit-v2"
+        ]
         first = choose_session_plan(worker, 12345)
         second = choose_session_plan(worker, 12345)
 
         self.assertEqual(first, second)
-        self.assertGreaterEqual(first.target_turns, 8)
-        self.assertLessEqual(first.target_turns, 16)
+        self.assertGreaterEqual(first.target_turns, 2)
+        self.assertLessEqual(first.target_turns, 4)
+
+    def test_stratified_and_uniform_corpus_lanes_are_explicit(self) -> None:
+        stratified = self.config.workers[
+            "luna-custom-low-asan-stratified-explicit-v2"
+        ]
+        uniform = self.config.workers[
+            "luna-custom-low-asan-uniform-explicit-v2"
+        ]
+        self.assertEqual(stratified.corpus_strategy, "stratified_v8")
+        self.assertEqual(uniform.corpus_strategy, "uniform")
+        self.assertEqual(stratified.v8_build_profile, "asan")
+        self.assertEqual(
+            self.config.workers[
+                "luna-custom-low-optdebug-stratified-explicit-v2"
+            ].v8_build_profile,
+            "optdebug",
+        )
 
     def test_v3_preview_dataset_is_enabled_from_private_extraction(self) -> None:
         self.assertTrue(self.config.context.dataset_enabled)

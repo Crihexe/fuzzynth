@@ -1,5 +1,5 @@
 [Unit]
-Description=Fuzzynth paired-prompt preview-v3 V8 campaign
+Description=Fuzzynth custom Luna adaptive V8 campaign
 After=network-online.target docker.service fuzzynth-telegram-control.service
 Wants=network-online.target
 Requires=docker.service
@@ -8,7 +8,7 @@ Requires=docker.service
 Type=simple
 WorkingDirectory=/root/fuzzynth
 Environment=PYTHONPATH=/root/fuzzynth/src
-ExecStart=/usr/bin/python3 -m fuzzynth campaign-run --live --repo-root /root/fuzzynth --state-root /root/fuzzynth/state --seed 20260902 --window-size 2 --worker spark-custom-iterative-js-rich --worker spark-custom-iterative-js-lean --worker luna-custom-high-iterative-js-rich --worker luna-custom-high-iterative-js-lean --worker luna-custom-low-iterative-js-rich --worker luna-custom-low-iterative-js-lean --worker luna-custom-none-spark-fallback-js-rich --worker luna-custom-none-spark-fallback-js-lean --worker gpt-4o-mini-official-temperature-js-rich --worker gpt-4o-mini-official-temperature-js-lean --worker gpt-4.1-nano-official-temperature-js-rich --worker gpt-4.1-nano-official-temperature-js-lean --corpus-index /root/fuzzynth/.local/datasets/v8_js_pocs_preview_v3/javascript_corpus/index.sqlite
+ExecStart=/usr/bin/python3 -m fuzzynth campaign-run --live --repo-root /root/fuzzynth --state-root /root/fuzzynth/state --seed 20260903 --window-size 8 --worker luna-custom-low-asan-stratified-explicit-v2 --worker luna-custom-low-asan-stratified-lean-v2 --worker luna-custom-none-asan-stratified-explicit-v2 --worker luna-custom-none-asan-stratified-lean-v2 --worker luna-custom-low-asan-uniform-explicit-v2 --worker luna-custom-low-asan-uniform-lean-v2 --worker luna-custom-low-optdebug-stratified-explicit-v2 --worker luna-custom-low-optdebug-stratified-lean-v2 --corpus-index /root/fuzzynth/.local/datasets/v8_js_pocs_preview_v3/javascript_corpus/index.sqlite
 Restart=on-failure
 RestartSec=10s
 TimeoutStopSec=660s

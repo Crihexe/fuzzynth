@@ -17,6 +17,7 @@ class CorpusError(RuntimeError):
 MAX_SAMPLE_BYTES = 64 * 1024
 INDEX_MAX_SAMPLE_BYTES = 48 * 1024
 MIN_INDEX_POOL_SAMPLES = 1_000
+MAX_WINDOW_SOURCE_BYTES = 120 * 1024
 _INDEX_ALLOWED_ENGINES = (
     "V8",
     "WebAssembly/V8",
@@ -30,6 +31,13 @@ class CorpusSample:
     name: str
     sha256: str
     data: bytes
+    primary_category: str = "unknown"
+    engine_family: str = "unknown"
+    syntax_profile: str = "ecmascript"
+    contains_exploit_markers: bool = False
+    contains_wasm_markers: bool = False
+    tags: frozenset[str] = frozenset()
+    required_flags: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,6 +130,9 @@ class CorpusPool:
                 WITH eligible AS (
                   SELECT filename, sha256, size_bytes, normalized_sha256,
                          preserved_original_available,
+                         primary_category, engine_family, syntax_profile,
+                         contains_exploit_markers, contains_wasm_markers,
+                         tags, required_flags,
                          ROW_NUMBER() OVER (
                            PARTITION BY normalized_sha256
                            ORDER BY preserved_original_available DESC,
@@ -133,7 +144,9 @@ class CorpusPool:
                     AND primary_category != 'support_harness'
                     AND engine_family IN ({placeholders})
                 )
-                SELECT filename, sha256, size_bytes
+                SELECT filename, sha256, size_bytes, primary_category,
+                       engine_family, syntax_profile, contains_exploit_markers,
+                       contains_wasm_markers, tags, required_flags
                 FROM eligible
                 WHERE normalized_rank = 1
                 ORDER BY sha256
@@ -148,7 +161,18 @@ class CorpusPool:
             raise CorpusError("corpus index has fewer than 1000 eligible samples")
 
         samples: list[CorpusSample] = []
-        for filename, expected_sha256, expected_size in rows:
+        for (
+            filename,
+            expected_sha256,
+            expected_size,
+            primary_category,
+            engine_family,
+            syntax_profile,
+            contains_exploit_markers,
+            contains_wasm_markers,
+            tags,
+            required_flags,
+        ) in rows:
             if (
                 not isinstance(filename, str)
                 or re.fullmatch(r"[A-Za-z0-9._-]{1,128}", filename) is None
@@ -156,6 +180,13 @@ class CorpusPool:
                 or not isinstance(expected_sha256, str)
                 or re.fullmatch(r"[0-9a-f]{64}", expected_sha256) is None
                 or not isinstance(expected_size, int)
+                or not isinstance(primary_category, str)
+                or not isinstance(engine_family, str)
+                or not isinstance(syntax_profile, str)
+                or contains_exploit_markers not in {0, 1}
+                or contains_wasm_markers not in {0, 1}
+                or not isinstance(tags, str)
+                or not isinstance(required_flags, str)
             ):
                 raise CorpusError("corpus index contains invalid artifact metadata")
             source = (files_root / filename).resolve()
@@ -175,17 +206,136 @@ class CorpusPool:
             except UnicodeError as exc:
                 raise CorpusError("an indexed corpus file is not UTF-8") from exc
             samples.append(
-                CorpusSample(name=filename, sha256=actual_sha256, data=data)
+                CorpusSample(
+                    name=filename,
+                    sha256=actual_sha256,
+                    data=data,
+                    primary_category=primary_category,
+                    engine_family=engine_family,
+                    syntax_profile=syntax_profile,
+                    contains_exploit_markers=bool(contains_exploit_markers),
+                    contains_wasm_markers=bool(contains_wasm_markers),
+                    tags=frozenset(
+                        item.strip().lower()
+                        for item in re.split(r"[;,]", tags)
+                        if item.strip()
+                    ),
+                    required_flags=frozenset(
+                        item.strip()
+                        for item in re.split(r"[;,]", required_flags)
+                        if item.strip()
+                    ),
+                )
             )
         return cls(tuple(samples))
 
-    def build_window(self, *, seed: int, size: int) -> bytes:
+    @staticmethod
+    def _stratified_groups(sample: CorpusSample) -> tuple[str, ...]:
+        groups: list[str] = []
+        if sample.primary_category in {
+            "javascript_security_artifact",
+            "issue_attachment",
+            "issue_inline_reproducer",
+            "poc_or_reproducer",
+            "exploit",
+            "search_discovered_candidate",
+        } or sample.contains_exploit_markers:
+            groups.append("security")
+        if sample.contains_wasm_markers or sample.engine_family == "WebAssembly/V8":
+            groups.append("wasm")
+        if sample.syntax_profile == "v8_d8_intrinsics" or sample.tags.intersection(
+            {"maglev", "turbofan", "turboshaft", "sparkplug", "liftoff"}
+        ):
+            groups.append("compiler")
+        source = sample.data.lower()
+        if sample.tags.intersection({"sandbox", "gc", "heap", "shellcode"}) or any(
+            marker in source
+            for marker in (b"arraybuffer", b"sharedarraybuffer", b"weakref", b"gc(")
+        ):
+            groups.append("memory")
+        if any(
+            marker in source
+            for marker in (b"sharedarraybuffer", b"atomics.", b"worker(")
+        ):
+            groups.append("concurrency")
+        if sample.primary_category == "regression_test":
+            groups.append("regression")
+        else:
+            groups.append("non_regression")
+        return tuple(groups)
+
+    def _select_stratified(
+        self,
+        *,
+        generator: random.Random,
+        size: int,
+        samples: tuple[CorpusSample, ...],
+    ) -> list[CorpusSample]:
+        buckets: dict[str, list[CorpusSample]] = {
+            name: []
+            for name in (
+                "security",
+                "wasm",
+                "compiler",
+                "memory",
+                "concurrency",
+                "regression",
+                "non_regression",
+            )
+        }
+        for sample in samples:
+            for group in self._stratified_groups(sample):
+                buckets[group].append(sample)
+        selected: list[CorpusSample] = []
+        selected_hashes: set[str] = set()
+        for group in buckets:
+            candidates = [
+                sample
+                for sample in buckets[group]
+                if sample.sha256 not in selected_hashes
+            ]
+            if candidates and len(selected) < size:
+                choice = generator.choice(candidates)
+                selected.append(choice)
+                selected_hashes.add(choice.sha256)
+        remaining = [
+            sample for sample in samples if sample.sha256 not in selected_hashes
+        ]
+        if len(selected) < size:
+            selected.extend(generator.sample(remaining, size - len(selected)))
+        generator.shuffle(selected)
+        return selected
+
+    def build_window(
+        self,
+        *,
+        seed: int,
+        size: int,
+        strategy: str = "uniform",
+    ) -> bytes:
         if isinstance(seed, bool) or not isinstance(seed, int):
             raise ValueError("corpus seed must be an integer")
         if isinstance(size, bool) or not isinstance(size, int) or size < 1:
             raise ValueError("corpus window size must be positive")
+        if strategy not in {"uniform", "stratified_v8"}:
+            raise ValueError("unsupported corpus window strategy")
         selected_size = min(size, len(self.samples))
-        selected = random.Random(seed).sample(self.samples, selected_size)
+        per_sample_limit = MAX_WINDOW_SOURCE_BYTES // selected_size
+        eligible = tuple(
+            sample for sample in self.samples if len(sample.data) <= per_sample_limit
+        )
+        if len(eligible) < selected_size:
+            raise CorpusError("too few samples fit the bounded corpus window")
+        generator = random.Random(seed)
+        selected = (
+            generator.sample(eligible, selected_size)
+            if strategy == "uniform"
+            else self._select_stratified(
+                generator=generator,
+                size=selected_size,
+                samples=eligible,
+            )
+        )
         parts = [
             b"CORPUS ROLE: historical reference data only. Do not copy, mutate, ",
             b"combine, or reproduce these programs or their historical defects. ",

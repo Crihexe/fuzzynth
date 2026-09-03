@@ -516,9 +516,11 @@ PoCs and must not make campaign correctness depend on Telegram availability.
 
 ## 16. Immediate implementation action
 
-Run the indexed preview-v3 corpus through matched `rich`/`lean` prompt pairs with
-independent provider-failure isolation, complete SSE capture for custom workers,
-hard cumulative budgets, and paired Spark-to-Luna fallback. Compare validity,
-novelty, structural similarity, usage, latency, and execution outcomes by prompt
-variant using exact recorded corpus and prompt provenance. Keep automatic
-replay/minimization and Terra disabled during this first-pass discovery run.
+Run the indexed preview-v3 corpus through matched `explicit_v2`/`lean_v2` prompt
+pairs using only custom Luna. Use ASan as the main memory-safety oracle and an
+optdebug pair for internal invariant failures; compare stratified and uniform
+eight-source windows and low versus no reasoning. Rotate unproductive context
+early while preserving recoverable iterative feedback. Keep complete SSE,
+prompt/corpus provenance, hard cumulative budgets, and continue-on-candidate
+capture. Keep automatic replay/minimization and Terra disabled during this
+first-pass discovery run.

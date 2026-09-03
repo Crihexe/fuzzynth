@@ -71,6 +71,8 @@ if systemctl is-active --quiet fuzzynth-v2-campaign.service; then
 else
   systemctl start fuzzynth-v2-campaign.service
 fi
-systemctl enable --now fuzzynth-spark-cooldown.timer
-systemctl enable --now fuzzynth-spark-fallback.timer
+# The current campaign is deliberately custom-Luna-only. Keep the Spark
+# quota/cooldown automation installed for future experiments but inactive.
+systemctl disable --now fuzzynth-spark-cooldown.timer
+systemctl disable --now fuzzynth-spark-fallback.timer
 systemctl --no-pager --full status fuzzynth-v2-campaign.service

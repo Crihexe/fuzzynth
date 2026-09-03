@@ -990,3 +990,28 @@ This is the living operational memory for the project. Read it together with
   durable global state to `stopped`, verified campaign/timers inactive and no
   campaign/d8 process, and confirmed zero active budget reservations. Telegram
   control remains active.
+
+### 2026-09-03 — adaptive custom-only discovery campaign
+
+- Converted the prompt audit into a new campaign rather than extending the
+  ineffective rich-template run. Added `explicit_v2`, which retains the
+  empirically successful single-hypothesis guidance and closes the dynamic-loop
+  timeout failure, plus `lean_v2`, which remains deliberately underspecified as
+  the high-diversity context-poisoning control.
+- Extended indexed corpus samples with category, engine, syntax, marker, tag,
+  and required-flag metadata. Added deterministic `stratified_v8` sampling over
+  security artifacts, Wasm, compiler tiers/intrinsics, memory/GC, concurrency,
+  regressions, and non-regressions. Eight-source windows are bounded to 120 KiB
+  of source and preserve exact name/hash provenance.
+- Added adaptive conversation rotation after a timeout, OOM, exact repeated
+  program, two consecutive syntax errors, or two consecutive Wasm compilation
+  failures. Ordinary exceptions retain the iterative history because the prior
+  audit measured useful next-turn recovery around 73–74 percent.
+- Replaced the active worker set with eight custom Luna lanes in four paired
+  experiments: low and no reasoning under stratified ASan, low reasoning under
+  uniform ASan, and low reasoning under stratified optdebug. Official OpenAI and
+  Spark lanes are disabled; Spark auxiliary timers remain installed but will be
+  inactive for this run.
+- The full offline suite passes with 159 tests. Actual preview-v3 index loading
+  yields 9,830 verified sources; smoke-built uniform and stratified windows each
+  contain eight distinct references and fit the context boundary.

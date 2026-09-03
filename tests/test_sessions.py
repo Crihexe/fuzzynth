@@ -20,7 +20,9 @@ class SessionLedgerTests(unittest.TestCase):
         self.ledger = SessionLedger(root / "sessions.sqlite3", self.store)
         self.addCleanup(self.ledger.close)
         config = load_campaign_configuration(Path("config/campaign-workers.toml"))
-        self.worker = config.workers["spark-custom-iterative-js-rich"]
+        self.worker = config.workers[
+            "luna-custom-low-asan-stratified-explicit-v2"
+        ]
 
     @staticmethod
     def execution(*, candidate: bool = False) -> RecordedExecution:
@@ -156,6 +158,21 @@ class SessionLedgerTests(unittest.TestCase):
 
         with self.assertRaisesRegex(SessionStateError, "open session"):
             self.ledger.start(self.worker, plan, corpus_window=None)
+
+    def test_active_session_can_complete_early_for_context_rotation(self) -> None:
+        session = self.ledger.start(
+            self.worker,
+            SessionPlan(7, 4, "low", None),
+            corpus_window=None,
+        )
+        session = self.ledger.record_turn(session.session_id, self.result(1))
+
+        completed = self.ledger.complete_early(session.session_id)
+
+        self.assertEqual(completed.status, "completed")
+        self.assertEqual(completed.next_turn, 2)
+        with self.assertRaisesRegex(SessionStateError, "active"):
+            self.ledger.complete_early(session.session_id)
 
 
 if __name__ == "__main__":

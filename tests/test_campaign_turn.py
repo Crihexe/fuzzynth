@@ -196,6 +196,7 @@ class CampaignTurnTests(unittest.TestCase):
         parameters = json.loads(generation[3])
         self.assertEqual(parameters["prompt_variant"], self.worker.prompt_variant)
         self.assertEqual(parameters["corpus_pair_id"], self.worker.corpus_pair_id)
+        self.assertEqual(parameters["corpus_strategy"], "uniform")
         self.assertEqual(
             parameters["prompt_sha256"],
             hashlib.sha256(b"code only").hexdigest(),

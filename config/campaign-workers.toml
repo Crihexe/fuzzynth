@@ -9,7 +9,7 @@ dataset_window_policy = "random_per_session"
 
 [[workers]]
 id = "spark-custom-iterative-js-rich"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.3-codex-spark"
 meter = "spark_alternate"
@@ -31,7 +31,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
 
 [[workers]]
 id = "spark-custom-iterative-js-lean"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.3-codex-spark"
 meter = "spark_alternate"
@@ -78,7 +78,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
 # but xhigh still encountered an upstream request timeout near 535 seconds.
 [[workers]]
 id = "luna-custom-high-iterative-js-rich"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -100,7 +100,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
 
 [[workers]]
 id = "luna-custom-high-iterative-js-lean"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -124,7 +124,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
 # validity, and novelty remain directly comparable.
 [[workers]]
 id = "luna-custom-low-iterative-js-rich"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -146,7 +146,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
 
 [[workers]]
 id = "luna-custom-low-iterative-js-lean"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -218,7 +218,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
 # reconciler toggles its control state; owner, crash, and provider pauses win.
 [[workers]]
 id = "luna-custom-none-spark-fallback-js-rich"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -240,7 +240,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
 
 [[workers]]
 id = "luna-custom-none-spark-fallback-js-lean"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -309,7 +309,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
 # from the request because this model family does not implement those controls.
 [[workers]]
 id = "gpt-4o-mini-official-temperature-js-rich"
-enabled = true
+enabled = false
 provider = "official"
 model = "gpt-4o-mini"
 meter = "openai_official"
@@ -333,7 +333,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
 
 [[workers]]
 id = "gpt-4o-mini-official-temperature-js-lean"
-enabled = true
+enabled = false
 provider = "official"
 model = "gpt-4o-mini"
 meter = "openai_official"
@@ -360,7 +360,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
 # unsupported_parameter for reasoning.effort=medium, so reasoning is omitted.
 [[workers]]
 id = "gpt-4.1-nano-official-temperature-js-rich"
-enabled = true
+enabled = false
 provider = "official"
 model = "gpt-4.1-nano"
 meter = "openai_official"
@@ -385,7 +385,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
 
 [[workers]]
 id = "gpt-4.1-nano-official-temperature-js-lean"
-enabled = true
+enabled = false
 provider = "official"
 model = "gpt-4.1-nano"
 meter = "openai_official"
@@ -405,6 +405,193 @@ history_turns = 5
 max_output_tokens = 8192
 reservation_output_tokens = 8192
 v8_build_profile = "release_symbolized"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
+
+# Custom-only adaptive campaign. Each pair receives the exact same corpus
+# window and plan; only its system prompt differs. ASan is the primary oracle,
+# with one optdebug pair for internal invariant failures.
+[[workers]]
+id = "luna-custom-low-asan-stratified-explicit-v2"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_explicit_v2.txt"
+prompt_variant = "explicit_v2"
+corpus_pair_id = "luna-low-asan-stratified-v2"
+corpus_strategy = "stratified_v8"
+reasoning_efforts = ["low"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 2
+max_turns_per_session = 4
+history_turns = 3
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "asan"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
+
+[[workers]]
+id = "luna-custom-low-asan-stratified-lean-v2"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_lean_v2.txt"
+prompt_variant = "lean_v2"
+corpus_pair_id = "luna-low-asan-stratified-v2"
+corpus_strategy = "stratified_v8"
+reasoning_efforts = ["low"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 2
+max_turns_per_session = 4
+history_turns = 3
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "asan"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
+
+[[workers]]
+id = "luna-custom-none-asan-stratified-explicit-v2"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_explicit_v2.txt"
+prompt_variant = "explicit_v2"
+corpus_pair_id = "luna-none-asan-stratified-v2"
+corpus_strategy = "stratified_v8"
+reasoning_efforts = ["none"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 2
+max_turns_per_session = 4
+history_turns = 3
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "asan"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
+
+[[workers]]
+id = "luna-custom-none-asan-stratified-lean-v2"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_lean_v2.txt"
+prompt_variant = "lean_v2"
+corpus_pair_id = "luna-none-asan-stratified-v2"
+corpus_strategy = "stratified_v8"
+reasoning_efforts = ["none"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 2
+max_turns_per_session = 4
+history_turns = 3
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "asan"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
+
+[[workers]]
+id = "luna-custom-low-asan-uniform-explicit-v2"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_explicit_v2.txt"
+prompt_variant = "explicit_v2"
+corpus_pair_id = "luna-low-asan-uniform-v2"
+corpus_strategy = "uniform"
+reasoning_efforts = ["low"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 2
+max_turns_per_session = 4
+history_turns = 3
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "asan"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
+
+[[workers]]
+id = "luna-custom-low-asan-uniform-lean-v2"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_lean_v2.txt"
+prompt_variant = "lean_v2"
+corpus_pair_id = "luna-low-asan-uniform-v2"
+corpus_strategy = "uniform"
+reasoning_efforts = ["low"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 2
+max_turns_per_session = 4
+history_turns = 3
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "asan"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
+
+[[workers]]
+id = "luna-custom-low-optdebug-stratified-explicit-v2"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_explicit_v2.txt"
+prompt_variant = "explicit_v2"
+corpus_pair_id = "luna-low-optdebug-stratified-v2"
+corpus_strategy = "stratified_v8"
+reasoning_efforts = ["low"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 2
+max_turns_per_session = 4
+history_turns = 3
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "optdebug"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
+
+[[workers]]
+id = "luna-custom-low-optdebug-stratified-lean-v2"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_lean_v2.txt"
+prompt_variant = "lean_v2"
+corpus_pair_id = "luna-low-optdebug-stratified-v2"
+corpus_strategy = "stratified_v8"
+reasoning_efforts = ["low"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 2
+max_turns_per_session = 4
+history_turns = 3
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "optdebug"
 v8_worker_profile = "standard"
 d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing"]
 

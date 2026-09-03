@@ -18,6 +18,7 @@ from fuzzynth.corpus import CorpusPool
 from fuzzynth.credentials import CredentialStore
 from fuzzynth.notifications import TelegramCampaignNotifier
 from fuzzynth.outcomes import diagnose_harness_misuse
+from fuzzynth.session_context import TurnContext
 from fuzzynth.sessions import SessionRecord, SessionStateError
 
 
@@ -54,6 +55,54 @@ def _stable_seed(base_seed: int, worker_id: str, ordinal: int) -> int:
     return int.from_bytes(hashlib.sha256(material).digest()[:8], "big") & (
         (1 << 63) - 1
     )
+
+
+def _failure_kind(feedback: bytes) -> str | None:
+    try:
+        document = json.loads(feedback)
+    except (UnicodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(document, dict):
+        return None
+    if document.get("timed_out") is True:
+        return "timeout"
+    if document.get("oom_killed") is True:
+        return "oom"
+    diagnostics = "\n".join(
+        str(document.get(name, ""))
+        for name in ("stdout_tail", "stderr_tail")
+    )
+    if "SyntaxError" in diagnostics:
+        return "syntax_error"
+    if "WebAssembly" in diagnostics and any(
+        marker in diagnostics
+        for marker in ("CompileError", "validation", "expected magic word")
+    ):
+        return "wasm_compile_error"
+    return None
+
+
+def adaptive_session_reset_reason(
+    history: tuple[TurnContext, ...],
+) -> str | None:
+    """Identify contexts where another iterative turn is predictably wasteful."""
+
+    if not history:
+        return None
+    latest_kind = _failure_kind(history[-1].feedback)
+    if latest_kind in {"timeout", "oom"}:
+        return latest_kind
+    if len(history) < 2:
+        return None
+    if history[-1].program == history[-2].program:
+        return "duplicate_program"
+    previous_kind = _failure_kind(history[-2].feedback)
+    if latest_kind == previous_kind and latest_kind in {
+        "syntax_error",
+        "wasm_compile_error",
+    }:
+        return f"repeated_{latest_kind}"
+    return None
 
 
 class CampaignSupervisor:
@@ -194,7 +243,11 @@ class CampaignSupervisor:
                         worker.corpus_pair_id,
                         ordinal,
                     )
-                    window = self.corpus.build_window(seed=seed, size=self.window_size)
+                    window = self.corpus.build_window(
+                        seed=seed,
+                        size=self.window_size,
+                        strategy=worker.corpus_strategy,
+                    )
                     session = service.start_session(
                         worker_id,
                         seed=seed,
@@ -210,9 +263,31 @@ class CampaignSupervisor:
                             "corpus_sha256": session.corpus.sha256 if session.corpus else None,
                             "corpus_pair_id": worker.corpus_pair_id,
                             "prompt_variant": worker.prompt_variant,
+                            "corpus_strategy": worker.corpus_strategy,
                         }
                     )
                 result = service.run_session(session.session_id, max_turns=1)
+                adaptive_reset = None
+                current_session = result.session
+                if result.turns and current_session.status == "active":
+                    adaptive_reset = adaptive_session_reset_reason(
+                        service.sessions.history(
+                            current_session.session_id,
+                            limit=2,
+                        )
+                    )
+                    if adaptive_reset is not None:
+                        current_session = service.sessions.complete_early(
+                            current_session.session_id
+                        )
+                        self.event_sink(
+                            {
+                                "event": "adaptive_session_reset",
+                                "worker_id": worker_id,
+                                "session_id": current_session.session_id,
+                                "reason": adaptive_reset,
+                            }
+                        )
                 if result.turns:
                     turns += 1
                     turn = result.turns[0]
@@ -231,7 +306,7 @@ class CampaignSupervisor:
                             "corpus_pair_id": worker.corpus_pair_id,
                             "prompt_variant": worker.prompt_variant,
                             "session_id": result.session.session_id,
-                            "session_status": result.session.status,
+                            "session_status": current_session.status,
                             "generation_id": turn.generation_id,
                             "execution_id": (
                                 turn.execution.execution_id if turn.execution else None
@@ -250,6 +325,7 @@ class CampaignSupervisor:
                             "suspected_harness_misuse": (
                                 diagnostic.code if diagnostic is not None else None
                             ),
+                            "adaptive_session_reset": adaptive_reset,
                         }
                     )
                 if result.session.status == "paused":
