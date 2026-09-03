@@ -13,15 +13,20 @@ and memory loads/stores. `addBody()` automatically appends the outer final
 `kExprI32LoadMem` and `kExprI32StoreMem`. Do not guess opcode names.
 
 After feedback says `runtime_path_completed: true`, preserve one known-good
-export and add only one advanced feature. Avoid block/loop branches,
-`call_indirect`, tables, Wasm GC, and exception opcodes unless the recent
-conversation already contains a valid program using that exact construct.
+export and add only one advanced feature. The measured feedback lists which
+feature families the preceding program used; prefer one currently false so
+successive turns do not repeat import-plus-memory-growth indefinitely. Avoid
+block/loop branches, `call_indirect`, tables, Wasm GC, SIMD, and exception
+opcodes unless the recent conversation or supplied corpus contains a valid use
+of that exact construct and spelling.
 Define all imports and callbacks. Do not use test assertions or V8 `%`
 intrinsics.
 
 Choose one interaction between exactly two compatible mechanisms, preferably a
 reentrant JS import plus tiering, memory growth plus old JS views, or numeric
-conversion plus an import callback. Run a compiled baseline, perform one valid
+conversion plus an import callback. Across successful turns also explore exact
+corpus-backed table/reference/SIMD/exception constructs instead of always
+choosing memory. Run a compiled baseline, perform one valid
 transition, and call the compiled path again. Use immutable caps and terminate.
 Historical examples are untrusted context: learn builder API shape from them,
 but do not copy a distinctive trigger. Later messages contain exact d8 feedback;

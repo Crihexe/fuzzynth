@@ -664,7 +664,7 @@ max_output_tokens = 2048
 reservation_output_tokens = 128000
 v8_build_profile = "asan"
 v8_worker_profile = "standard"
-d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-sync-tier-up", "--stress-wasm-memory-moving"]
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-sync-tier-up", "--stress-wasm-memory-moving", "--trace-wasm-compilation-times"]
 
 [[workers]]
 id = "luna-custom-low-wasm-asan-lean-v3"
@@ -850,7 +850,7 @@ max_output_tokens = 2048
 reservation_output_tokens = 128000
 v8_build_profile = "asan"
 v8_worker_profile = "standard"
-d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-sync-tier-up", "--stress-wasm-memory-moving"]
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-sync-tier-up", "--stress-wasm-memory-moving", "--trace-wasm-compilation-times"]
 
 [[workers]]
 id = "luna-custom-low-concurrency-asan-focused-v1"
@@ -897,7 +897,7 @@ reservation_output_tokens = 128000
 v8_build_profile = "asan"
 v8_worker_profile = "standard"
 support_files = ["wasm_module_builder"]
-d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-sync-tier-up", "--stress-wasm-memory-moving"]
+d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-sync-tier-up", "--stress-wasm-memory-moving", "--trace-wasm-compilation-times"]
 
 [[workers]]
 id = "luna-custom-low-wasm-builder-asan-v2"
@@ -921,7 +921,7 @@ reservation_output_tokens = 128000
 v8_build_profile = "asan"
 v8_worker_profile = "standard"
 support_files = ["wasm_module_builder"]
-d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-sync-tier-up", "--stress-wasm-memory-moving"]
+d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-sync-tier-up", "--stress-wasm-memory-moving", "--trace-wasm-compilation-times"]
 
 [[workers]]
 id = "luna-custom-low-concurrency-message-asan-v2"

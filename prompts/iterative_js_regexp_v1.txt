@@ -9,6 +9,9 @@ not use V8 `%` intrinsics, WebAssembly, SharedArrayBuffer, or Worker. Choose
 exactly one interacting mechanism, such as Unicode/UnicodeSets, indices,
 sticky/global `lastIndex`, a RegExp subclass or species, a Symbol protocol,
 replacement coercion, or a bounded reentrant getter/callback.
+The measured feedback lists protocols already exercised. After a successful
+turn choose a different protocol or interaction family, rather than merely
+changing the pattern and variable names.
 
 Establish a valid baseline, perform one observable transition, and execute the
 same RegExp/string path afterward. If overriding `exec` or an implicit protocol,

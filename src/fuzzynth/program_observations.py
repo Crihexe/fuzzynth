@@ -17,6 +17,10 @@ _OPTIMIZED = re.compile(
     r"(?:completed optimizing|completed compiling)", re.IGNORECASE
 )
 _DEOPT = re.compile(r"\[bailout \([^\n]*?reason: ([^):\n]+)", re.IGNORECASE)
+_WASM_COMPILED_FUNCTION = re.compile(
+    r"Compiled function .*? using ([A-Za-z0-9_+-]+)", re.IGNORECASE
+)
+_WASM_COMPILED_WRAPPER = re.compile(r"Compiled WasmToJS wrapper", re.IGNORECASE)
 
 
 def _decode(data: bytes) -> str:
@@ -86,6 +90,7 @@ def observe_program(
         "wasm_builder_v2",
     }:
         builder_assisted = prompt_variant.startswith("wasm_builder_")
+        wasm_tiers = [tier.lower() for tier in _WASM_COMPILED_FUNCTION.findall(process_output)]
         wasm = {
             "constructs_module": bool(
                 re.search(
@@ -106,6 +111,33 @@ def observe_program(
             ),
             "uses_module_builder": "new WasmModuleBuilder" in source,
             "uses_percent_intrinsic": bool(_PERCENT_INTRINSIC.search(source)),
+            "imports_js_function": ".addImport(" in source,
+            "declares_memory": bool(
+                re.search(r"\.(?:addMemory|addImportedMemory)\s*\(", source)
+            ),
+            "grows_memory": bool(
+                re.search(r"(?:kExprMemoryGrow|\.grow\s*\()", source)
+            ),
+            "uses_table_or_indirect_call": bool(
+                re.search(r"\.(?:addTable|addActiveElementSegment)\s*\(", source)
+                or "kExprCallIndirect" in source
+            ),
+            "uses_reference_or_gc_types": bool(
+                re.search(
+                    r"(?:\.addStruct\s*\(|\.addArray\s*\(|kGCPrefix|"
+                    r"wasmRef(?:Null)?Type)",
+                    source,
+                )
+            ),
+            "uses_simd": bool(
+                re.search(
+                    r"(?:kSimdPrefix|kExprS128|kExpr[IF](?:8x16|16x8|32x4|64x2))",
+                    source,
+                )
+            ),
+            "uses_wasm_exceptions": bool(
+                re.search(r"(?:\.addTag\s*\(|kExprTry|kExprThrow|kExprCatch)", source)
+            ),
         }
         observation["subsystem"] = "wasm"
         observation["subsystem_features"] = wasm
@@ -125,6 +157,16 @@ def observe_program(
         observation["runtime_path_completed"] = bool(
             observation["prompt_adherent"] and outcome == "ok"
         )
+        if wasm_tiers or _WASM_COMPILED_WRAPPER.search(process_output):
+            observation["wasm_trace"] = {
+                "compiled_functions": len(wasm_tiers),
+                "tiers": {
+                    tier: wasm_tiers.count(tier) for tier in sorted(set(wasm_tiers))
+                },
+                "compiled_wasm_to_js_wrappers": len(
+                    _WASM_COMPILED_WRAPPER.findall(process_output)
+                ),
+            }
         if "CompileError: WebAssembly.Module()" in process_output:
             observation["corrective_hint"] = {
                 "code": "wasm_binary_rejected_before_compiled_execution",
@@ -132,6 +174,40 @@ def observe_program(
                     "The binary layout was invalid. Correct all section lengths, "
                     "vector counts, type/function indices, and body sizes; the next "
                     "program must instantiate and call an export successfully."
+                ),
+            }
+        elif builder_assisted and re.search(
+            r"ReferenceError: k(?:Expr|Wasm|Sig)[A-Za-z0-9_]+ is not defined",
+            process_output,
+        ):
+            observation["corrective_hint"] = {
+                "code": "unknown_wasm_builder_constant",
+                "guidance": (
+                    "A guessed WasmModuleBuilder constant does not exist. Reuse only "
+                    "a constant whose exact spelling appeared in a known-valid prior "
+                    "program or the supplied corpus; keep the next body simple."
+                ),
+            }
+        elif builder_assisted and "invalid body (entries must be 8 bit numbers)" in process_output:
+            observation["corrective_hint"] = {
+                "code": "unencoded_wasm_immediate",
+                "guidance": (
+                    "A raw numeric immediate exceeded one byte. Encode constants with "
+                    "helpers such as ...wasmI32Const(value) instead of placing the "
+                    "full value directly in addBody()."
+                ),
+            }
+        elif builder_assisted and (
+            "exportMemoryAs is not a function" in process_output
+            or "builder.exportMemory is not a function" in process_output
+            or "undefined (reading 'buffer')" in process_output
+        ):
+            observation["corrective_hint"] = {
+                "code": "wasm_memory_export_contract",
+                "guidance": (
+                    "Declare memory first, then call builder.exportMemoryAs('memory') "
+                    "as a separate builder method before instantiate(); only then read "
+                    "instance.exports.memory.buffer."
                 ),
             }
         elif outcome != "ok" and "RuntimeError:" in process_output:
@@ -153,6 +229,24 @@ def observe_program(
                 or re.search(r"\bwhile\s*\([^)]*Atomics\.", source)
             ),
             "uses_percent_intrinsic": bool(_PERCENT_INTRINSIC.search(source)),
+            "atomics_operations": sorted(
+                set(re.findall(r"Atomics\.([A-Za-z_$][\w$]*)\s*\(", source))
+            )[:12],
+            "shared_view_types": sorted(
+                set(
+                    re.findall(
+                        r"new\s+((?:Big)?(?:Int|Uint)(?:8|16|32|64)?Array)\s*\(",
+                        source,
+                    )
+                )
+            )[:8],
+            "worker_count": len(re.findall(r"\bnew\s+Worker\s*\(", source)),
+            "growable_shared_buffer": bool(
+                "maxByteLength" in source and re.search(r"\.grow\s*\(", source)
+            ),
+            "coercion_side_effect": bool(
+                re.search(r"(?:Symbol\.toPrimitive|valueOf\s*\(|toString\s*\()", source)
+            ),
         }
         observation["subsystem"] = "concurrency"
         observation["subsystem_features"] = concurrency
@@ -211,6 +305,29 @@ def observe_program(
                         source,
                     )
                 ),
+                "view_types": sorted(
+                    set(
+                        re.findall(
+                            r"\b(DataView|BigInt64Array|BigUint64Array|"
+                            r"Float(?:32|64)Array|Int(?:8|16|32)Array|"
+                            r"Uint(?:8|8Clamped|16|32)Array)\s*\(",
+                            source,
+                        )
+                    )
+                )[:12],
+                "uses_proxy": bool(re.search(r"\bnew\s+Proxy\s*\(", source)),
+                "uses_coercion_side_effect": bool(
+                    re.search(
+                        r"(?:Symbol\.toPrimitive|valueOf\s*\(|toString\s*\()",
+                        source,
+                    )
+                ),
+                "uses_transfer": bool(
+                    re.search(r"\.transfer(?:ToFixedLength)?\s*\(", source)
+                ),
+                "uses_bigint_view": bool(
+                    re.search(r"\bBig(?:Int64|Uint64)Array\s*\(", source)
+                ),
             }
             observation["subsystem"] = "buffers"
             observation["subsystem_features"] = buffer_features
@@ -232,6 +349,26 @@ def observe_program(
                         source,
                     )
                 ),
+                "protocols": sorted(
+                    set(
+                        re.findall(
+                            r"\.(exec|test|match|matchAll|replace|replaceAll|search|split)\s*\(",
+                            source,
+                        )
+                    )
+                ),
+                "uses_subclass": bool(
+                    re.search(r"class\s+[A-Za-z_$][\w$]*\s+extends\s+RegExp", source)
+                ),
+                "uses_symbol_protocol": bool(
+                    re.search(r"Symbol\.(?:match|matchAll|replace|search|split)", source)
+                ),
+                "uses_replacement_callback": bool(
+                    re.search(
+                        r"\.replace(?:All)?\s*\([^,]+,\s*(?:function|(?:async\s*)?\(?[\w\s,]*\)?\s*=>)",
+                        source,
+                    )
+                ),
             }
             observation["subsystem"] = "regexp"
             observation["subsystem_features"] = regexp_features
@@ -247,5 +384,34 @@ def observe_program(
         observation["runtime_path_completed"] = bool(
             observation["prompt_adherent"] and outcome == "ok"
         )
+        if prompt_variant == "buffers_v1" and outcome != "ok":
+            if "start offset" in process_output and "multiple of" in process_output:
+                observation["corrective_hint"] = {
+                    "code": "misaligned_typed_array_offset",
+                    "guidance": (
+                        "The typed-array byteOffset was not aligned to its element "
+                        "width. Use an aligned initial offset, then test resize effects."
+                    ),
+                }
+            elif "out-of-bounds ArrayBuffer" in process_output or "offset is out of bounds" in process_output:
+                observation["corrective_hint"] = {
+                    "code": "uncaught_expected_buffer_boundary",
+                    "guidance": (
+                        "An expected resized-view RangeError/TypeError escaped. Catch "
+                        "that single access locally and continue to a valid post-resize path."
+                    ),
+                }
+        elif (
+            prompt_variant == "regexp_v1"
+            and outcome != "ok"
+            and "re.replace is not a function" in process_output
+        ):
+            observation["corrective_hint"] = {
+                "code": "regexp_replace_wrong_receiver",
+                "guidance": (
+                    "replace/replaceAll are String methods: call subject.replace(re, "
+                    "replacement), or invoke re[Symbol.replace](subject, replacement)."
+                ),
+            }
 
     return observation

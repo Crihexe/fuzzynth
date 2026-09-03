@@ -12,6 +12,10 @@ intrinsics.
 Make exactly one other mechanism interact with the resize/view boundary: for
 example conversion side effects, a Proxy/getter, iteration, sorting, species,
 structured view access, or a callback that resizes between validation and use.
+The measured feedback lists view types and mechanisms already used. After a
+successful turn choose one currently absent family—especially BigInt views,
+transfer/transferToFixedLength, a different view protocol, or a different
+coercion boundary—instead of renaming the preceding template.
 Run a stable baseline, perform one valid resize transition, then exercise the
 same operation again. Catch only expected RangeError/TypeError cases locally so
 the post-transition path continues. Avoid an unrelated feature checklist. Use

@@ -1151,3 +1151,20 @@ This is the living operational memory for the project. Read it together with
   under deterministic marking/compaction stress, and ASan Wasm secondary-stack
   execution. Every profile retains `--fuzzing`; none changes primary generation
   classification or treats timeout/OOM as a candidate.
+- Froze and inspected the first 100 outputs of the builder-Wasm v2, wait-free
+  concurrency v2, resizable-buffer, and RegExp lanes. All 100 hashes are unique;
+  98 satisfy their static subsystem contract and 84 complete a useful exit-0
+  path. This fixes the old cross-subsystem collapse, but exposes within-lane
+  convergence: Worker favors one CAS/message template and builder Wasm favors
+  imports plus memory growth.
+- Expanded structured feedback with exact prior feature families, targeted
+  correction for builder API/opcode/immediate mistakes and expected buffer or
+  RegExp misuse, and compact actual Wasm compilation-tier/wrapper observations.
+  The four specialized prompts now request a mechanism absent from the preceding
+  successful turn. Active Wasm lanes run with
+  `--trace-wasm-compilation-times`; a live ASan smoke observed both Liftoff and
+  TurboFan compilation plus a Wasm-to-JS wrapper.
+- Completed a 5,753-execution stress replay with zero errors/candidates and
+  launched a second 16,520-execution matrix using the corrected routing and four
+  new sensitive profiles. The complete quantitative interpretation is in
+  `docs/GENERATION_QUALITY_AUDIT_2026-09-03.md`.

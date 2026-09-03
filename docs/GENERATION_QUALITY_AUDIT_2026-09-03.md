@@ -234,3 +234,72 @@ ArrayBuffer and RegExp lanes. The generic language lane had become mostly
 Proxy/iterator output and never used TypedArrays in the inspected 52-program
 snapshot, so these additional lanes expand semantic coverage rather than merely
 increasing worker count.
+
+## Frozen 100-program subsystem experiment
+
+The first 100 primary executions from the four new lanes are frozen from
+`2026-09-03T01:51:50.534148+00:00` through
+`2026-09-03T01:58:39.452612+00:00`. They span 35 independent sessions, 35
+corpus windows, 219 distinct historical sources, and 100 distinct generated
+SHA-256 values.
+
+| Lane | Programs | Exit 0 | Prompt-adherent | Useful path | Median bytes | Median adjacent-session similarity |
+|---|---:|---:|---:|---:|---:|---:|
+| Wasm builder v2 | 29 | 20 | 29 | 20 | 748 | 0.576 |
+| wait-free Worker v2 | 23 | 23 | 23 | 23 | 1,801 | 0.775 |
+| resizable buffers v1 | 22 | 18 | 22 | 18 | 1,173 | 0.692 |
+| RegExp v1 | 26 | 25 | 24 | 23 | 524 | 0.392 |
+| **Total** | **100** | **86** | **98** | **84** | — | — |
+
+This is a large improvement over the earlier `interaction_v1` result: its 20
+nominal concurrency outputs exercised no concurrency and its 20 nominal Wasm
+outputs exercised no module, whereas all 23 new concurrency outputs used a real
+Worker, SAB, and Atomics and all 29 builder outputs attempted a builder-created
+module and export. The prompt specialization is causally useful, not merely a
+different writing style.
+
+The subsystem-internal distribution is still narrow:
+
+- Worker output is perfectly executable but structurally repetitive: 18/23 use
+  `compareExchange`, 18/23 use paired signed/unsigned views, and none uses an
+  atomic wait. The wait-free rule fixed deadlocks, but most turns restyle one
+  message/CAS template.
+- Builder Wasm uses an import in 17/29 programs, declares memory in 17/29, and
+  grows memory in 13/29; none of the first 29 uses a table/indirect call, Wasm
+  GC/reference types, SIMD, or Wasm exceptions. Its nine failures are concrete
+  builder-contract mistakes: wrong memory-export APIs, nonexistent opcode names,
+  or unencoded multi-byte immediates. Three of four observable failed turns
+  recover on the following turn.
+- Buffer output uses coercion side effects in 14/22, DataView in 12/22, and
+  Proxy in 7/22, but never `transfer` or a BigInt view. Its four failures are
+  uncaught expected resized-view boundary errors or an unaligned view offset.
+- RegExp is both the shortest and most diverse lane: the 26 programs distribute
+  across global/sticky/indices/Unicode flags, four use `matchAll`, eight use a
+  replacement callback, and two subclass RegExp. The sole JS error invokes
+  `replace` on a RegExp rather than on a string.
+
+Eight-token overlap with each program's own corpus window has a 0.724% median.
+Builder Wasm is the exception (13.2% median, 42.3% maximum), but inspection of
+the matches finds mandatory generic helper boilerplate—`load`, builder creation,
+function/memory construction, and `instantiate`—rather than a copied historical
+trigger. The other three lane medians are at or below 1.01%.
+
+The measured result rejects both extremes. A large generic prompt with more
+examples causes cross-subsystem collapse; an ultra-narrow prompt produces valid
+programs but converges within the subsystem. The best current policy is four to
+eight target-clean examples plus a short subsystem contract and measured
+turn-to-turn novelty feedback. The live prompts now receive explicit feature
+families from the preceding program and ask the next successful turn to choose a
+currently absent family. Wasm executions also enable compact compilation traces,
+which distinguish actual Liftoff/TurboFan compilation and Wasm-to-JS wrapper
+generation from static source intent.
+
+Two preserved-program replay rounds strengthen the explanation for no finding.
+The first new round ran 5,753 alternate-flag executions with zero errors and
+zero candidates. A second 16,520-execution round is exercising the corrected
+Wasm/RegExp routing plus Maglev type assertions, compilation-time GC, heap
+verification, and Wasm stack-switching. This makes a missed easy invariant or
+sanitizer failure less likely. It does not make the generated inputs independent:
+the dominant remaining limitation is semantic path entropy, compounded by the
+fact that Chrome 152 V8 is a mature target already exposed to much larger native
+fuzzing campaigns.

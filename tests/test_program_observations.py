@@ -71,6 +71,51 @@ class ProgramObservationTests(unittest.TestCase):
         self.assertTrue(observation["prompt_adherent"])
         self.assertTrue(observation["runtime_path_completed"])
 
+    def test_wasm_trace_and_builder_feature_families_are_compacted(self) -> None:
+        observation = observe_program(
+            prompt_variant="wasm_builder_v2",
+            program=b"""
+              load('/input/wasm-module-builder.js');
+              const b = new WasmModuleBuilder();
+              b.addMemory(1, 2);
+              const imp = b.addImport('m', 'f', kSig_i_i);
+              const i = b.instantiate({m: {f(x) { return x; }}});
+              i.exports.run();
+            """,
+            outcome="ok",
+            stdout=(
+                b"Compiled function 0x1#0 using Liftoff, took 1 us\n"
+                b"Compiled WasmToJS wrapper wasm-to-js-5-i, took 2 us\n"
+                b"Compiled function 0x1#0 using TurboFan, took 3 us\n"
+            ),
+            stderr=b"",
+        )
+
+        features = observation["subsystem_features"]
+        self.assertTrue(features["imports_js_function"])
+        self.assertTrue(features["declares_memory"])
+        self.assertEqual(observation["wasm_trace"]["compiled_functions"], 2)
+        self.assertEqual(
+            observation["wasm_trace"]["tiers"], {"liftoff": 1, "turbofan": 1}
+        )
+        self.assertEqual(
+            observation["wasm_trace"]["compiled_wasm_to_js_wrappers"], 1
+        )
+
+    def test_builder_memory_export_failure_has_exact_contract_hint(self) -> None:
+        observation = observe_program(
+            prompt_variant="wasm_builder_v2",
+            program=b"load('/input/wasm-module-builder.js'); new WasmModuleBuilder();",
+            outcome="js_exception",
+            stdout=b"TypeError: builder.exportMemory is not a function",
+            stderr=b"",
+        )
+
+        self.assertEqual(
+            observation["corrective_hint"]["code"],
+            "wasm_memory_export_contract",
+        )
+
     def test_message_concurrency_rejects_wait_even_after_exit_zero(self) -> None:
         observation = observe_program(
             prompt_variant="concurrency_message_v2",
@@ -103,6 +148,10 @@ class ProgramObservationTests(unittest.TestCase):
 
         self.assertTrue(observation["prompt_adherent"])
         self.assertTrue(observation["runtime_path_completed"])
+        self.assertEqual(
+            observation["subsystem_features"]["view_types"],
+            ["DataView", "Uint8Array"],
+        )
 
     def test_regexp_lane_requires_construct_and_execution(self) -> None:
         observation = observe_program(

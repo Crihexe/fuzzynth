@@ -13,6 +13,10 @@ intrinsic; these make this lane deadlock-prone without adding useful coverage.
 Choose one interaction between exactly two compatible mechanisms, such as two
 shared typed-view representations, atomic coercion side effects, compareExchange
 with shape/coercion transition, or worker messaging plus shared-memory mutation.
+The measured feedback lists prior Atomics operations and view types; after a
+successful turn, deliberately choose a different valid operation, view family,
+worker count, or growable-shared-buffer interaction instead of restyling the
+same compareExchange protocol.
 Run a stable baseline, cross one valid message barrier, perform one transition,
 then exercise the same shared path again. Keep all loops immutable and bounded.
 Do not append unrelated Proxy, RegExp, generator, Wasm, or GC demonstrations.
