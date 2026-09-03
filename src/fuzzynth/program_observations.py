@@ -42,7 +42,9 @@ _MECHANISM_PATTERNS = (
     ("species", r"Symbol\.species"),
     ("typed_views", r"\b(?:DataView|(?:Big)?(?:Int|Uint|Float)\w*Array)\b"),
     ("wasm", r"WebAssembly|WasmModuleBuilder"),
+    ("wasm_custom_descriptors", r"(?:descriptor|describes)\s*:"),
     ("wasm_fp16", r"\bF16x8\b|kExprF16x8"),
+    ("wasm_imported_strings", r"wasm:(?:js-string|text-(?:decoder|encoder))"),
     ("wasm_memory64", r"\.addMemory64\s*\(|\bmemory64\b"),
     ("wasm_shared_types", r"\.addSharedType\s*\(|kWasmShared"),
     ("wasm_stack_switching", r"\.addCont\s*\(|kExpr(?:ContNew|Resume|Switch)"),
@@ -239,6 +241,14 @@ def observe_program(
             "uses_wide_arithmetic": bool(
                 re.search(r"(?:kExprI64Add128|wide[-_ ]arithmetic)", source)
             ),
+            "uses_custom_descriptors": bool(
+                re.search(r"(?:descriptor|describes)\s*:", source)
+            ),
+            "uses_imported_strings": bool(
+                re.search(
+                    r"wasm:(?:js-string|text-(?:decoder|encoder))", source
+                )
+            ),
         }
         observation["subsystem"] = "wasm"
         observation["subsystem_features"] = wasm
@@ -265,6 +275,8 @@ def observe_program(
                         "uses_shared_types",
                         "uses_memory64",
                         "uses_wide_arithmetic",
+                        "uses_custom_descriptors",
+                        "uses_imported_strings",
                     )
                 )
             )

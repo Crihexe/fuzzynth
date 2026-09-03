@@ -74,6 +74,18 @@ _WASM_STAGING_MARKERS = {
     "shared_types": (b".addsharedtype(", b"kwasmshared"),
     "memory64": (b".addmemory64(", b"memory64"),
     "wide_arithmetic": (b"kexpri64add128", b"wide-arithmetic"),
+    "custom_descriptors": (
+        b"--wasm-custom-descriptors",
+        b"--experimental-wasm-custom-descriptors",
+        b"descriptor:",
+        b"describes:",
+    ),
+    "imported_strings": (
+        b"--wasm-imported-strings-utf8",
+        b"wasm:js-string",
+        b"wasm:text-decoder",
+        b"wasm:text-encoder",
+    ),
 }
 
 

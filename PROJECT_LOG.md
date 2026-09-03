@@ -1290,18 +1290,20 @@ This is the living operational memory for the project. Read it together with
   source text differs. A single repeated path still gets the next turn to react
   to feedback; two repeats stop spending context on a known template.
 - Replaced the low-validity raw-binary Wasm boundary lane with a Chrome 152
-  staging-proposal builder lane. Its random eight-source windows draw from 86
-  indexed examples across WasmFX, stringref, fp16, shared types, memory64, and
-  wide arithmetic. Generated code receives the pinned builder and explicit
-  proposal flags; historical assertion/d8 harness calls remain context-only.
-  Proposal families now contribute to semantic novelty, and the priority ASan
-  replay profile enables the same independent feature flags.
-- Stratified staging-window sampling now selects a random member of all six
-  proposal families before filling the remaining two random positions. This
-  preserves corpus randomization while preventing the four wide-arithmetic and
-  five fp16 examples from being statistically starved by larger subsets.
+  staging-proposal builder lane. Its random eight-source windows draw from 128
+  indexed examples across WasmFX, stringref, fp16, shared types, memory64, wide
+  arithmetic, custom descriptors, and imported strings. Generated code receives
+  the pinned builder and explicit proposal flags; historical assertion/d8
+  harness calls remain context-only. Proposal families now contribute to
+  semantic novelty, and the priority ASan replay profile enables the same flags.
+- Stratified staging-window sampling now selects a random member of all eight
+  proposal families. This preserves corpus randomization while preventing the
+  four-example wide-arithmetic and fp16 subsets from being statistically starved
+  by larger subsets.
 - Added a matching optdebug staging replay alongside ASan so generated proposal
   programs are checked both for memory safety and internal V8 invariants.
+- Enabled deterministic Wasm random rescheduling and SIMD revectorization on the
+  primary staging worker and both staging replay oracles.
 - A provider-wide Cloudflare 502 outage exposed a liveness gap: generic provider
   errors became permanent worker pauses after three tries. Generic transport/5xx
   failures now retry indefinitely with 5/15/60-second then five-minute capped

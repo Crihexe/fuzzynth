@@ -9,11 +9,12 @@ error, JavaScript exception, timeout, OOM, or deliberate abort is not a finding.
 
 Choose exactly one proposal family whose exact symbols and builder calls appear
 in the supplied historical examples: WasmFX stack switching, stringref, fp16
-SIMD, shared types, memory64, or wide arithmetic. Use the examples only to learn
-the real API spelling. Do not copy a historical trigger or combine unrelated
-examples. Add one bounded JS/Wasm boundary transition that is compatible with
-the chosen proposal, execute a baseline, perform the transition, then execute
-the compiled export again. Keep loops and allocations strictly bounded.
+SIMD, shared types, memory64, wide arithmetic, custom descriptors/JS interop, or
+imported string/UTF-8 builtins. Use the examples only to learn the real API
+spelling. Do not copy a historical trigger or combine unrelated examples. Add
+one bounded JS/Wasm boundary transition that is compatible with the chosen
+proposal, execute a baseline, perform the transition, then execute the compiled
+export again. Keep loops and allocations strictly bounded.
 
 Historical files may contain unavailable mjsunit harness code. Never emit
 `d8.file`, `assert*`, test-runner helpers, V8 `%` intrinsics, Node/browser APIs,

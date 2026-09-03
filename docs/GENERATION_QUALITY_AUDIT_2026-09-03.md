@@ -527,11 +527,12 @@ than spending another equal share of Luna output on malformed section lengths
 and invented opcodes.
 
 Its replacement is a builder-backed Chrome 152 staging lane. A corpus audit
-found 86 indexed, deduplicated, non-Sandbox builder examples containing an
-actual staging proposal marker; 78 fit an eight-example context. The pool has
-25 WasmFX/stack-switching, 23 stringref, five fp16, eight shared-type, 22
-memory64, and four wide-arithmetic matches (examples can belong to more than
-one family). Historical mjsunit assertions and `d8.file` loader lines are
+found 128 indexed, deduplicated, non-Sandbox builder examples containing an
+actual staging proposal marker; 121 fit an eight-example context. The pool has
+25 WasmFX/stack-switching, 17 stringref, four fp16, six shared-type, 22
+memory64, four wide-arithmetic, 31 custom-descriptor, and 28 imported-string
+matches (examples can belong to more than one family). Historical mjsunit
+assertions and `d8.file` loader lines are
 permitted only inside the delimited untrusted corpus because excluding them
 would leave almost no proposal examples. Generated programs must instead load
 only the pinned builder and receive an exact corrective hint if a harness API
@@ -544,12 +545,15 @@ separate Chrome 152 proposal flags enabled explicitly rather than assuming
 semantic-fingerprint mechanisms, avoiding the prior false equivalence between
 programs whose builder method lists matched but whose proposal opcodes differed.
 Windows remain seeded and random, but sampling is stratified by proposal family:
-each eight-example context contains one randomly chosen example from every
-available family before filling the remaining slots. This prevents the 4-wide
-and 5-fp16 subsets from being drowned out by the 20-plus WasmFX, stringref, and
-memory64 subsets.
+each eight-example context contains one randomly chosen example from each of
+the eight available families. This prevents the four-wide and four-fp16 subsets
+from being drowned out by the 20-plus WasmFX, memory64, custom-descriptor, and
+imported-string subsets.
 
 The priority queue applies the proposal flags under both ASan and optdebug.
 This deliberately separates two native oracles: ASan catches memory-safety
 violations, while optdebug retains internal V8 invariant checks that may fail
 before a corrupted state becomes sanitizer-visible.
+Both replays and the primary lane enable V8's fuzzing-oriented Wasm random
+rescheduling and SIMD revectorization paths with deterministic per-program
+seeds, in addition to the exact proposal flags.

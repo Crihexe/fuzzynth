@@ -352,6 +352,34 @@ class ProgramObservationTests(unittest.TestCase):
             "wasm_staging_harness_leak",
         )
 
+    def test_staging_builder_tracks_descriptor_and_imported_string_families(self) -> None:
+        observation = observe_program(
+            prompt_variant="wasm_staging_v1",
+            program=b"""
+              load('/input/wasm-module-builder.js');
+              const b = new WasmModuleBuilder();
+              b.addStruct({descriptor: 1});
+              b.addImport('wasm:js-string', 'cast', kSig_r_r);
+              const i = b.instantiate({}, {builtins: ['js-string']});
+              i.exports.run();
+            """,
+            outcome="ok",
+            stdout=b"",
+            stderr=b"",
+        )
+
+        features = observation["subsystem_features"]
+        self.assertTrue(features["uses_custom_descriptors"])
+        self.assertTrue(features["uses_imported_strings"])
+        self.assertIn(
+            "wasm_custom_descriptors",
+            observation["semantic_profile"]["mechanisms"],
+        )
+        self.assertIn(
+            "wasm_imported_strings",
+            observation["semantic_profile"]["mechanisms"],
+        )
+
     def test_builder_memory_export_failure_has_exact_contract_hint(self) -> None:
         observation = observe_program(
             prompt_variant="wasm_builder_v2",

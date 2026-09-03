@@ -210,6 +210,9 @@ class CampaignConfigurationTests(unittest.TestCase):
         self.assertEqual(wasm.support_files, ("wasm_module_builder",))
         self.assertIn("--wasm-wasmfx", wasm.d8_flags)
         self.assertIn("--wasm-stringref", wasm.d8_flags)
+        self.assertIn("--wasm-custom-descriptors", wasm.d8_flags)
+        self.assertIn("--wasm-imported-strings-utf8", wasm.d8_flags)
+        self.assertIn("--wasm-random-rescheduling", wasm.d8_flags)
         self.assertFalse(
             self.config.workers["terra-custom-high-wasm-asan-explicit-v3"].enabled
         )

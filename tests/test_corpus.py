@@ -304,6 +304,8 @@ class CorpusPoolTests(unittest.TestCase):
             b"new WasmModuleBuilder().addSharedType(0);",
             b"new WasmModuleBuilder().addMemory64(1, 2);",
             b"new WasmModuleBuilder(); kExprI64Add128;",
+            b"new WasmModuleBuilder().addStruct({descriptor: 1});",
+            b"new WasmModuleBuilder().addImport('wasm:js-string', 'cast', 0);",
         )
         samples = tuple(
             CorpusSample(
@@ -318,7 +320,7 @@ class CorpusPoolTests(unittest.TestCase):
 
         window = pool.build_window(
             seed=42,
-            size=6,
+            size=8,
             strategy="focus_wasm_staging_builder",
         )
 
