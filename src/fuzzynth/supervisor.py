@@ -14,7 +14,7 @@ import uuid
 from fuzzynth.budgets import BudgetLimitError
 from fuzzynth.campaign_service import CampaignService, CampaignServiceError
 from fuzzynth.control import ControlStateError, is_supervisor_provider_pause
-from fuzzynth.corpus import CorpusPool
+from fuzzynth.corpus import CorpusPool, extract_wasm_staging_target
 from fuzzynth.credentials import CredentialStore
 from fuzzynth.notifications import TelegramCampaignNotifier
 from fuzzynth.outcomes import diagnose_harness_misuse
@@ -337,6 +337,7 @@ class CampaignSupervisor:
                         seed=seed,
                         size=self.window_size,
                         strategy=worker.corpus_strategy,
+                        routing_ordinal=ordinal,
                     )
                     session = service.start_session(
                         worker_id,
@@ -354,6 +355,9 @@ class CampaignSupervisor:
                             "corpus_pair_id": worker.corpus_pair_id,
                             "prompt_variant": worker.prompt_variant,
                             "corpus_strategy": worker.corpus_strategy,
+                            "corpus_staging_target": extract_wasm_staging_target(
+                                window
+                            ),
                         }
                     )
                 result = service.run_session(session.session_id, max_turns=1)

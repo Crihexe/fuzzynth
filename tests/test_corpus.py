@@ -12,6 +12,7 @@ from fuzzynth.corpus import (
     CorpusPool,
     CorpusSample,
     extract_corpus_references,
+    extract_wasm_staging_target,
 )
 
 
@@ -327,6 +328,54 @@ class CorpusPoolTests(unittest.TestCase):
         self.assertEqual(
             {item.name for item in extract_corpus_references(window)},
             {sample.name for sample in samples},
+        )
+
+    def test_staging_wasm_focus_routes_each_session_across_families(self) -> None:
+        markers = (
+            b"new WasmModuleBuilder().addCont(kSig_v_v);",
+            b"new WasmModuleBuilder(); kWasmStringRef;",
+            b"new WasmModuleBuilder(); kExprF16x8Add;",
+            b"new WasmModuleBuilder().addSharedType(0);",
+            b"new WasmModuleBuilder().addMemory64(1, 2);",
+            b"new WasmModuleBuilder(); kExprI64Add128;",
+            b"new WasmModuleBuilder().addStruct({descriptor: 1});",
+            b"new WasmModuleBuilder().addImport('wasm:js-string', 'cast', 0);",
+        )
+        samples = tuple(
+            CorpusSample(
+                f"route-{index}.js",
+                f"{index:x}" * 64,
+                source,
+                contains_wasm_markers=True,
+            )
+            for index, source in enumerate(markers)
+        )
+        pool = CorpusPool(samples)
+
+        targets = tuple(
+            extract_wasm_staging_target(
+                pool.build_window(
+                    seed=7,
+                    size=8,
+                    strategy="focus_wasm_staging_builder",
+                    routing_ordinal=ordinal,
+                )
+            )
+            for ordinal in range(1, 9)
+        )
+
+        self.assertEqual(
+            targets,
+            (
+                "wasmfx",
+                "stringref",
+                "fp16",
+                "shared_types",
+                "memory64",
+                "wide_arithmetic",
+                "custom_descriptors",
+                "imported_strings",
+            ),
         )
 
     def test_buffer_and_regexp_focus_exclude_unrelated_samples(self) -> None:

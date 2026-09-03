@@ -17,7 +17,7 @@ from fuzzynth.campaign_config import (
 from fuzzynth.campaign_turn import CampaignTurnRunner, TurnResult
 from fuzzynth.catalog import EvidenceCatalog
 from fuzzynth.control import ControlLedger
-from fuzzynth.corpus import extract_corpus_references
+from fuzzynth.corpus import extract_corpus_references, extract_wasm_staging_target
 from fuzzynth.credentials import CredentialStore, ProviderCredentials
 from fuzzynth.execution_service import RecordedExecution, execute_program
 from fuzzynth.responses import ResponsesClient
@@ -177,6 +177,7 @@ class CampaignService:
             raise CampaignServiceError("worker prompt cannot be loaded") from exc
         corpus_window = self.sessions.corpus_bytes(session_id)
         corpus_sources = extract_corpus_references(corpus_window)
+        corpus_staging_target = extract_wasm_staging_target(corpus_window)
         turn_runner = CampaignTurnRunner(
             repo_root=self.repo_root,
             state_root=self.state_root,
@@ -219,6 +220,7 @@ class CampaignService:
                     session.corpus.sha256 if session.corpus is not None else None
                 ),
                 corpus_sources=corpus_sources,
+                corpus_staging_target=corpus_staging_target,
             )
             completed.append(result)
             session = self.sessions.record_turn(session_id, result)

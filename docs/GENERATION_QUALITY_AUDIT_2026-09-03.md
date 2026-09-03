@@ -557,3 +557,47 @@ before a corrupted state becomes sanitizer-visible.
 Both replays and the primary lane enable V8's fuzzing-oriented Wasm random
 rescheduling and SIMD revectorization paths with deterministic per-program
 seeds, in addition to the exact proposal flags.
+
+## Native replay result at 05:00 UTC
+
+The 19,320-execution matrix completed with zero infrastructure errors and zero
+native candidates. It covered 8,066 preserved programs, including 8,064 MSan
+runs and 2,449 aggressive Wasm-inlining runs plus feature-routed deltas. The
+queued priority matrix then completed 3,080 more executions with zero errors or
+candidates: 600 programs under both Maglev-future and Turbolev-future checks
+(1,200), 379 Wasm programs under both ASan and optdebug staging profiles (758),
+and 1,122 deterministic MinorMS seed variants over 600 memory/buffer programs.
+
+This negative result is useful evidence rather than proof that the generator
+cannot work. Generic sanitizer breadth did not compensate for shallow or
+repeated engine interactions. The campaign should therefore spend new model
+tokens on semantically distinct compiled paths and experimental proposal
+surfaces, while retaining the sanitizer matrix as an oracle—not rerun the same
+preserved population under more nearly equivalent global stress flags.
+
+## Staging-lane canary and routing correction
+
+The first 46 generated staging programs provided an early coverage measurement:
+41 exited cleanly, 37 satisfied the original structural contract, 33 completed
+the requested runtime path, and 17 emitted a Wasm compilation trace. They used
+542,278 input, 26,690 output, and 15,638 reasoning tokens. All source hashes
+were distinct, but only 21 semantic signatures were distinct (45.7%), showing
+that textual variation was still preserving a narrow engine-facing template.
+
+Proposal coverage was substantially more skewed than the balanced corpus
+windows: memory64 appeared in 24 programs, fp16 in seven, stringref in four,
+and shared types, wide arithmetic, and imported strings in one each. No program
+used WasmFX or custom descriptors. Within individual multi-turn sessions the
+model commonly retained the first easy family even after a successful result.
+This establishes that stratified context prevents data starvation but does not
+by itself overcome model choice bias.
+
+Staging sessions now receive a deterministic round-robin target across all
+eight available proposal families. The full stratified context remains random,
+but a machine-readable `WASM_STAGING_SESSION_TARGET` in the preserved corpus
+window assigns one family for the session; later turns repair or vary a boundary
+inside that family. The target is also recorded in generation parameters and
+session events. Program observations report assigned and observed families,
+make target adherence part of prompt adherence, and return an exact correction
+when output drifts to an easier proposal. This converts proposal coverage from
+an unmeasured suggestion into an auditable experimental variable.

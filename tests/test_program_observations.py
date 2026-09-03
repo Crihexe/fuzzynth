@@ -338,6 +338,31 @@ class ProgramObservationTests(unittest.TestCase):
             "wasm_memory64", observation["semantic_profile"]["mechanisms"]
         )
 
+    def test_staging_builder_reports_assigned_family_mismatch(self) -> None:
+        observation = observe_program(
+            prompt_variant="wasm_staging_v1",
+            program=b"""
+              load('/input/wasm-module-builder.js');
+              const b = new WasmModuleBuilder();
+              b.addMemory64(1, 2);
+              const i = b.instantiate();
+              i.exports.run();
+            """,
+            outcome="ok",
+            stdout=b"",
+            stderr=b"",
+            expected_wasm_staging_family="stringref",
+        )
+
+        self.assertEqual(observation["assigned_staging_family"], "stringref")
+        self.assertEqual(observation["observed_staging_families"], ["memory64"])
+        self.assertFalse(observation["staging_target_adherent"])
+        self.assertFalse(observation["prompt_adherent"])
+        self.assertEqual(
+            observation["corrective_hint"]["code"],
+            "wasm_staging_target_mismatch",
+        )
+
     def test_staging_builder_harness_leak_has_exact_hint(self) -> None:
         observation = observe_program(
             prompt_variant="wasm_staging_v1",

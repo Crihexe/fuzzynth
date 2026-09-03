@@ -147,6 +147,7 @@ def observe_program(
     outcome: str,
     stdout: bytes,
     stderr: bytes,
+    expected_wasm_staging_family: str | None = None,
 ) -> dict[str, object]:
     """Return bounded factual signals suitable for iterative model feedback."""
 
@@ -250,8 +251,31 @@ def observe_program(
                 )
             ),
         }
+        staging_family_features = {
+            "wasmfx": "uses_wasmfx",
+            "stringref": "uses_stringref",
+            "fp16": "uses_fp16",
+            "shared_types": "uses_shared_types",
+            "memory64": "uses_memory64",
+            "wide_arithmetic": "uses_wide_arithmetic",
+            "custom_descriptors": "uses_custom_descriptors",
+            "imported_strings": "uses_imported_strings",
+        }
+        observed_staging_families = [
+            family
+            for family, feature in staging_family_features.items()
+            if wasm[feature]
+        ]
+        staging_target_adherent = bool(
+            expected_wasm_staging_family is None
+            or observed_staging_families == [expected_wasm_staging_family]
+        )
         observation["subsystem"] = "wasm"
         observation["subsystem_features"] = wasm
+        if staging_variant:
+            observation["assigned_staging_family"] = expected_wasm_staging_family
+            observation["observed_staging_families"] = observed_staging_families
+            observation["staging_target_adherent"] = staging_target_adherent
         observation["prompt_adherent"] = (
             wasm["constructs_module"]
             and wasm["constructs_instance"]
@@ -280,6 +304,7 @@ def observe_program(
                     )
                 )
             )
+            and (not staging_variant or staging_target_adherent)
         )
         observation["runtime_path_completed"] = bool(
             observation["prompt_adherent"] and outcome == "ok"
@@ -305,6 +330,17 @@ def observe_program(
                     "Use only load('/input/wasm-module-builder.js'), ordinary "
                     "JavaScript checks, and direct exported-function calls; do "
                     "not emit d8.file or assert* helpers."
+                ),
+            }
+        elif staging_variant and not staging_target_adherent:
+            observed = ", ".join(observed_staging_families) or "none"
+            observation["corrective_hint"] = {
+                "code": "wasm_staging_target_mismatch",
+                "guidance": (
+                    "The assigned proposal family is "
+                    f"{expected_wasm_staging_family}; observed families: {observed}. "
+                    "Keep exactly the assigned family and remove unrelated proposal "
+                    "features on the next complete program."
                 ),
             }
         elif builder_assisted and re.search(

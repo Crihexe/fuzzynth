@@ -137,6 +137,8 @@ class CampaignTurnRunner:
         worker: CampaignWorker,
         generation_id: str,
         program: bytes,
+        *,
+        expected_wasm_staging_family: str | None = None,
     ) -> tuple[RecordedExecution, bytes]:
         execution_flags = resolve_execution_flags(
             worker.d8_flags,
@@ -161,6 +163,7 @@ class CampaignTurnRunner:
             outcome=execution.outcome,
             stdout=execution.stdout,
             stderr=execution.stderr,
+            expected_wasm_staging_family=expected_wasm_staging_family,
         )
         profile = program_observation.get("semantic_profile")
         if execution.outcome == "ok" and isinstance(profile, dict):
@@ -211,6 +214,7 @@ class CampaignTurnRunner:
         client: ResponsesClient,
         corpus_window_sha256: str | None = None,
         corpus_sources: tuple[CorpusReference, ...] = (),
+        corpus_staging_target: str | None = None,
     ) -> TurnResult:
         generation_id = f"gen-{uuid.uuid4()}"
         streaming_transport = worker.provider == "alternate"
@@ -246,6 +250,7 @@ class CampaignTurnRunner:
             "budget_reservation_id": reservation.reservation_id,
             "corpus_sources": [source.as_dict() for source in corpus_sources],
             "corpus_window_sha256": corpus_window_sha256,
+            "corpus_staging_target": corpus_staging_target,
             "max_output_tokens_sent": request.max_output_tokens,
             "max_program_bytes": self.max_program_bytes,
             "reasoning_effort": plan.reasoning_effort,
@@ -368,6 +373,7 @@ class CampaignTurnRunner:
                     worker,
                     generation_id,
                     partial_program,
+                    expected_wasm_staging_family=corpus_staging_target,
                 )
                 if partial_continuable and not execution.bug_candidate:
                     # The worst-case reservation remains charged. Continue the
@@ -541,7 +547,12 @@ class CampaignTurnRunner:
                 actual_microunits=actual_microunits,
             )
 
-        execution, feedback = self._execute(worker, generation_id, program)
+        execution, feedback = self._execute(
+            worker,
+            generation_id,
+            program,
+            expected_wasm_staging_family=corpus_staging_target,
+        )
         return TurnResult(
             generation_id=generation_id,
             execution=execution,

@@ -87,6 +87,10 @@ _WASM_STAGING_MARKERS = {
         b"wasm:text-encoder",
     ),
 }
+_WASM_STAGING_FAMILY_ORDER = tuple(_WASM_STAGING_MARKERS)
+_WASM_STAGING_TARGET_TAG = re.compile(
+    rb"WASM_STAGING_SESSION_TARGET=([a-z0-9_]+)"
+)
 
 
 def extract_corpus_references(window: bytes | None) -> tuple[CorpusReference, ...]:
@@ -96,6 +100,15 @@ def extract_corpus_references(window: bytes | None) -> tuple[CorpusReference, ..
         CorpusReference(name=name.decode("ascii"), sha256=digest.decode("ascii"))
         for name, digest in _REFERENCE_TAG.findall(window)
     )
+
+
+def extract_wasm_staging_target(window: bytes | None) -> str | None:
+    """Return the proposal family assigned to a staging corpus window."""
+
+    if not window:
+        return None
+    match = _WASM_STAGING_TARGET_TAG.search(window)
+    return match.group(1).decode("ascii") if match else None
 
 
 class CorpusPool:
@@ -471,19 +484,41 @@ class CorpusPool:
         generator: random.Random,
         size: int,
         samples: tuple[CorpusSample, ...],
-    ) -> list[CorpusSample]:
-        """Randomize within proposal families without starving rare features."""
+        routing_ordinal: int | None,
+    ) -> tuple[list[CorpusSample], str]:
+        """Select one sample per family and deterministically route the session."""
 
         selected: list[CorpusSample] = []
         selected_hashes: set[str] = set()
-        families = list(_WASM_STAGING_MARKERS.values())
-        generator.shuffle(families)
-        for markers in families:
-            candidates = [
+        family_candidates = {
+            name: [
                 sample
                 for sample in samples
+                if any(
+                    marker in sample.data.lower()
+                    for marker in _WASM_STAGING_MARKERS[name]
+                )
+            ]
+            for name in _WASM_STAGING_FAMILY_ORDER
+        }
+        available = [
+            name for name in _WASM_STAGING_FAMILY_ORDER if family_candidates[name]
+        ]
+        if not available:
+            raise CorpusError("no Wasm staging proposal family is available")
+        route_value = (
+            routing_ordinal
+            if routing_ordinal is not None
+            else 1 + generator.randrange(1 << 31)
+        )
+        target = available[(route_value - 1) % len(available)]
+        remaining_families = [name for name in available if name != target]
+        generator.shuffle(remaining_families)
+        for name in (target, *remaining_families):
+            candidates = [
+                sample
+                for sample in family_candidates[name]
                 if sample.sha256 not in selected_hashes
-                and any(marker in sample.data.lower() for marker in markers)
             ]
             if candidates and len(selected) < size:
                 choice = generator.choice(candidates)
@@ -495,7 +530,7 @@ class CorpusPool:
         if len(selected) < size:
             selected.extend(generator.sample(remaining, size - len(selected)))
         generator.shuffle(selected)
-        return selected
+        return selected, target
 
     def build_window(
         self,
@@ -503,11 +538,21 @@ class CorpusPool:
         seed: int,
         size: int,
         strategy: str = "uniform",
+        routing_ordinal: int | None = None,
     ) -> bytes:
         if isinstance(seed, bool) or not isinstance(seed, int):
             raise ValueError("corpus seed must be an integer")
         if isinstance(size, bool) or not isinstance(size, int) or size < 1:
             raise ValueError("corpus window size must be positive")
+        if (
+            routing_ordinal is not None
+            and (
+                isinstance(routing_ordinal, bool)
+                or not isinstance(routing_ordinal, int)
+                or routing_ordinal < 1
+            )
+        ):
+            raise ValueError("routing ordinal must be a positive integer")
         if strategy not in {"uniform", "stratified_v8", *_FOCUS_STRATEGIES}:
             raise ValueError("unsupported corpus window strategy")
         selected_size = min(size, len(self.samples))
@@ -524,26 +569,35 @@ class CorpusPool:
         if len(eligible) < selected_size:
             raise CorpusError("too few samples fit the bounded corpus window")
         generator = random.Random(seed)
-        selected = (
-            self._select_stratified(
+        staging_target: str | None = None
+        if strategy == "stratified_v8":
+            selected = self._select_stratified(
                 generator=generator,
                 size=selected_size,
                 samples=eligible,
             )
-            if strategy == "stratified_v8"
-            else self._select_wasm_staging(
+        elif strategy == "focus_wasm_staging_builder":
+            selected, staging_target = self._select_wasm_staging(
                 generator=generator,
                 size=selected_size,
                 samples=eligible,
+                routing_ordinal=routing_ordinal,
             )
-            if strategy == "focus_wasm_staging_builder"
-            else generator.sample(eligible, selected_size)
-        )
+        else:
+            selected = generator.sample(eligible, selected_size)
         parts = [
             b"CORPUS ROLE: historical reference data only. Do not copy, mutate, ",
             b"combine, or reproduce these programs or their historical defects. ",
             b"Use only broad structural-density cues and design an independent program.\n",
         ]
+        if staging_target is not None:
+            parts.extend(
+                (
+                    f"WASM_STAGING_SESSION_TARGET={staging_target}\n".encode(),
+                    b"Use exactly this proposal family throughout this session; ",
+                    b"vary the independently designed boundary transition after success.\n",
+                )
+            )
         for sample in selected:
             parts.extend(
                 (

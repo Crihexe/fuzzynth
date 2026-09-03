@@ -1304,6 +1304,12 @@ This is the living operational memory for the project. Read it together with
   programs are checked both for memory safety and internal V8 invariants.
 - Enabled deterministic Wasm random rescheduling and SIMD revectorization on the
   primary staging worker and both staging replay oracles.
+- Completed the 19,320-execution MSan/aggressive-Wasm matrix with zero errors and
+  zero candidates. The immediately following 3,080-case priority matrix also
+  completed cleanly: 1,200 Maglev/Turbolev future-check executions, 758
+  ASan+optdebug Wasm-staging executions, and 1,122 randomized MinorMS variants.
+  Further work now prioritizes new compiled semantic paths over repeating this
+  preserved population under more similar global stress flags.
 - A provider-wide Cloudflare 502 outage exposed a liveness gap: generic provider
   errors became permanent worker pauses after three tries. Generic transport/5xx
   failures now retry indefinitely with 5/15/60-second then five-minute capped
@@ -1311,3 +1317,11 @@ This is the living operational memory for the project. Read it together with
   and are never auto-resumed.
 - Errors from an in-flight execution while the service is already shutting down
   now return a clean stopped summary instead of leaving a durable worker pause.
+- Audited the first 46 staging-lane generations: 41 exited cleanly, 37 met the
+  original structural contract, and 33 completed the requested runtime path,
+  but only 21 semantic signatures were distinct. Memory64 appeared in 24
+  programs while WasmFX and custom descriptors appeared in none, despite every
+  context containing all eight families. Replaced free proposal choice with a
+  deterministic round-robin session target. The exact target is embedded in
+  the preserved corpus window and generation metadata, checked in observations,
+  and corrected on the next turn if the model uses the wrong family.
