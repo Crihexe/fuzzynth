@@ -15,7 +15,7 @@ import sys
 
 from fuzzynth.execution_service import execute_program
 from fuzzynth.campaign_config import load_campaign_configuration
-from fuzzynth.stress_replay import applicable_profiles
+from fuzzynth.stress_replay import applicable_profiles, worker_profile_for
 
 
 def _arguments() -> argparse.Namespace:
@@ -41,9 +41,9 @@ def _load_programs(
             SELECT g.id, g.campaign_id, g.program_sha256, a.relative_path
             FROM generation g
             JOIN artifact a ON a.sha256 = g.program_sha256
-            WHERE EXISTS (
-              SELECT 1 FROM execution e
-              WHERE e.generation_id = g.id AND e.outcome = 'ok'
+            WHERE g.id IN (
+              SELECT DISTINCT e.generation_id FROM execution e
+              WHERE e.generation_id IS NOT NULL AND e.outcome = 'ok'
             )
             ORDER BY g.finished_at
             """
@@ -138,7 +138,7 @@ def main() -> int:
             program,
             generation_id=generation_id,
             build_profile=profile.build_profile,
-            worker_profile="standard",
+            worker_profile=worker_profile_for(profile),
             flags=profile.flags,
             repo_root=repo_root,
             state_root=state_root,

@@ -131,6 +131,23 @@ class OutcomeClassificationTests(unittest.TestCase):
         self.assertEqual(printed.kind, OutcomeKind.OK)
         self.assertFalse(printed.bug_candidate)
 
+    def test_msan_stderr_is_a_candidate_but_stdout_cannot_forge_one(self) -> None:
+        native = classify(
+            ProcessObservation(
+                exit_code=1,
+                stderr=b"WARNING: MemorySanitizer: use-of-uninitialized-value",
+            )
+        )
+        printed = classify(
+            ProcessObservation(exit_code=0, stdout=b"WARNING: MemorySanitizer")
+        )
+
+        self.assertEqual(native.kind, OutcomeKind.SANITIZER)
+        self.assertTrue(native.bug_candidate)
+        self.assertIn("msan", native.markers)
+        self.assertEqual(printed.kind, OutcomeKind.OK)
+        self.assertFalse(printed.bug_candidate)
+
     def test_oom_and_timeout_are_not_native_crashes(self) -> None:
         oom = classify(ProcessObservation(exit_code=137, oom_killed=True))
         timeout = classify(ProcessObservation(exit_code=None, timed_out=True))

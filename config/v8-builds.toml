@@ -49,3 +49,14 @@ extra_gn_args = [
   "is_tsan=true",
   "symbol_level=1",
 ]
+
+[profiles.msan]
+description = "Optimized MemorySanitizer build with origin tracking"
+base_builder = "x64.release"
+output_dir = "fuzzynth-x64.msan"
+target = "d8"
+extra_gn_args = [
+  "is_msan=true",
+  "msan_track_origins=2",
+  "symbol_level=1",
+]

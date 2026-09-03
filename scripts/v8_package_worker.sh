@@ -56,7 +56,7 @@ install -d -m 0755 "$rootfs/opt/fuzzynth" "$rootfs/work"
 install -m 0755 "$binary" "$rootfs/opt/fuzzynth/d8"
 runtime_binaries=("$binary")
 
-if [[ "$profile" == asan || "$profile" == ubsan || "$profile" == tsan ]]; then
+if [[ "$profile" == asan || "$profile" == ubsan || "$profile" == tsan || "$profile" == msan ]]; then
   symbolizer="$v8_root/third_party/llvm-build/Release+Asserts/bin/llvm-symbolizer"
   if [[ ! -x "$symbolizer" ]]; then
     printf 'Sanitizer profile requires llvm-symbolizer: %s\n' "$symbolizer" >&2
@@ -64,6 +64,21 @@ if [[ "$profile" == asan || "$profile" == ubsan || "$profile" == tsan ]]; then
   fi
   install -m 0755 "$symbolizer" "$rootfs/opt/fuzzynth/llvm-symbolizer"
   runtime_binaries+=("$symbolizer")
+fi
+
+if [[ "$profile" == msan ]]; then
+  # Chromium's MSan toolchain encodes an instrumented loader as a relative
+  # PT_INTERP and an RPATH relative to the V8 checkout. Preserve that layout in
+  # the scratch image and start from / so both resolve below /third_party.
+  msan_runtime_rel="third_party/instrumented_libs/binaries/msan-chained-origins-noble-lib/lib"
+  msan_loader="$v8_root/$msan_runtime_rel/ld-linux-x86-64.so.2"
+  if [[ ! -x "$msan_loader" ]]; then
+    printf 'MSan instrumented loader is missing: %s\n' "$msan_loader" >&2
+    exit 1
+  fi
+  install -D -m 0755 \
+    "$msan_loader" \
+    "$rootfs/$msan_runtime_rel/ld-linux-x86-64.so.2"
 fi
 
 for data_file in icudtl.dat snapshot_blob.bin; do
@@ -76,7 +91,7 @@ done
 
 mapfile -t libraries < <(
   for runtime_binary in "${runtime_binaries[@]}"; do
-    ldd "$runtime_binary"
+    (cd "$v8_root" && ldd "$runtime_binary")
   done |
     awk '/=> \// {print $3} /^[[:space:]]*\// {print $1}' |
     sort -u
@@ -87,6 +102,9 @@ for library in "${libraries[@]}"; do
     exit 1
   fi
   case "$library" in
+    "$v8_root/third_party/instrumented_libs/"*)
+      install -D -m 0755 "$library" "$rootfs/${library#"$v8_root/"}"
+      ;;
     "$v8_root"/*)
       install -m 0755 "$library" "$rootfs/opt/fuzzynth/$(basename "$library")"
       ;;
@@ -99,7 +117,11 @@ done
 install -m 0644 "$repo_root/docker/d8-worker/Dockerfile" "$staging/Dockerfile"
 short_revision=${revision:0:12}
 image_tag="fuzzynth/d8-$profile:$short_revision"
-docker build --network=none --tag "$image_tag" "$staging"
+build_args=()
+if [[ "$profile" == msan ]]; then
+  build_args+=(--build-arg FUZZYNTH_WORKDIR=/)
+fi
+docker build --network=none "${build_args[@]}" --tag "$image_tag" "$staging"
 
 manifest_dir="$local_root/worker-images"
 mkdir -p "$manifest_dir"
@@ -107,10 +129,10 @@ docker image inspect "$image_tag" > "$manifest_dir/$profile-$revision.json"
 image_id=$(docker image inspect --format '{{.Id}}' "$image_tag")
 
 smoke_security=(--security-opt no-new-privileges)
-if [[ "$profile" == tsan ]]; then
-  # TSan needs personality(ADDR_NO_RANDOMIZE) to reserve its shadow memory on
-  # hosts with high mmap ASLR entropy. Docker's default seccomp policy blocks
-  # that syscall; the remaining container isolation is unchanged.
+if [[ "$profile" == tsan || "$profile" == msan ]]; then
+  # Shadow-memory sanitizers need personality(ADDR_NO_RANDOMIZE) on this host.
+  # Docker's default seccomp policy blocks that syscall; the remaining
+  # container isolation is unchanged.
   smoke_security+=(--security-opt seccomp=unconfined)
 fi
 

@@ -2,10 +2,16 @@ from __future__ import annotations
 
 import unittest
 
-from fuzzynth.stress_replay import applicable_profiles
+from fuzzynth.stress_replay import STRESS_PROFILES, applicable_profiles, worker_profile_for
 
 
 class StressReplayTests(unittest.TestCase):
+    def test_only_msan_uses_the_slower_sanitizer_worker_limits(self) -> None:
+        profiles = {profile.name: profile for profile in STRESS_PROFILES}
+
+        self.assertEqual(worker_profile_for(profiles["uninitialized_memory"]), "sanitizer")
+        self.assertEqual(worker_profile_for(profiles["undefined_behavior"]), "standard")
+
     def test_compiler_program_gets_three_jit_profiles(self) -> None:
         names = {
             profile.name
@@ -14,6 +20,7 @@ class StressReplayTests(unittest.TestCase):
         self.assertEqual(
             names,
             {
+                "uninitialized_memory",
                 "undefined_behavior",
                 "compiler_verify",
                 "compiler_concurrent",
@@ -33,8 +40,10 @@ class StressReplayTests(unittest.TestCase):
         self.assertEqual(
             names,
             {
+                "uninitialized_memory",
                 "undefined_behavior",
                 "memory_gc",
+                "wasm_aggressive_inlining",
                 "wasm_tiering_memory",
                 "wasm_stack_switching",
                 "heap_verification",
@@ -47,7 +56,14 @@ class StressReplayTests(unittest.TestCase):
             profile.name
             for profile in applicable_profiles(b"'abc'.replace(/a/, 'z')")
         }
-        self.assertEqual(names, {"undefined_behavior", "experimental_regexp"})
+        self.assertEqual(
+            names,
+            {
+                "uninitialized_memory",
+                "undefined_behavior",
+                "experimental_regexp",
+            },
+        )
 
     def test_shared_memory_selects_thread_safety_oracle(self) -> None:
         names = {
@@ -60,6 +76,7 @@ class StressReplayTests(unittest.TestCase):
         self.assertEqual(
             names,
             {
+                "uninitialized_memory",
                 "thread_safety",
                 "undefined_behavior",
                 "memory_gc",
@@ -79,10 +96,17 @@ class StressReplayTests(unittest.TestCase):
         }
 
         self.assertIn("wasm_tiering_memory", builder_names)
+        self.assertIn("wasm_aggressive_inlining", builder_names)
         self.assertIn("wasm_stack_switching", builder_names)
         self.assertIn("undefined_behavior", builder_names)
+        self.assertIn("uninitialized_memory", builder_names)
         self.assertEqual(
-            regexp_names, {"undefined_behavior", "experimental_regexp"}
+            regexp_names,
+            {
+                "uninitialized_memory",
+                "undefined_behavior",
+                "experimental_regexp",
+            },
         )
 
 

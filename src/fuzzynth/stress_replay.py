@@ -22,6 +22,14 @@ _CODE_MARKERS = (b"function", b"=>", b"class ", b"eval(")
 
 STRESS_PROFILES = (
     StressProfile(
+        name="uninitialized_memory",
+        build_profile="msan",
+        flags=_COMMON + ("--jit-fuzzing",),
+        # Like UBSan, MSan is an independent native oracle relevant to every
+        # preserved program that completed its primary execution.
+        markers=(b"",),
+    ),
+    StressProfile(
         name="thread_safety",
         build_profile="tsan",
         flags=_COMMON
@@ -124,6 +132,20 @@ STRESS_PROFILES = (
         markers=(b"webassembly", b"wasmmodulebuilder", b"wasm-module-builder"),
     ),
     StressProfile(
+        name="wasm_aggressive_inlining",
+        build_profile="asan",
+        flags=_COMMON
+        + (
+            "--jit-fuzzing",
+            "--wasm-sync-tier-up",
+            "--wasm-inlining-ignore-call-counts",
+            "--wasm-in-js-inlining-opt",
+            "--turbo-inline-js-wasm-calls",
+            "--turbo-optimize-inlined-js-wasm-wrappers",
+        ),
+        markers=(b"webassembly", b"wasmmodulebuilder", b"wasm-module-builder"),
+    ),
+    StressProfile(
         name="wasm_stack_switching",
         build_profile="asan",
         flags=_COMMON
@@ -182,3 +204,9 @@ def applicable_profiles(program: bytes) -> tuple[StressProfile, ...]:
     if not isinstance(program, bytes):
         raise TypeError("program must be bytes")
     return tuple(profile for profile in STRESS_PROFILES if profile.applies(program))
+
+
+def worker_profile_for(profile: StressProfile) -> str:
+    """Give high-overhead MSan runs bounded headroom without slowing all replays."""
+
+    return "sanitizer" if profile.build_profile == "msan" else "standard"

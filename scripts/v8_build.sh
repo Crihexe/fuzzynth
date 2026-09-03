@@ -165,6 +165,7 @@ import sys
     build_jobs,
 ) = sys.argv[1:]
 binary = Path(out_path) / target
+run_cwd = Path(out_path).parents[1]
 
 def capture(command):
     return subprocess.run(
@@ -173,6 +174,7 @@ def capture(command):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        cwd=run_cwd,
     ).stdout.strip()
 
 digest = hashlib.sha256()
@@ -185,6 +187,7 @@ help_result = subprocess.run(
     check=True,
     stdout=subprocess.PIPE,
     stderr=subprocess.PIPE,
+    cwd=run_cwd,
 )
 elf_notes = capture(["readelf", "-n", str(binary)])
 build_id_match = re.search(r"Build ID:\s*([0-9a-fA-F]+)", elf_notes)

@@ -215,7 +215,7 @@ def execute_program(
         staged_program = Path(temporary) / "program.js"
         staged_program.write_bytes(program)
         staged_program.chmod(0o444)
-        unconfined_seccomp = build_profile == "tsan"
+        unconfined_seccomp = build_profile in {"tsan", "msan"}
         capture = DockerExecutor(
             image_id,
             limits,
@@ -243,7 +243,7 @@ def execute_program(
                 "image_id": image_id,
                 "schema_version": 1,
                 "seccomp_profile": (
-                    "unconfined_for_tsan_aslr"
+                    "unconfined_for_sanitizer_aslr"
                     if unconfined_seccomp
                     else "docker_default"
                 ),

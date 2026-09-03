@@ -11,6 +11,17 @@ read_only_root = true
 cap_drop = "all"
 no_new_privileges = true
 
+[profiles.sanitizer]
+cpus = 1.0
+memory_bytes = 2147483648
+pids = 64
+wall_seconds = 15
+max_output_bytes = 1048576
+network = "none"
+read_only_root = true
+cap_drop = "all"
+no_new_privileges = true
+
 [profiles.triage]
 cpus = 2.0
 memory_bytes = 2147483648
