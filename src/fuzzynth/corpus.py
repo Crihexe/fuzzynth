@@ -285,12 +285,22 @@ class CorpusPool:
         if strategy == "focus_compiler":
             return standalone and "compiler" in groups
         if strategy == "focus_concurrency":
-            return standalone and "concurrency" in groups
+            return (
+                standalone
+                and "concurrency" in groups
+                and b"assert" not in source
+                and b"sandbox." not in source
+                and b"%" not in sample.data
+            )
         if strategy == "focus_wasm":
             return (
                 standalone
                 and "wasm" in groups
                 and b"wasmmodulebuilder" not in source
+                and (b"webassembly" in source or b"wasm" in source)
+                and b"assert" not in source
+                and b"sandbox." not in source
+                and b"%" not in sample.data
             )
         if strategy == "focus_memory":
             return standalone and "memory" in groups

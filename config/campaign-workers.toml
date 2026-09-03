@@ -622,7 +622,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing
 
 [[workers]]
 id = "luna-custom-low-compiler-optdebug-lean-v3"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -645,7 +645,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing
 
 [[workers]]
 id = "luna-custom-low-wasm-asan-explicit-v3"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -668,7 +668,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing
 
 [[workers]]
 id = "luna-custom-low-wasm-asan-lean-v3"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -714,7 +714,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing
 
 [[workers]]
 id = "luna-custom-low-memory-asan-lean-v3"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -737,7 +737,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing
 
 [[workers]]
 id = "luna-custom-none-language-asan-explicit-v3"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -760,7 +760,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing
 
 [[workers]]
 id = "luna-custom-none-language-asan-lean-v3"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -806,7 +806,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing
 
 [[workers]]
 id = "luna-custom-low-security-asan-lean-v3"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -827,12 +827,83 @@ v8_build_profile = "asan"
 v8_worker_profile = "standard"
 d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing"]
 
+# Subsystem-specific lanes added after the generic prompts were shown to ignore
+# Wasm and concurrency context and to force JIT into pure-language output.
+[[workers]]
+id = "luna-custom-low-wasm-asan-boundary-v1"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_wasm_boundary_v1.txt"
+prompt_variant = "wasm_boundary_v1"
+corpus_pair_id = "wasm-boundary-v1"
+corpus_strategy = "focus_wasm"
+reasoning_efforts = ["low"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 2
+max_turns_per_session = 4
+history_turns = 3
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "asan"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-sync-tier-up", "--stress-wasm-memory-moving"]
+
+[[workers]]
+id = "luna-custom-low-concurrency-asan-focused-v1"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_concurrency_v1.txt"
+prompt_variant = "concurrency_v1"
+corpus_pair_id = "concurrency-focused-v1"
+corpus_strategy = "focus_concurrency"
+reasoning_efforts = ["low"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 2
+max_turns_per_session = 4
+history_turns = 3
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "asan"
+v8_worker_profile = "standard"
+d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing"]
+
+[[workers]]
+id = "luna-custom-none-language-asan-focused-v1"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_language_v1.txt"
+prompt_variant = "language_v1"
+corpus_pair_id = "language-focused-v1"
+corpus_strategy = "focus_language"
+reasoning_efforts = ["none"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 2
+max_turns_per_session = 4
+history_turns = 3
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "asan"
+v8_worker_profile = "standard"
+d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing"]
+
 # Bounded one-turn interaction-prompt experiment. These workers are omitted
 # from the continuous systemd campaign and are disabled again after the exact
 # 8-context/16-context comparison completes.
 [[workers]]
 id = "luna-custom-low-compiler-optdebug-interaction-v1"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -855,7 +926,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing
 
 [[workers]]
 id = "luna-custom-low-wasm-asan-interaction-v1"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -878,7 +949,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing
 
 [[workers]]
 id = "luna-custom-low-memory-asan-interaction-v1"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -901,7 +972,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing
 
 [[workers]]
 id = "luna-custom-low-security-asan-interaction-v1"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -924,7 +995,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing
 
 [[workers]]
 id = "luna-custom-low-concurrency-asan-interaction-v1"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -972,7 +1043,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing
 
 [[workers]]
 id = "terra-custom-high-wasm-asan-explicit-v3"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-terra"
 meter = "terra_alternate"

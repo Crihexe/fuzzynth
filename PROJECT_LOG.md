@@ -1071,3 +1071,23 @@ This is the living operational memory for the project. Read it together with
   this avoids stale disabled lanes exhausting Telegram's message limit while
   retaining full local configuration status. The full offline suite passes with
   165 tests.
+- Completed the exact 100-generation interaction ablation. Eight-example
+  contexts produced 46/50 exit-0 programs for 3.027 Luna credits; sixteen
+  examples produced 44/50 for 3.697 credits. All hashes were unique and no
+  candidate appeared. Despite the high validity, 99/100 outputs used JIT,
+  0/20 concurrency outputs used SAB/Atomics/Worker, and 0/20 Wasm outputs ran a
+  module. The prompt was rejected as a live strategy. Full evidence and the
+  prompt-by-subsystem comparison are in
+  `docs/GENERATION_QUALITY_AUDIT_2026-09-03.md`.
+- Replayed 30 exit-0 generated programs with optimization tracing. All 30
+  completed TurboFan compilation and 22 emitted an actual deoptimization
+  bailout, proving the JIT-heavy templates reach optimized engine paths even
+  though their hypothesis diversity is low.
+- Replaced the generic 12-worker matrix with seven subsystem-specialized lanes:
+  proven explicit compiler/memory/security Luna workers, dedicated Wasm,
+  concurrency, and ordinary-language Luna prompts, plus the high-depth Terra
+  security lane. Paused Terra Wasm and every generic lean lane. Wasm and
+  concurrency corpus pools now reject assertion/harness, Sandbox, and native
+  intrinsic contamination. Ten deterministic eight-example smoke windows per
+  cleaned pool passed provenance validation; the full suite remains at 165
+  passing tests.

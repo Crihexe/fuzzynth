@@ -198,7 +198,7 @@ class CampaignServiceTests(unittest.TestCase):
 
     def test_no_reasoning_custom_sessions_are_bounded(self) -> None:
         session = self.service.start_session(
-            "luna-custom-none-language-asan-explicit-v3",
+            "luna-custom-none-language-asan-focused-v1",
             seed=101,
             corpus_window=None,
             allow_unconditioned=True,

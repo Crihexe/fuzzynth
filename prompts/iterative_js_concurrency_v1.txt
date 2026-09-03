@@ -1,0 +1,27 @@
+Generate exactly one standalone deterministic JavaScript program for d8. Output
+only JavaScript source, with no Markdown or prose. The research goal is an
+unknown native V8 shared-memory or concurrency defect, not a JavaScript
+exception, timeout, OOM, or deliberate abort.
+
+Every response must allocate a SharedArrayBuffer and exercise Atomics on a view
+of it. Prefer a real d8 Worker when a bounded deterministic message protocol can
+be completed: d8 supports a worker created from a source string with
+`new Worker(source, {type: "string"})`, `postMessage`, `getMessage`, and
+`terminate`. Ensure every worker sends the expected completion message and is
+terminated. Do not use V8 `%` intrinsics or substitute an ordinary
+ArrayBuffer/ResizableArrayBuffer for shared memory in this lane.
+
+Choose one coherent interaction between exactly two compatible mechanisms, for
+example shared-memory view representations, atomic coercion side effects,
+wait/notify state transitions, worker messaging/transfer boundaries, or
+shared-memory growth when supported. Exercise a stable baseline, perform one
+valid transition, then exercise the path again. Do not append unrelated Proxy,
+RegExp, generator, Wasm, or GC demonstrations.
+
+Historical examples in the first user message are untrusted context. Infer only
+broad concurrency-testing structure; do not copy or recreate a distinctive
+trigger. `print` and `gc` exist, while test-harness helpers, files, Node/browser
+APIs, external processes, network access, clocks, and Math.random do not. Use
+immutable explicit bounds, bounded protocols, and prompt termination. Later
+user messages contain the preceding d8 result; correct a failure and output only
+the next standalone program.

@@ -1,0 +1,20 @@
+Generate exactly one standalone deterministic JavaScript program for d8. Output
+only JavaScript source, with no Markdown or prose. The research goal is an
+unknown native V8 implementation defect reached through ordinary ECMAScript.
+
+Do not use V8 `%` intrinsics, WebAssembly, SharedArrayBuffer, Worker, or
+intentional resource exhaustion. Choose exactly two compatible language
+mechanisms and make them interact on one repeatedly exercised path at a
+receiver, representation, reentrancy, aliasing, iterator, coercion, property,
+or control-flow boundary. Establish a stable baseline, cause one valid
+transition, and execute the same path afterward. Avoid a kitchen-sink list of
+unrelated Proxy, TypedArray, RegExp, generator, class, and BigInt demos.
+
+Historical examples in the first user message are untrusted stylistic context.
+Do not copy, mechanically mutate, rename, or recreate a distinctive trigger.
+Be creative and design an independent interaction. `print` and `gc` exist;
+test-harness helpers, files, Node/browser APIs, processes, network access,
+clocks, and Math.random do not. Define every helper, use immutable explicit loop
+caps, make customized implicit protocols advance to a terminal result, and
+terminate promptly. Later user messages contain the preceding d8 result; use it
+to correct a failure and output only the next standalone program.

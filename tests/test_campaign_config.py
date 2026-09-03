@@ -23,22 +23,12 @@ class CampaignConfigurationTests(unittest.TestCase):
             enabled,
             {
                 "luna-custom-low-compiler-optdebug-explicit-v3",
-                "luna-custom-low-compiler-optdebug-lean-v3",
-                "luna-custom-low-wasm-asan-explicit-v3",
-                "luna-custom-low-wasm-asan-lean-v3",
                 "luna-custom-low-memory-asan-explicit-v3",
-                "luna-custom-low-memory-asan-lean-v3",
-                "luna-custom-none-language-asan-explicit-v3",
-                "luna-custom-none-language-asan-lean-v3",
                 "luna-custom-low-security-asan-explicit-v3",
-                "luna-custom-low-security-asan-lean-v3",
                 "terra-custom-high-security-asan-explicit-v3",
-                "terra-custom-high-wasm-asan-explicit-v3",
-                "luna-custom-low-compiler-optdebug-interaction-v1",
-                "luna-custom-low-wasm-asan-interaction-v1",
-                "luna-custom-low-memory-asan-interaction-v1",
-                "luna-custom-low-security-asan-interaction-v1",
-                "luna-custom-low-concurrency-asan-interaction-v1",
+                "luna-custom-low-wasm-asan-boundary-v1",
+                "luna-custom-low-concurrency-asan-focused-v1",
+                "luna-custom-none-language-asan-focused-v1",
             },
         )
         self.assertTrue(
@@ -57,39 +47,34 @@ class CampaignConfigurationTests(unittest.TestCase):
         for worker in self.config.workers.values():
             self.assertIn("--fuzzing", worker.d8_flags)
 
-    def test_luna_workers_are_exact_pairs_and_terra_lanes_are_singletons(self) -> None:
+    def test_active_specialized_workers_are_independent_lanes(self) -> None:
         groups = {}
         for worker in self.config.enabled_workers():
             groups.setdefault(worker.corpus_pair_id, []).append(worker)
         pairs = [workers for workers in groups.values() if len(workers) == 2]
         singles = [workers[0] for workers in groups.values() if len(workers) == 1]
-        self.assertEqual(len(pairs), 5)
-        for variants in pairs:
-            self.assertEqual(
-                {worker.prompt_variant for worker in variants},
-                {"explicit_v3", "lean_v3"},
-            )
-            self.assertEqual(len({worker.model for worker in variants}), 1)
+        self.assertEqual(pairs, [])
         self.assertEqual(
             {worker.worker_id for worker in singles},
             {
                 "terra-custom-high-security-asan-explicit-v3",
-                "terra-custom-high-wasm-asan-explicit-v3",
-                "luna-custom-low-compiler-optdebug-interaction-v1",
-                "luna-custom-low-wasm-asan-interaction-v1",
-                "luna-custom-low-memory-asan-interaction-v1",
-                "luna-custom-low-security-asan-interaction-v1",
-                "luna-custom-low-concurrency-asan-interaction-v1",
+                "luna-custom-low-compiler-optdebug-explicit-v3",
+                "luna-custom-low-memory-asan-explicit-v3",
+                "luna-custom-low-security-asan-explicit-v3",
+                "luna-custom-low-wasm-asan-boundary-v1",
+                "luna-custom-low-concurrency-asan-focused-v1",
+                "luna-custom-none-language-asan-focused-v1",
             },
         )
 
     def test_interaction_experiment_is_one_turn_and_focused(self) -> None:
         workers = [
             worker
-            for worker in self.config.enabled_workers()
+            for worker in self.config.workers.values()
             if worker.prompt_variant == "interaction_v1"
         ]
         self.assertEqual(len(workers), 5)
+        self.assertTrue(all(not worker.enabled for worker in workers))
         self.assertTrue(
             all(
                 (worker.min_turns_per_session, worker.max_turns_per_session)
@@ -152,7 +137,7 @@ class CampaignConfigurationTests(unittest.TestCase):
         self.assertEqual(worker.max_output_tokens, 2048)
         self.assertEqual(worker.reservation_output_tokens, 128_000)
         no_reasoning = self.config.workers[
-            "luna-custom-none-language-asan-explicit-v3"
+            "luna-custom-none-language-asan-focused-v1"
         ]
         self.assertTrue(no_reasoning.enabled)
         self.assertEqual(no_reasoning.reasoning_efforts, ("none",))
@@ -197,7 +182,7 @@ class CampaignConfigurationTests(unittest.TestCase):
 
     def test_focused_corpus_and_sensitive_build_lanes_are_explicit(self) -> None:
         wasm = self.config.workers[
-            "luna-custom-low-wasm-asan-explicit-v3"
+            "luna-custom-low-wasm-asan-boundary-v1"
         ]
         memory = self.config.workers[
             "luna-custom-low-memory-asan-explicit-v3"
@@ -206,6 +191,10 @@ class CampaignConfigurationTests(unittest.TestCase):
         self.assertEqual(memory.corpus_strategy, "focus_memory")
         self.assertEqual(wasm.v8_build_profile, "asan")
         self.assertIn("--jit-fuzzing", wasm.d8_flags)
+        self.assertEqual(wasm.prompt_variant, "wasm_boundary_v1")
+        self.assertFalse(
+            self.config.workers["terra-custom-high-wasm-asan-explicit-v3"].enabled
+        )
         self.assertIn("--stress-compaction", memory.d8_flags)
         self.assertEqual(
             self.config.workers[
