@@ -82,6 +82,40 @@ class AdaptiveSessionTests(unittest.TestCase):
             "repeated_wasm_compile_error",
         )
 
+    def test_rotates_after_two_globally_repeated_semantic_paths(self):
+        repeated = {
+            "program_observation": {
+                "semantic_novelty": {"repeated_globally": True}
+            }
+        }
+        history = (
+            self.turn(1, b"print(1)", **repeated),
+            self.turn(2, b"print(2)", **repeated),
+        )
+
+        self.assertEqual(
+            adaptive_session_reset_reason(history),
+            "repeated_global_semantic_path",
+        )
+
+    def test_keeps_session_after_one_repeated_and_one_novel_path(self):
+        repeated = {
+            "program_observation": {
+                "semantic_novelty": {"repeated_globally": True}
+            }
+        }
+        novel = {
+            "program_observation": {
+                "semantic_novelty": {"repeated_globally": False}
+            }
+        }
+        history = (
+            self.turn(1, b"print(1)", **repeated),
+            self.turn(2, b"print(2)", **novel),
+        )
+
+        self.assertIsNone(adaptive_session_reset_reason(history))
+
     def test_keeps_session_after_single_recoverable_error(self):
         history = (self.turn(1, b"a", stderr_tail="ReferenceError: x"),)
         self.assertIsNone(adaptive_session_reset_reason(history))

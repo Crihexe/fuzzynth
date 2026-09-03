@@ -511,3 +511,8 @@ completed their d8 path, reports global signature repetition and newly observed
 mechanism/operation families, and is backfilled from integrity-checked preserved
 successes. Invalid programs therefore remain eligible for correction without
 claiming engine-path novelty they never reached.
+
+The adaptive reset policy gives one turn to respond to a globally repeated
+signature, then rotates the corpus after two consecutive successful but
+previously seen semantic paths. This preserves corrective multi-turn behavior
+while cutting off cross-session template loops.

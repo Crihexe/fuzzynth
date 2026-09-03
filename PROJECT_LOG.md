@@ -1285,3 +1285,7 @@ This is the living operational memory for the project. Read it together with
   each next-turn observation now reports whether its signature repeated
   globally and which mechanism/operation families are genuinely new for that
   worker. Failed programs remain repairable without falsely consuming novelty.
+- Adaptive sessions now rotate their corpus after two consecutive successful
+  paths whose semantic signatures were already seen globally, even when the
+  source text differs. A single repeated path still gets the next turn to react
+  to feedback; two repeats stop spending context on a known template.

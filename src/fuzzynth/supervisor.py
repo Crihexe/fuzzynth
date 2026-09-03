@@ -84,6 +84,20 @@ def _failure_kind(feedback: bytes) -> str | None:
     return None
 
 
+def _globally_repeated_semantic_path(feedback: bytes) -> bool:
+    try:
+        document = json.loads(feedback)
+    except (UnicodeError, json.JSONDecodeError):
+        return False
+    if not isinstance(document, dict):
+        return False
+    observation = document.get("program_observation")
+    if not isinstance(observation, dict):
+        return False
+    novelty = observation.get("semantic_novelty")
+    return isinstance(novelty, dict) and novelty.get("repeated_globally") is True
+
+
 def adaptive_session_reset_reason(
     history: tuple[TurnContext, ...],
 ) -> str | None:
@@ -98,6 +112,11 @@ def adaptive_session_reset_reason(
         return None
     if history[-1].program == history[-2].program:
         return "duplicate_program"
+    if all(
+        _globally_repeated_semantic_path(turn.feedback)
+        for turn in history[-2:]
+    ):
+        return "repeated_global_semantic_path"
     previous_kind = _failure_kind(history[-2].feedback)
     if latest_kind == previous_kind and latest_kind in {
         "syntax_error",
