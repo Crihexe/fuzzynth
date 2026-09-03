@@ -179,6 +179,15 @@ def observe_program(
                     "instantiate and call the export again."
                 ),
             }
+        elif builder_assisted and "invalid lane index" in process_output:
+            observation["corrective_hint"] = {
+                "code": "wasm_simd_lane_immediate_missing",
+                "guidance": (
+                    "SimdInstr accepts only the opcode; an extra function argument "
+                    "is ignored. Emit the lane after the expansion, for example "
+                    "...SimdInstr(kExprI32x4ExtractLane), 0."
+                ),
+            }
         elif "CompileError: WebAssembly.Module()" in process_output:
             observation["corrective_hint"] = {
                 "code": "wasm_binary_rejected_before_compiled_execution",
@@ -217,6 +226,39 @@ def observe_program(
                     "An element segment received a builder object instead of a "
                     "function index. Pass functionBuilder.index values in its "
                     "element array."
+                ),
+            }
+        elif builder_assisted and "addElementSegment is not a function" in process_output:
+            observation["corrective_hint"] = {
+                "code": "wasm_unknown_element_segment_builder",
+                "guidance": (
+                    "WasmModuleBuilder has no addElementSegment(). Use "
+                    "addActiveElementSegment(table.index, wasmI32Const(0), "
+                    "[functionBuilder.index]) for a bounded active segment."
+                ),
+            }
+        elif builder_assisted and (
+            "invalid body (entries must be 8 bit numbers)" in process_output
+            and re.search(r"(?<!\.\.\.)\b(?:Simd|GC)Instr\s*\(", source)
+        ):
+            observation["corrective_hint"] = {
+                "code": "wasm_instruction_helper_not_spread",
+                "guidance": (
+                    "An instruction helper array was inserted as a nested body "
+                    "entry. Spread every helper: ...SimdInstr(opcode) or "
+                    "...GCInstr(opcode)."
+                ),
+            }
+        elif builder_assisted and (
+            "TypeError: expr is not iterable" in process_output
+            and ".addActiveElementSegment" in source
+        ):
+            observation["corrective_hint"] = {
+                "code": "wasm_element_segment_type_contract",
+                "guidance": (
+                    "For a numeric function-index element array, omit the optional "
+                    "type argument: addActiveElementSegment(table.index, "
+                    "wasmI32Const(0), [functionBuilder.index])."
                 ),
             }
         elif builder_assisted and re.search(

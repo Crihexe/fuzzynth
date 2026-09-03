@@ -105,6 +105,37 @@ class ProgramObservationTests(unittest.TestCase):
             observation["corrective_hint"]["code"], "wasm_table_export_kind"
         )
 
+    def test_builder_unspread_simd_helper_has_exact_hint(self) -> None:
+        observation = observe_program(
+            prompt_variant="wasm_builder_advanced_v1",
+            program=b"b.addBody([SimdInstr(kExprI32x4Splat)])",
+            outcome="nonzero_exit",
+            stdout=b"Error: invalid body (entries must be 8 bit numbers)",
+            stderr=b"",
+        )
+
+        self.assertEqual(
+            observation["corrective_hint"]["code"],
+            "wasm_instruction_helper_not_spread",
+        )
+
+    def test_builder_missing_simd_lane_has_exact_hint(self) -> None:
+        observation = observe_program(
+            prompt_variant="wasm_builder_advanced_v1",
+            program=b"...SimdInstr(kExprI32x4ExtractLane, 0)",
+            outcome="nonzero_exit",
+            stdout=(
+                b"CompileError: WebAssembly.Module(): Compiling function #0 "
+                b"failed: invalid lane index"
+            ),
+            stderr=b"",
+        )
+
+        self.assertEqual(
+            observation["corrective_hint"]["code"],
+            "wasm_simd_lane_immediate_missing",
+        )
+
     def test_wasm_export_alias_call_is_recognized(self) -> None:
         observation = observe_program(
             prompt_variant="wasm_boundary_v1",
