@@ -106,6 +106,22 @@ def _effective_parameters(response: dict[str, object]) -> dict[str, object]:
     }
 
 
+def _rejected_before_stream_started(
+    *,
+    streaming_transport: bool,
+    error: ResponsesError,
+) -> bool:
+    """Identify an unbilled HTTP rejection before any model output existed."""
+
+    return bool(
+        streaming_transport
+        and error.code == "http_error"
+        and error.status is not None
+        and 500 <= error.status <= 599
+        and not error.partial_output
+    )
+
+
 class CampaignTurnRunner:
     def __init__(
         self,
@@ -320,10 +336,17 @@ class CampaignTurnRunner:
                 response = created.response
                 raw_response = created.raw_response
         except ResponsesError as exc:
-            self.budgets.mark_uncertain(reservation.reservation_id)
             finished_at = datetime.now(timezone.utc).isoformat()
             raw_ref = self.store.put(exc.raw_response) if exc.raw_response else None
             partial_program = exc.partial_output if streaming_transport else b""
+            rejected_before_stream = _rejected_before_stream_started(
+                streaming_transport=streaming_transport,
+                error=exc,
+            )
+            if rejected_before_stream:
+                self.budgets.release(reservation.reservation_id)
+            else:
+                self.budgets.mark_uncertain(reservation.reservation_id)
             partial_ref = self.store.put(partial_program) if partial_program else None
             partial_executable = bool(
                 partial_program and len(partial_program) <= self.max_program_bytes
@@ -346,6 +369,11 @@ class CampaignTurnRunner:
                     response_id=None,
                     requested_parameters=requested_parameters,
                     effective_parameters={
+                        "budget_reservation_disposition": (
+                            "released_pre_stream_http_5xx"
+                            if rejected_before_stream
+                            else "uncertain"
+                        ),
                         "error_code": exc.code,
                         "http_status": exc.status,
                         "partial_output_bytes": len(partial_program),

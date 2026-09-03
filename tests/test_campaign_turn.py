@@ -457,6 +457,39 @@ class CampaignTurnTests(unittest.TestCase):
         self.assertEqual(generation[0], "failed")
         self.assertIsNotNone(generation[1])
 
+    def test_empty_pre_stream_http_502_releases_reservation(self) -> None:
+        client = FakeClient(
+            error=ResponsesError(
+                "upstream unavailable",
+                status=502,
+                code="http_error",
+                raw_response=b"bad gateway",
+            )
+        )
+
+        result = self.runner().run_turn(
+            worker=self.worker,
+            session_id="session-502",
+            turn_index=1,
+            plan=SessionPlan(7, 4, "xhigh", None),
+            instructions="code only",
+            input_messages=self.input_messages(),
+            client=client,
+        )
+
+        self.assertEqual(result.pause_reason, "provider_error")
+        self.assertEqual(self.budgets.status("luna")["uncertain_reservations"], 0)
+        self.assertEqual(self.budgets.status("luna")["output_tokens"], 0)
+        effective = json.loads(
+            self.catalog.connection.execute(
+                "SELECT effective_parameters_json FROM generation"
+            ).fetchone()[0]
+        )
+        self.assertEqual(
+            effective["budget_reservation_disposition"],
+            "released_pre_stream_http_5xx",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

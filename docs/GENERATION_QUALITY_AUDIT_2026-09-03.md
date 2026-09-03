@@ -610,3 +610,35 @@ reserved for advanced builder generation, where the measured completion rate
 was 92.6%, rather than split with the generic security prompt. Compiler,
 memory/lifetime, security, staging Wasm, advanced Wasm, concurrency, and
 resizable-buffer Luna lanes remain active alongside Terra advanced Wasm.
+
+## Verified target crash and what it proves
+
+An official source-delta check between the pinned `15.2.124.19` revision and
+the later `15.2-lkgr` branch exposed an M152 Maglev fix for mixed elements kinds
+during inlined `Array.prototype.sort`. Extending that semantic corruption with
+an independently optimized Smi copy into an old object produces a deterministic
+native fatal on the pinned optdebug image, even with `--fuzzing`:
+
+`Heap::VerifySkippedWriteBarrier` reports that a write barrier was required,
+then V8 terminates with `SIGABRT`. The minimized program reproduced on seeds 1,
+31337, and 2147483646. It exits normally with Maglev disabled and on an official
+optdebug build of V8 `15.2.124.21`, which contains the M152 fix. Exact evidence
+is in `findings/m152-sort-mixed-elements-write-barrier/`.
+
+This closes an important validation question: the isolated runner, optdebug
+oracle, `--fuzzing` profile, candidate classifier, artifact catalog, and
+reproduction procedure can capture a genuine V8 invariant failure rather than
+only intrinsic misuse. It does **not** establish that the blind LLM campaign has
+found an unknown bug—the trigger was derived after inspecting a newer official
+fix. That distinction is preserved in the finding and motivates a separate
+known-bug rediscovery test for the generator itself.
+
+The provider outage during this verification also exposed a budget-accounting
+edge case. An HTTP 502 returned before the SSE stream began cannot contain model
+output, but was previously treated like a lost partial stream and charged at
+the full worst-case reservation. The runner now releases only empty pre-stream
+HTTP 5xx reservations while retaining the raw failure and retrying transport.
+All ambiguous cases remain fail-closed. A narrow recovery pass matched failed
+generation evidence to budget IDs and released 106 Luna plus 17 Terra rows;
+nine older Luna and two Terra uncertain reservations did not meet that proof and
+remain charged conservatively.

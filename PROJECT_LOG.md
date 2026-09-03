@@ -1331,3 +1331,17 @@ This is the living operational memory for the project. Read it together with
   builders; and Terra security competed with a much more precise Terra advanced
   Wasm lane for the last 11% of its hard credit budget. Their configurations and
   evidence remain preserved, but the live service no longer dispatches them.
+- Verified the first genuine native crash on the exact pinned Chrome 152 target.
+  A minimized Maglev mixed-elements `Array.sort` program reproducibly reaches
+  `Heap::VerifySkippedWriteBarrier` under `--fuzzing` on three seeds. It exits
+  normally with Maglev disabled and on official V8 15.2.124.21, whose M152 fix
+  rejects the unsafe mixed-kind sort inlining. The finding is explicitly
+  classified as source-delta-guided harness validation, not a blind LLM or
+  unknown-bug discovery, and is preserved under `findings/` with execution IDs,
+  hashes, controls, and a standalone reproducer.
+- Corrected outage accounting for custom SSE requests rejected by HTTP 5xx
+  before the stream begins. Such requests now retain their full failure artifact
+  but release the unused reservation; partial/incomplete streams, network loss,
+  429 responses, and unknown usage remain fail-closed. A predicate-limited
+  recovery released 123 historical empty 5xx reservations (106 Luna, 17 Terra)
+  while leaving all other uncertain rows untouched.
