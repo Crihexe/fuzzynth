@@ -8,7 +8,7 @@ Type=oneshot
 WorkingDirectory=/root/fuzzynth
 Environment=PYTHONPATH=/root/fuzzynth/src
 ExecStart=/usr/bin/python3 /root/fuzzynth/scripts/replay_stress_matrix.py --repo-root /root/fuzzynth --state-root /root/fuzzynth/state --jobs 12 --newest-first --max-programs 600 --profile maglev_future_checks --profile turbolev_future_checks --worker luna-custom-low-compiler-optdebug-explicit-v3
-ExecStart=/usr/bin/python3 /root/fuzzynth/scripts/replay_stress_matrix.py --repo-root /root/fuzzynth --state-root /root/fuzzynth/state --jobs 12 --newest-first --max-programs 600 --profile wasm_staging_checks --worker luna-custom-low-wasm-staging-builder-asan-v1 --worker luna-custom-low-wasm-builder-advanced-asan-v1 --worker terra-custom-high-wasm-builder-advanced-asan-v1
+ExecStart=/usr/bin/python3 /root/fuzzynth/scripts/replay_stress_matrix.py --repo-root /root/fuzzynth --state-root /root/fuzzynth/state --jobs 12 --newest-first --max-programs 600 --profile wasm_staging_checks --profile wasm_staging_optdebug --worker luna-custom-low-wasm-staging-builder-asan-v1 --worker luna-custom-low-wasm-builder-advanced-asan-v1 --worker terra-custom-high-wasm-builder-advanced-asan-v1
 ExecStart=/usr/bin/python3 /root/fuzzynth/scripts/replay_stress_matrix.py --repo-root /root/fuzzynth --state-root /root/fuzzynth/state --jobs 12 --newest-first --max-programs 600 --profile minor_ms_randomized --worker luna-custom-low-memory-asan-explicit-v3 --worker luna-custom-low-buffers-asan-focused-v1
 TimeoutStartSec=infinity
 UMask=0077

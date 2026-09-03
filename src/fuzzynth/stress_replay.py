@@ -255,6 +255,27 @@ STRESS_PROFILES = (
         markers=(b"webassembly", b"wasmmodulebuilder", b"wasm-module-builder"),
     ),
     StressProfile(
+        name="wasm_staging_optdebug",
+        build_profile="optdebug",
+        flags=_COMMON
+        + (
+            "--jit-fuzzing",
+            "--wasm-staging",
+            "--wasm-wasmfx",
+            "--wasm-fp16",
+            "--wasm-shared",
+            "--wasm-stringref",
+            "--wasm-wide-arithmetic",
+            "--wasm-memory-control",
+            "--wasm-sync-tier-up",
+            "--wasm-assert-types",
+            "--stress-wasm-code-gc",
+            "--stress-wasm-memory-moving",
+            "--wasm-inlining-ignore-call-counts",
+        ),
+        markers=(b"webassembly", b"wasmmodulebuilder", b"wasm-module-builder"),
+    ),
+    StressProfile(
         name="wasm_stack_switching",
         build_profile="asan",
         flags=_COMMON

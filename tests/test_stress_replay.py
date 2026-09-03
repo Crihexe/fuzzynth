@@ -53,6 +53,7 @@ class StressReplayTests(unittest.TestCase):
                 "minor_ms_randomized",
                 "wasm_aggressive_inlining",
                 "wasm_staging_checks",
+                "wasm_staging_optdebug",
                 "wasm_tiering_memory",
                 "wasm_stack_switching",
                 "heap_verification",
@@ -109,6 +110,7 @@ class StressReplayTests(unittest.TestCase):
         self.assertIn("wasm_aggressive_inlining", builder_names)
         self.assertIn("wasm_stack_switching", builder_names)
         self.assertIn("wasm_staging_checks", builder_names)
+        self.assertIn("wasm_staging_optdebug", builder_names)
         self.assertIn("undefined_behavior", builder_names)
         self.assertIn("uninitialized_memory", builder_names)
         self.assertEqual(

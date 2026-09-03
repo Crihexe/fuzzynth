@@ -1300,3 +1300,5 @@ This is the living operational memory for the project. Read it together with
   proposal families before filling the remaining two random positions. This
   preserves corpus randomization while preventing the four wide-arithmetic and
   five fp16 examples from being statistically starved by larger subsets.
+- Added a matching optdebug staging replay alongside ASan so generated proposal
+  programs are checked both for memory safety and internal V8 invariants.

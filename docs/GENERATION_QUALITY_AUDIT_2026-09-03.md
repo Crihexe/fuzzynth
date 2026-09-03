@@ -548,3 +548,8 @@ each eight-example context contains one randomly chosen example from every
 available family before filling the remaining slots. This prevents the 4-wide
 and 5-fp16 subsets from being drowned out by the 20-plus WasmFX, stringref, and
 memory64 subsets.
+
+The priority queue applies the proposal flags under both ASan and optdebug.
+This deliberately separates two native oracles: ASan catches memory-safety
+violations, while optdebug retains internal V8 invariant checks that may fail
+before a corrupted state becomes sanitizer-visible.
