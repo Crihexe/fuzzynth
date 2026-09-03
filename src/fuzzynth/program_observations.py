@@ -165,7 +165,21 @@ def observe_program(
                     _WASM_COMPILED_WRAPPER.findall(process_output)
                 ),
             }
-        if "CompileError: WebAssembly.Module()" in process_output:
+        if builder_assisted and re.search(
+            r"(?:Invalid prefixed opcode|invalid simd opcode)",
+            process_output,
+            re.IGNORECASE,
+        ):
+            observation["corrective_hint"] = {
+                "code": "wasm_prefixed_opcode_not_leb_encoded",
+                "guidance": (
+                    "A prefixed SIMD opcode was encoded as a raw byte sequence. "
+                    "Emit every SIMD instruction with ...SimdInstr(kExpr...) "
+                    "and every GC instruction with ...GCInstr(kExpr...), then "
+                    "instantiate and call the export again."
+                ),
+            }
+        elif "CompileError: WebAssembly.Module()" in process_output:
             observation["corrective_hint"] = {
                 "code": "wasm_binary_rejected_before_compiled_execution",
                 "guidance": (

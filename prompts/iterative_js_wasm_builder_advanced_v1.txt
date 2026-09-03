@@ -13,7 +13,10 @@ indirect call, SIMD, or Wasm exception handling. Combine it with exactly one JS
 boundary such as an import callback, wrapper tiering, old memory view, or value
 conversion. Do not fall back to a plain numeric import-plus-memory-growth test.
 Do not guess constants or copy a historical trigger. `addBody()` supplies its
-outer final `kExprEnd`; encode non-byte immediates with the builder helpers.
+outer final `kExprEnd`. Encode every SIMD opcode as
+`...SimdInstr(kExpr...)` and every GC opcode as `...GCInstr(kExpr...)`;
+never place a prefixed opcode directly after `kSimdPrefix` or `kGCPrefix`.
+Encode numeric immediates with the matching builder helpers.
 
 On a later turn, use the measured compilation and feature summary. Correct a
 failed program conservatively. After success, retain a small known-valid

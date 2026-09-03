@@ -37,6 +37,28 @@ class ProgramObservationTests(unittest.TestCase):
             "wasm_binary_rejected_before_compiled_execution",
         )
 
+    def test_builder_simd_encoding_failure_has_exact_hint(self) -> None:
+        observation = observe_program(
+            prompt_variant="wasm_builder_advanced_v1",
+            program=(
+                b"load('/input/wasm-module-builder.js');"
+                b"const b=new WasmModuleBuilder();"
+                b"b.addFunction('f',kSig_i_i).addBody([kSimdPrefix,"
+                b"kExprI32x4Add]).exportFunc();"
+            ),
+            outcome="nonzero_exit",
+            stdout=(
+                b"CompileError: WebAssembly.Module(): Compiling function #0 "
+                b"failed: Invalid prefixed opcode 458414"
+            ),
+            stderr=b"",
+        )
+
+        self.assertEqual(
+            observation["corrective_hint"]["code"],
+            "wasm_prefixed_opcode_not_leb_encoded",
+        )
+
     def test_wasm_export_alias_call_is_recognized(self) -> None:
         observation = observe_program(
             prompt_variant="wasm_boundary_v1",
