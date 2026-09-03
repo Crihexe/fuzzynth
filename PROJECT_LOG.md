@@ -1033,3 +1033,9 @@ This is the living operational memory for the project. Read it together with
   profile/flag/program triples already in the catalog are skipped; every new
   execution remains linked to its originating generation and candidate alerts
   are sent immediately without stopping the matrix.
+- Enabled two raw custom Terra lanes after Luna v3 established a strong
+  validity baseline but continued to show model-family templates. Terra uses a
+  separate hard 1,250-credit budget with the owner's exact 25M uncached-input,
+  250M cached-input, and 4M output-token ceilings. The lanes use `high` rather
+  than `xhigh` to avoid the observed upstream long-request timeout regime and
+  focus on security and Wasm under ASan. No official API budget is used.

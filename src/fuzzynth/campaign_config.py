@@ -225,6 +225,8 @@ def load_campaign_configuration(path: Path, *, repo_root: Path = Path(".")) -> C
         if worker.enabled:
             paired.setdefault(worker.corpus_pair_id, []).append(worker)
     for pair_id, variants in paired.items():
+        if len(variants) == 1:
+            continue
         if len(variants) != 2 or len(
             {item.prompt_variant for item in variants}
         ) != 2:

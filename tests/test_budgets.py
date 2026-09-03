@@ -40,7 +40,14 @@ class BudgetConfigurationTests(unittest.TestCase):
             ),
             500_000,
         )
-        self.assertNotIn("terra_alternate", policies)
+        terra = policies["terra_alternate"]
+        self.assertEqual(terra.input_per_million, Decimal("50"))
+        self.assertEqual(terra.cached_input_per_million, Decimal("5"))
+        self.assertEqual(terra.output_per_million, Decimal("300"))
+        self.assertEqual(terra.hard_total_microunits, 1_250_000_000)
+        self.assertEqual(terra.hard_uncached_input_tokens, 25_000_000)
+        self.assertEqual(terra.hard_cached_input_tokens, 250_000_000)
+        self.assertEqual(terra.hard_output_tokens, 4_000_000)
 
     def test_loads_bounded_complete_response_request_caps(self) -> None:
         caps = load_request_caps(Path("config/budgets.toml"))

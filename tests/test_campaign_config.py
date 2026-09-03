@@ -32,6 +32,8 @@ class CampaignConfigurationTests(unittest.TestCase):
                 "luna-custom-none-language-asan-lean-v3",
                 "luna-custom-low-security-asan-explicit-v3",
                 "luna-custom-low-security-asan-lean-v3",
+                "terra-custom-high-security-asan-explicit-v3",
+                "terra-custom-high-wasm-asan-explicit-v3",
             },
         )
         self.assertTrue(
@@ -50,17 +52,26 @@ class CampaignConfigurationTests(unittest.TestCase):
         for worker in self.config.workers.values():
             self.assertIn("--fuzzing", worker.d8_flags)
 
-    def test_enabled_workers_are_exact_two_variant_pairs(self) -> None:
-        pairs = {}
+    def test_luna_workers_are_exact_pairs_and_terra_lanes_are_singletons(self) -> None:
+        groups = {}
         for worker in self.config.enabled_workers():
-            pairs.setdefault(worker.corpus_pair_id, []).append(worker)
+            groups.setdefault(worker.corpus_pair_id, []).append(worker)
+        pairs = [workers for workers in groups.values() if len(workers) == 2]
+        singles = [workers[0] for workers in groups.values() if len(workers) == 1]
         self.assertEqual(len(pairs), 5)
-        for variants in pairs.values():
+        for variants in pairs:
             self.assertEqual(
                 {worker.prompt_variant for worker in variants},
                 {"explicit_v3", "lean_v3"},
             )
             self.assertEqual(len({worker.model for worker in variants}), 1)
+        self.assertEqual(
+            {worker.worker_id for worker in singles},
+            {
+                "terra-custom-high-security-asan-explicit-v3",
+                "terra-custom-high-wasm-asan-explicit-v3",
+            },
+        )
 
     def test_bounded_explicit_comparison_is_retained_but_disabled(self) -> None:
         experiment = [

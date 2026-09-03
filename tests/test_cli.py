@@ -25,7 +25,7 @@ class OfflineCliTests(unittest.TestCase):
         self.assertTrue(document["dataset_enabled"])
         self.assertEqual(
             sum(worker["enabled"] for worker in document["workers"]),
-            10,
+            12,
         )
 
     def test_budget_status_starts_at_only_configured_safety_reserve(self) -> None:
@@ -38,6 +38,7 @@ class OfflineCliTests(unittest.TestCase):
         by_id = {meter["meter_id"]: meter for meter in document["meters"]}
         self.assertEqual(by_id["luna_alternate"]["total_microunits"], 1_000_000)
         self.assertEqual(by_id["openai_official"]["hard_total_microunits"], 4_900_000)
+        self.assertEqual(by_id["terra_alternate"]["hard_output_tokens"], 4_000_000)
 
     def test_session_status_is_empty_for_new_state(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -56,7 +57,7 @@ class OfflineCliTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(document["global_state"], "running")
-        self.assertEqual(len(document["workers"]), 36)
+        self.assertEqual(len(document["workers"]), 38)
         self.assertTrue(
             all(
                 worker["effective_state"] == "running"

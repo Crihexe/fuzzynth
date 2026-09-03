@@ -517,7 +517,8 @@ PoCs and must not make campaign correctness depend on Telegram availability.
 ## 16. Immediate implementation action
 
 Run the indexed preview-v3 corpus through matched `explicit_v2`/`lean_v2` prompt
-pairs using only custom Luna. Use ASan as the main memory-safety oracle and an
+pairs using custom Luna, plus two separately budgeted custom Terra probes for
+security and Wasm. Use ASan as the main memory-safety oracle and an
 optdebug pair for internal invariant failures; compare stratified and uniform
 eight-source windows and low versus no reasoning. Rotate unproductive context
 early while preserving recoverable iterative feedback. Keep complete SSE,
