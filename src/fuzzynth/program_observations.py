@@ -189,8 +189,9 @@ def observe_program(
                 ),
             }
         elif builder_assisted and re.search(
-            r"ReferenceError: wasm(?:Simd|GC)Instr is not defined",
+            r"ReferenceError: (?:wasm)?(?:Simd|GC)Instr is not defined",
             process_output,
+            re.IGNORECASE,
         ):
             observation["corrective_hint"] = {
                 "code": "unknown_wasm_prefixed_instruction_helper",
@@ -198,6 +199,24 @@ def observe_program(
                     "The exact case-sensitive helper names are SimdInstr(opcode) "
                     "and GCInstr(opcode), with no wasm prefix. Expand the helper "
                     "inside addBody() and place any lane immediate after it."
+                ),
+            }
+        elif builder_assisted and "tableObject.set is not a function" in process_output:
+            observation["corrective_hint"] = {
+                "code": "wasm_table_export_kind",
+                "guidance": (
+                    "builder.addExport() exports a function. Export a table with "
+                    "builder.addExportOfKind('table', kExternalTable, table.index) "
+                    "before mutating the resulting WebAssembly.Table."
+                ),
+            }
+        elif builder_assisted and "Error: invalid element" in process_output:
+            observation["corrective_hint"] = {
+                "code": "wasm_element_segment_index",
+                "guidance": (
+                    "An element segment received a builder object instead of a "
+                    "function index. Pass functionBuilder.index values in its "
+                    "element array."
                 ),
             }
         elif builder_assisted and re.search(

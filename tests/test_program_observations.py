@@ -78,6 +78,33 @@ class ProgramObservationTests(unittest.TestCase):
             "unknown_wasm_prefixed_instruction_helper",
         )
 
+    def test_builder_lowercase_prefixed_helper_has_exact_hint(self) -> None:
+        observation = observe_program(
+            prompt_variant="wasm_builder_advanced_v1",
+            program=b"simdInstr(kExprI32x4Splat)",
+            outcome="js_exception",
+            stdout=b"ReferenceError: simdInstr is not defined",
+            stderr=b"",
+        )
+
+        self.assertEqual(
+            observation["corrective_hint"]["code"],
+            "unknown_wasm_prefixed_instruction_helper",
+        )
+
+    def test_builder_wrong_table_export_kind_has_exact_hint(self) -> None:
+        observation = observe_program(
+            prompt_variant="wasm_builder_advanced_v1",
+            program=b"const tableObject=instance.exports.table; tableObject.set(0, f);",
+            outcome="js_exception",
+            stdout=b"TypeError: tableObject.set is not a function",
+            stderr=b"",
+        )
+
+        self.assertEqual(
+            observation["corrective_hint"]["code"], "wasm_table_export_kind"
+        )
+
     def test_wasm_export_alias_call_is_recognized(self) -> None:
         observation = observe_program(
             prompt_variant="wasm_boundary_v1",

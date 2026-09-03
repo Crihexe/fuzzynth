@@ -19,6 +19,9 @@ never place a prefixed opcode directly after `kSimdPrefix` or `kGCPrefix`.
 Those exact case-sensitive helper names have no `wasm` prefix. Put lane and
 other instruction immediates after the expanded instruction helper. Encode
 numeric constants with the matching builder helpers.
+Export a table with
+`builder.addExportOfKind('table', kExternalTable, table.index)` and put
+function `.index` numbers, not builder objects, in element segments.
 
 On a later turn, use the measured compilation and feature summary. Correct a
 failed program conservatively. After success, retain a small known-valid
