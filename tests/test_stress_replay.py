@@ -13,7 +13,13 @@ class StressReplayTests(unittest.TestCase):
         }
         self.assertEqual(
             names,
-            {"compiler_verify", "compiler_concurrent", "forced_deopt"},
+            {
+                "compiler_verify",
+                "compiler_concurrent",
+                "forced_deopt",
+                "maglev_assertions",
+                "compilation_gc_race",
+            },
         )
 
     def test_feature_profiles_are_added_without_unrelated_profiles(self) -> None:
@@ -25,7 +31,13 @@ class StressReplayTests(unittest.TestCase):
         }
         self.assertEqual(
             names,
-            {"memory_gc", "wasm_tiering_memory", "experimental_regexp"},
+            {
+                "memory_gc",
+                "wasm_tiering_memory",
+                "wasm_stack_switching",
+                "heap_verification",
+                "experimental_regexp",
+            },
         )
 
     def test_regexp_operations_select_experimental_engine(self) -> None:
@@ -47,6 +59,7 @@ class StressReplayTests(unittest.TestCase):
         }
 
         self.assertIn("wasm_tiering_memory", builder_names)
+        self.assertIn("wasm_stack_switching", builder_names)
         self.assertEqual(regexp_names, {"experimental_regexp"})
 
 

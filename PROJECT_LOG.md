@@ -1145,3 +1145,9 @@ This is the living operational memory for the project. Read it together with
   programs using `exec`, `test`, `matchAll`, or `replaceAll` reach the
   experimental-engine replay. This closes two static-routing blind spots found
   while reviewing the first specialized outputs.
+- Added four independent no-token replay oracles after live-smoke testing their
+  exact flags on the pinned images: optdebug Maglev assertions (including type
+  assertions), ASan GC-during-compilation race stress, optdebug heap verification
+  under deterministic marking/compaction stress, and ASan Wasm secondary-stack
+  execution. Every profile retains `--fuzzing`; none changes primary generation
+  classification or treats timeout/OOM as a candidate.
