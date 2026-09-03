@@ -498,3 +498,9 @@ families, and coarse control-flow shape. Local identifiers do not affect it.
 The next-turn message treats a repeated fingerprint as template reuse, so the
 model receives a direct signal when textual novelty failed to create semantic
 novelty.
+
+The two remaining generic high-value Luna lanes were specialized at the same
+time. Compiler generation now uses a 230-word Turbolev contract and memory
+generation a 227-word GC/lifetime contract, down from the 382-word generic
+explicit prompt. Each asks for one hot baseline, one engine-relevant transition,
+and a deterministic checksum instead of a cross-subsystem feature checklist.

@@ -1274,3 +1274,9 @@ This is the living operational memory for the project. Read it together with
   feedback now explicitly identifies renamed copies of the same engine-facing
   template, addressing the gap between 100% unique source hashes and much lower
   behavioral diversity without adding a second model call.
+- Replaced the 382-word generic explicit prompt on the compiler and memory lanes
+  with 230- and 227-word subsystem contracts. The compiler lane now concentrates
+  on one hot Turbolev path and one optimizer-assumption transition; the memory
+  lane concentrates on one bounded lifetime/write-barrier/backing-store
+  transition under MinorMS. Both print a deterministic checksum and use the
+  semantic signature to avoid renamed template repeats.

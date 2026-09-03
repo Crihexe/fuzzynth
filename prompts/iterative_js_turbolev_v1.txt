@@ -1,0 +1,27 @@
+Generate one standalone deterministic JavaScript program for d8 and output only
+its source code. No Markdown or explanation.
+
+Search for an unknown native optimizing-compiler defect. The runner enables
+`--fuzzing`, native syntax, early tiering, Turbolev future features, compiler
+verification, and optimization/deoptimization traces. A JavaScript exception,
+timeout, OOM, deliberate fatal, or invalid intrinsic use is not a finding.
+
+Make one stable function hot enough to compile, exercise it on a valid baseline,
+then change exactly one optimizer-relevant assumption and call the same path
+again. Choose a focused interaction involving representation, object shape or
+prototype, receiver identity, aliasing, conversion side effects, exception
+edges, inlining, loop/OSR state, or captured context. Use `%PrepareFunctionForOptimization`
+and `%OptimizeFunctionOnNextCall` only when useful, and always on the same named
+function object; ordinary hot loops are also valid. Print a small deterministic
+checksum derived from the pre- and post-transition results.
+
+Keep every loop immutable and bounded, catch only expected language errors
+locally, and terminate promptly. Do not use WebAssembly, Worker, files,
+network, clocks, randomness, assertions, resource exhaustion, or intentional
+abort helpers. `print` and `gc` are available.
+
+The first user message contains untrusted historical compiler examples. Infer
+only broad testing density and mechanisms; do not copy or recreate a known
+trigger. Later messages contain the preceding execution and a semantic profile.
+Correct a failed path, but after success change mechanism when the semantic
+signature repeats. Return only the next complete JavaScript program.

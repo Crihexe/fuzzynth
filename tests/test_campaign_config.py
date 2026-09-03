@@ -211,10 +211,15 @@ class CampaignConfigurationTests(unittest.TestCase):
             self.config.workers["terra-custom-high-wasm-asan-explicit-v3"].enabled
         )
         self.assertIn("--stress-compaction", memory.d8_flags)
+        self.assertEqual(memory.prompt_variant, "gc_lifetime_v1")
+        self.assertIn("--minor-ms", memory.d8_flags)
+        compiler = self.config.workers[
+            "luna-custom-low-compiler-optdebug-explicit-v3"
+        ]
+        self.assertEqual(compiler.prompt_variant, "compiler_turbolev_v1")
+        self.assertIn("--turbolev-future", compiler.d8_flags)
         self.assertEqual(
-            self.config.workers[
-                "luna-custom-low-compiler-optdebug-explicit-v3"
-            ].v8_build_profile,
+            compiler.v8_build_profile,
             "optdebug",
         )
 

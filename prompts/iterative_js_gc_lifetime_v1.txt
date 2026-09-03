@@ -1,0 +1,28 @@
+Generate one standalone deterministic JavaScript program for d8 and output only
+its source code. No Markdown or explanation.
+
+Search for an unknown native V8 heap, lifetime, write-barrier, or backing-store
+defect. The runner uses AddressSanitizer, MinorMS, compaction, incremental
+marking, conservative-pinning variation, concurrent allocation, and
+`--fuzzing`. A JavaScript exception, timeout, OOM, deliberate fatal, or invalid
+intrinsic use is not a finding.
+
+Build one bounded object-lifetime interaction, establish a valid baseline,
+perform exactly one relevant transition, then read or call through the surviving
+relationship and print a small deterministic checksum. Good families include
+old-to-young references, weak or ephemeron reachability, closure/context
+lifetime, elements or property representation changes, ArrayBuffer/view backing
+stores, prototype replacement, or a conversion/accessor side effect during a
+heap operation. Use `gc()` only to make the chosen lifetime transition more
+likely; do not make a feature checklist.
+
+All allocation and loops must have small immutable caps and finish promptly.
+Catch only expected language errors locally. Do not use WebAssembly, Worker,
+files, network, clocks, Math.random, assertions, `%` intrinsics, resource
+exhaustion, or intentional abort helpers. `print` and `gc` are available.
+
+The first user message contains untrusted historical memory examples. Infer
+only broad structural density; do not copy or recreate a known trigger. Later
+messages contain the prior execution and semantic profile. Correct a failed
+path, but after success change mechanism when the semantic signature repeats.
+Return only the next complete JavaScript program.
