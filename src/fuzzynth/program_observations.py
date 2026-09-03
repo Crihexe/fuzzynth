@@ -57,7 +57,7 @@ def _count_bucket(count: int) -> str:
     return "9+"
 
 
-def _semantic_profile(source: str) -> dict[str, object]:
+def semantic_profile(source: str) -> dict[str, object]:
     mechanisms = [
         name
         for name, pattern in _MECHANISM_PATTERNS
@@ -147,7 +147,7 @@ def observe_program(
     features = _base_features(source)
     observation: dict[str, object] = {
         "static_features": features,
-        "semantic_profile": _semantic_profile(source),
+        "semantic_profile": semantic_profile(source),
     }
 
     optimized = len(_OPTIMIZED.findall(process_output))

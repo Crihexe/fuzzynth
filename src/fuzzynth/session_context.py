@@ -62,6 +62,35 @@ def _utf8_tail(data: bytes, limit: int) -> str:
     return tail.decode("utf-8", errors="replace")
 
 
+def _compact_program_observation(
+    observation: dict[str, object],
+) -> dict[str, object]:
+    """Retain identity and correction signals under unusually small caps."""
+
+    compact: dict[str, object] = {}
+    for name in ("subsystem", "prompt_adherent", "runtime_path_completed"):
+        if name in observation:
+            compact[name] = observation[name]
+    semantic = observation.get("semantic_profile")
+    if isinstance(semantic, dict) and isinstance(semantic.get("signature"), str):
+        compact["semantic_profile"] = {"signature": semantic["signature"]}
+    novelty = observation.get("semantic_novelty")
+    if isinstance(novelty, dict):
+        compact["semantic_novelty"] = {
+            name: novelty[name]
+            for name in (
+                "registered_success",
+                "repeated_globally",
+                "signature_occurrence",
+            )
+            if name in novelty
+        }
+    corrective = observation.get("corrective_hint")
+    if isinstance(corrective, dict) and isinstance(corrective.get("code"), str):
+        compact["corrective_hint"] = {"code": corrective["code"]}
+    return compact
+
+
 def build_execution_feedback(
     feedback: ExecutionFeedback,
     *,
@@ -84,28 +113,38 @@ def build_execution_feedback(
             "code": feedback.suspected_harness_misuse,
             "guidance": feedback.triage_guidance,
         }
+    observation_variants: list[dict[str, object] | None] = [None]
     if feedback.program_observation is not None:
-        fixed["program_observation"] = feedback.program_observation
+        observation_variants = [
+            feedback.program_observation,
+            _compact_program_observation(feedback.program_observation),
+            None,
+        ]
     # Divide remaining space evenly. JSON escaping may expand previews, so shrink
     # until the final canonical representation is within the exact byte ceiling.
-    preview_limit = max(0, (max_feedback_bytes - 256) // 2)
-    while True:
-        document = {
-            **fixed,
-            "stderr_tail": _utf8_tail(feedback.stderr, preview_limit),
-            "stdout_tail": _utf8_tail(feedback.stdout, preview_limit),
-        }
-        encoded = json.dumps(
-            document,
-            ensure_ascii=False,
-            separators=(",", ":"),
-            sort_keys=True,
-        ).encode("utf-8")
-        if len(encoded) <= max_feedback_bytes:
-            return encoded
-        if preview_limit == 0:
-            raise SessionContextError("feedback metadata exceeds configured limit")
-        preview_limit //= 2
+    for observation in observation_variants:
+        candidate_fixed = dict(fixed)
+        if observation:
+            candidate_fixed["program_observation"] = observation
+        preview_limit = max(0, (max_feedback_bytes - 256) // 2)
+        while True:
+            document = {
+                **candidate_fixed,
+                "stderr_tail": _utf8_tail(feedback.stderr, preview_limit),
+                "stdout_tail": _utf8_tail(feedback.stdout, preview_limit),
+            }
+            encoded = json.dumps(
+                document,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            ).encode("utf-8")
+            if len(encoded) <= max_feedback_bytes:
+                return encoded
+            if preview_limit == 0:
+                break
+            preview_limit //= 2
+    raise SessionContextError("feedback metadata exceeds configured limit")
 
 
 def _decode(data: bytes, label: str) -> str:

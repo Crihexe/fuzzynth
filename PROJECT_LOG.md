@@ -1280,3 +1280,8 @@ This is the living operational memory for the project. Read it together with
   lane concentrates on one bounded lifetime/write-barrier/backing-store
   transition under MinorMS. Both print a deterministic checksum and use the
   semantic signature to avoid renamed template repeats.
+- Added a private cross-session semantic-novelty ledger and deterministic
+  historical backfill. Only successful d8 paths enter its frequency baseline;
+  each next-turn observation now reports whether its signature repeated
+  globally and which mechanism/operation families are genuinely new for that
+  worker. Failed programs remain repairable without falsely consuming novelty.

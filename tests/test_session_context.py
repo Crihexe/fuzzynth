@@ -101,6 +101,41 @@ class ExecutionFeedbackTests(unittest.TestCase):
             decoded["program_observation"]["runtime_path_completed"]
         )
 
+    def test_semantic_identity_survives_small_feedback_compaction(self) -> None:
+        encoded = build_execution_feedback(
+            ExecutionFeedback(
+                outcome="ok",
+                exit_code=0,
+                signal_name=None,
+                timed_out=False,
+                oom_killed=False,
+                output_truncated=False,
+                duration_ms=2,
+                stdout=b"x" * 1000,
+                stderr=b"y" * 1000,
+                program_observation={
+                    "static_features": {"proxy": True},
+                    "semantic_profile": {
+                        "signature": "1" * 16,
+                        "mechanisms": ["proxy_traps"] * 24,
+                        "operations": ["get"] * 24,
+                    },
+                    "semantic_novelty": {
+                        "new_mechanisms": [],
+                        "new_operations": [],
+                        "repeated_globally": True,
+                        "signature_occurrence": 4,
+                    },
+                },
+            ),
+            max_feedback_bytes=512,
+        )
+
+        decoded = json.loads(encoded)
+        observation = decoded["program_observation"]
+        self.assertEqual(observation["semantic_profile"]["signature"], "1" * 16)
+        self.assertTrue(observation["semantic_novelty"]["repeated_globally"])
+
 
 class TurnInputTests(unittest.TestCase):
     @staticmethod

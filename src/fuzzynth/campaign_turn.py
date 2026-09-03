@@ -16,6 +16,7 @@ from fuzzynth.campaign_config import CampaignWorker, SessionPlan
 from fuzzynth.catalog import EvidenceCatalog, GenerationRecord
 from fuzzynth.corpus import CorpusReference
 from fuzzynth.execution_service import RecordedExecution, execute_program
+from fuzzynth.novelty import SemanticNoveltyLedger
 from fuzzynth.outcomes import diagnose_harness_misuse
 from fuzzynth.program_observations import observe_program
 from fuzzynth.responses import (
@@ -161,6 +162,20 @@ class CampaignTurnRunner:
             stdout=execution.stdout,
             stderr=execution.stderr,
         )
+        profile = program_observation.get("semantic_profile")
+        if execution.outcome == "ok" and isinstance(profile, dict):
+            with SemanticNoveltyLedger(
+                self.state_root / "semantic-novelty.sqlite3"
+            ) as novelty:
+                program_observation["semantic_novelty"] = novelty.record_success(
+                    worker_id=worker.worker_id,
+                    generation_id=generation_id,
+                    semantic_profile=profile,
+                ).as_dict()
+        else:
+            program_observation["semantic_novelty"] = {
+                "registered_success": False,
+            }
         feedback = build_execution_feedback(
             ExecutionFeedback(
                 outcome=execution.outcome,

@@ -504,3 +504,10 @@ time. Compiler generation now uses a 230-word Turbolev contract and memory
 generation a 227-word GC/lifetime contract, down from the 382-word generic
 explicit prompt. Each asks for one hot baseline, one engine-relevant transition,
 and a deterministic checksum instead of a cross-subsystem feature checklist.
+
+The fingerprint baseline is persisted across session resets rather than limited
+to the visible chat history. A private SQLite ledger counts only programs that
+completed their d8 path, reports global signature repetition and newly observed
+mechanism/operation families, and is backfilled from integrity-checked preserved
+successes. Invalid programs therefore remain eligible for correction without
+claiming engine-path novelty they never reached.
