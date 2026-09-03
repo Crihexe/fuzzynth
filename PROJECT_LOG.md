@@ -1345,3 +1345,8 @@ This is the living operational memory for the project. Read it together with
   429 responses, and unknown usage remain fail-closed. A predicate-limited
   recovery released 123 historical empty 5xx reservations (106 Luna, 17 Terra)
   while leaving all other uncertain rows untouched.
+- Added a finite 30-generation custom-Luna known-bug rediscovery benchmark. It
+  receives only a non-crashing mixed-elements sort seed and an explicit
+  independent-consumer/write-barrier objective, runs on pinned optdebug with
+  `--fuzzing`, and records generated candidates separately from the manually
+  derived harness-validation finding.

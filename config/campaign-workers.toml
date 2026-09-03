@@ -1301,6 +1301,31 @@ v8_worker_profile = "standard"
 support_files = ["wasm_module_builder"]
 d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-staging", "--wasm-sync-tier-up", "--wasm-assert-types", "--stress-wasm-memory-moving", "--stress-wasm-code-gc", "--trace-wasm-compilation-times"]
 
+# Bounded known-bug rediscovery control. This worker is intentionally absent
+# from the sustained service and runs only through its dedicated finite unit.
+[[workers]]
+id = "luna-custom-low-maglev-sort-rediscovery-optdebug-v1"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_maglev_sort_rediscovery_v1.txt"
+prompt_variant = "maglev_sort_trace-opt_rediscovery_v1"
+corpus_pair_id = "maglev-sort-known-bug-rediscovery-v1"
+corpus_strategy = "uniform"
+reasoning_efforts = ["low"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 3
+max_turns_per_session = 3
+history_turns = 2
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "optdebug"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--maglev", "--trace-opt", "--trace-deopt"]
+
 # The tool-driven Terra design remains deferred; only raw complete-response
 # workers above are enabled.
 # custom credit rate. No scheduler may instantiate disabled workers.

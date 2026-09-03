@@ -1,0 +1,36 @@
+[Unit]
+Description=Fuzzynth bounded custom-Luna known-bug rediscovery benchmark
+After=network-online.target docker.service fuzzynth-v2-campaign.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/fuzzynth
+Environment=PYTHONPATH=/root/fuzzynth/src
+ExecStart=/usr/bin/python3 -m fuzzynth campaign-run --live --repo-root /root/fuzzynth --state-root /root/fuzzynth/state --seed 542403045 --window-size 1 --worker luna-custom-low-maglev-sort-rediscovery-optdebug-v1 --max-turns-per-worker 30 --max-sessions-per-worker 10 --exit-when-blocked --corpus-file /root/fuzzynth/experiments/known-bug-rediscovery/maglev_sort_mixed_seed.js
+TimeoutStartSec=infinity
+TimeoutStopSec=330s
+UMask=0077
+SyslogIdentifier=fuzzynth-known-bug-rediscovery
+
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=read-only
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+ReadWritePaths=/root/fuzzynth/state
+InaccessiblePaths=/root/red-sailor
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+SystemCallArchitectures=native

@@ -34,6 +34,7 @@ class CampaignConfigurationTests(unittest.TestCase):
                 "luna-custom-low-buffers-asan-focused-v1",
                 "luna-custom-none-regexp-asan-focused-v1",
                 "luna-custom-none-language-asan-focused-v1",
+                "luna-custom-low-maglev-sort-rediscovery-optdebug-v1",
             },
         )
         self.assertTrue(
@@ -79,6 +80,7 @@ class CampaignConfigurationTests(unittest.TestCase):
                 "luna-custom-low-buffers-asan-focused-v1",
                 "luna-custom-none-regexp-asan-focused-v1",
                 "luna-custom-none-language-asan-focused-v1",
+                "luna-custom-low-maglev-sort-rediscovery-optdebug-v1",
             },
         )
 
