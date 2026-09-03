@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 
 
 @dataclass(frozen=True, slots=True)
@@ -11,10 +12,40 @@ class StressProfile:
     build_profile: str
     flags: tuple[str, ...]
     markers: tuple[bytes, ...]
+    seed_variants: int = 1
+
+    def __post_init__(self) -> None:
+        if self.seed_variants < 1:
+            raise ValueError("seed_variants must be positive")
+        if self.seed_variants > 1 and any(
+            flag.startswith(("--random-seed=", "--fuzzer-random-seed="))
+            for flag in self.flags
+        ):
+            raise ValueError("seeded profiles must not contain fixed seed flags")
 
     def applies(self, program: bytes) -> bool:
         lowered = program.lower()
         return any(marker in lowered for marker in self.markers)
+
+    def flag_variants(self, program_sha256: str) -> tuple[tuple[str, ...], ...]:
+        """Resolve deterministic scheduling seeds for exact crash reproduction."""
+
+        if self.seed_variants == 1:
+            return (self.flags,)
+        variants: list[tuple[str, ...]] = []
+        for ordinal in range(self.seed_variants):
+            material = f"{self.name}:{program_sha256}:{ordinal}".encode("ascii")
+            digest = hashlib.sha256(material).digest()
+            random_seed = (int.from_bytes(digest[:4], "big") & 0x7FFFFFFF) or 1
+            fuzzer_seed = (int.from_bytes(digest[4:8], "big") & 0x7FFFFFFF) or 1
+            variants.append(
+                self.flags
+                + (
+                    f"--random-seed={random_seed}",
+                    f"--fuzzer-random-seed={fuzzer_seed}",
+                )
+            )
+        return tuple(variants)
 
 
 _COMMON = ("--allow-natives-syntax", "--expose-gc", "--fuzzing")
@@ -101,6 +132,41 @@ STRESS_PROFILES = (
         markers=_CODE_MARKERS,
     ),
     StressProfile(
+        name="maglev_future_checks",
+        build_profile="optdebug",
+        flags=_COMMON
+        + (
+            "--jit-fuzzing",
+            "--stress-maglev",
+            "--maglev-future",
+            "--maglev-object-tracking",
+            "--maglev-non-eager-inlining",
+            "--maglev-licm",
+            "--maglev-verify-dominance",
+            "--maglev-assert",
+            "--maglev-assert-types",
+        ),
+        markers=_CODE_MARKERS,
+    ),
+    StressProfile(
+        name="turbolev_future_checks",
+        build_profile="optdebug",
+        flags=_COMMON
+        + (
+            "--jit-fuzzing",
+            "--turbolev",
+            "--turbolev-future",
+            "--turbolev-escape-analysis",
+            "--turbolev-non-eager-inlining",
+            "--turbolev-non-eager-loop-peeling",
+            "--maglev-range-verification",
+            "--maglev-verify-dominance",
+            "--turbo-verify",
+            "--verify-turboshaft",
+        ),
+        markers=_CODE_MARKERS,
+    ),
+    StressProfile(
         name="memory_gc",
         build_profile="asan",
         flags=_COMMON
@@ -118,6 +184,28 @@ STRESS_PROFILES = (
             b"finalizationregistry",
             b"gc(",
         ),
+    ),
+    StressProfile(
+        name="minor_ms_randomized",
+        build_profile="asan",
+        flags=_COMMON
+        + (
+            "--jit-fuzzing",
+            "--minor-ms",
+            "--stress-compaction",
+            "--stress-marking=100",
+            "--stress-scavenge=100",
+            "--stress-scavenger-conservative-object-pinning-random",
+            "--stress-concurrent-allocation",
+        ),
+        markers=(
+            b"arraybuffer",
+            b"sharedarraybuffer",
+            b"weakref",
+            b"finalizationregistry",
+            b"gc(",
+        ),
+        seed_variants=2,
     ),
     StressProfile(
         name="wasm_tiering_memory",
@@ -142,6 +230,21 @@ STRESS_PROFILES = (
             "--wasm-in-js-inlining-opt",
             "--turbo-inline-js-wasm-calls",
             "--turbo-optimize-inlined-js-wasm-wrappers",
+        ),
+        markers=(b"webassembly", b"wasmmodulebuilder", b"wasm-module-builder"),
+    ),
+    StressProfile(
+        name="wasm_staging_checks",
+        build_profile="asan",
+        flags=_COMMON
+        + (
+            "--jit-fuzzing",
+            "--wasm-staging",
+            "--wasm-sync-tier-up",
+            "--wasm-assert-types",
+            "--stress-wasm-code-gc",
+            "--stress-wasm-memory-moving",
+            "--wasm-inlining-ignore-call-counts",
         ),
         markers=(b"webassembly", b"wasmmodulebuilder", b"wasm-module-builder"),
     ),

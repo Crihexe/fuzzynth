@@ -618,7 +618,23 @@ max_output_tokens = 2048
 reservation_output_tokens = 128000
 v8_build_profile = "optdebug"
 v8_worker_profile = "standard"
-d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing", "--trace-opt", "--trace-deopt"]
+d8_flags = [
+  "--allow-natives-syntax",
+  "--expose-gc",
+  "--fuzzing",
+  "--jit-fuzzing",
+  "--turbolev",
+  "--turbolev-future",
+  "--turbolev-escape-analysis",
+  "--turbolev-non-eager-inlining",
+  "--turbolev-non-eager-loop-peeling",
+  "--maglev-range-verification",
+  "--maglev-verify-dominance",
+  "--turbo-verify",
+  "--verify-turboshaft",
+  "--trace-opt",
+  "--trace-deopt",
+]
 
 [[workers]]
 id = "luna-custom-low-compiler-optdebug-lean-v3"
@@ -710,7 +726,17 @@ max_output_tokens = 2048
 reservation_output_tokens = 128000
 v8_build_profile = "asan"
 v8_worker_profile = "standard"
-d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing", "--stress-compaction", "--stress-incremental-marking"]
+d8_flags = [
+  "--allow-natives-syntax",
+  "--expose-gc",
+  "--fuzzing",
+  "--jit-fuzzing",
+  "--minor-ms",
+  "--stress-compaction",
+  "--stress-incremental-marking",
+  "--stress-scavenger-conservative-object-pinning-random",
+  "--stress-concurrent-allocation",
+]
 
 [[workers]]
 id = "luna-custom-low-memory-asan-lean-v3"
@@ -850,7 +876,7 @@ max_output_tokens = 2048
 reservation_output_tokens = 128000
 v8_build_profile = "asan"
 v8_worker_profile = "standard"
-d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-sync-tier-up", "--stress-wasm-memory-moving", "--trace-wasm-compilation-times"]
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-staging", "--wasm-sync-tier-up", "--wasm-assert-types", "--stress-wasm-memory-moving", "--stress-wasm-code-gc", "--trace-wasm-compilation-times"]
 
 [[workers]]
 id = "luna-custom-low-concurrency-asan-focused-v1"
@@ -921,7 +947,7 @@ reservation_output_tokens = 128000
 v8_build_profile = "asan"
 v8_worker_profile = "standard"
 support_files = ["wasm_module_builder"]
-d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-sync-tier-up", "--stress-wasm-memory-moving", "--trace-wasm-compilation-times"]
+d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-staging", "--wasm-sync-tier-up", "--wasm-assert-types", "--stress-wasm-memory-moving", "--stress-wasm-code-gc", "--trace-wasm-compilation-times"]
 
 [[workers]]
 id = "luna-custom-low-concurrency-message-asan-v2"
@@ -968,7 +994,7 @@ reservation_output_tokens = 128000
 v8_build_profile = "asan"
 v8_worker_profile = "standard"
 support_files = ["wasm_module_builder"]
-d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-sync-tier-up", "--stress-wasm-memory-moving", "--trace-wasm-compilation-times"]
+d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-staging", "--wasm-sync-tier-up", "--wasm-assert-types", "--stress-wasm-memory-moving", "--stress-wasm-code-gc", "--trace-wasm-compilation-times"]
 
 [[workers]]
 id = "luna-custom-low-buffers-asan-focused-v1"
@@ -1227,7 +1253,7 @@ reservation_output_tokens = 128000
 v8_build_profile = "asan"
 v8_worker_profile = "standard"
 support_files = ["wasm_module_builder"]
-d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-sync-tier-up", "--stress-wasm-memory-moving", "--trace-wasm-compilation-times"]
+d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-staging", "--wasm-sync-tier-up", "--wasm-assert-types", "--stress-wasm-memory-moving", "--stress-wasm-code-gc", "--trace-wasm-compilation-times"]
 
 # The tool-driven Terra design remains deferred; only raw complete-response
 # workers above are enabled.

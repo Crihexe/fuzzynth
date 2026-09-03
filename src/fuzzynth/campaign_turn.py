@@ -68,6 +68,26 @@ class TurnResult:
 Executor = Callable[..., RecordedExecution]
 
 
+def resolve_execution_flags(
+    base_flags: tuple[str, ...],
+    *,
+    worker_id: str,
+    program: bytes,
+) -> tuple[str, ...]:
+    """Add deterministic per-program V8 and fuzz-scheduler seeds."""
+
+    material = worker_id.encode("utf-8") + b"\0" + program
+    digest = hashlib.sha256(material).digest()
+    additions: list[str] = []
+    if not any(flag.startswith("--random-seed=") for flag in base_flags):
+        seed = (int.from_bytes(digest[:4], "big") & 0x7FFFFFFF) or 1
+        additions.append(f"--random-seed={seed}")
+    if not any(flag.startswith("--fuzzer-random-seed=") for flag in base_flags):
+        seed = (int.from_bytes(digest[4:8], "big") & 0x7FFFFFFF) or 1
+        additions.append(f"--fuzzer-random-seed={seed}")
+    return base_flags + tuple(additions)
+
+
 def _string(response: dict[str, object], name: str) -> str | None:
     value = response.get(name)
     return value if isinstance(value, str) else None
@@ -117,12 +137,17 @@ class CampaignTurnRunner:
         generation_id: str,
         program: bytes,
     ) -> tuple[RecordedExecution, bytes]:
+        execution_flags = resolve_execution_flags(
+            worker.d8_flags,
+            worker_id=worker.worker_id,
+            program=program,
+        )
         execution = self.executor(
             program,
             generation_id=generation_id,
             build_profile=worker.v8_build_profile,
             worker_profile=worker.v8_worker_profile,
-            flags=worker.d8_flags,
+            flags=execution_flags,
             support_files=worker.support_files,
             repo_root=self.repo_root,
             state_root=self.state_root,

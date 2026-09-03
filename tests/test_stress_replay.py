@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import unittest
 
-from fuzzynth.stress_replay import STRESS_PROFILES, applicable_profiles, worker_profile_for
+from fuzzynth.stress_replay import (
+    STRESS_PROFILES,
+    StressProfile,
+    applicable_profiles,
+    worker_profile_for,
+)
 
 
 class StressReplayTests(unittest.TestCase):
@@ -12,7 +17,7 @@ class StressReplayTests(unittest.TestCase):
         self.assertEqual(worker_profile_for(profiles["uninitialized_memory"]), "sanitizer")
         self.assertEqual(worker_profile_for(profiles["undefined_behavior"]), "standard")
 
-    def test_compiler_program_gets_three_jit_profiles(self) -> None:
+    def test_compiler_program_gets_specialized_jit_profiles(self) -> None:
         names = {
             profile.name
             for profile in applicable_profiles(b"function f(x) { return x + 1 }")
@@ -27,6 +32,8 @@ class StressReplayTests(unittest.TestCase):
                 "forced_deopt",
                 "maglev_assertions",
                 "compilation_gc_race",
+                "maglev_future_checks",
+                "turbolev_future_checks",
             },
         )
 
@@ -43,7 +50,9 @@ class StressReplayTests(unittest.TestCase):
                 "uninitialized_memory",
                 "undefined_behavior",
                 "memory_gc",
+                "minor_ms_randomized",
                 "wasm_aggressive_inlining",
+                "wasm_staging_checks",
                 "wasm_tiering_memory",
                 "wasm_stack_switching",
                 "heap_verification",
@@ -80,6 +89,7 @@ class StressReplayTests(unittest.TestCase):
                 "thread_safety",
                 "undefined_behavior",
                 "memory_gc",
+                "minor_ms_randomized",
                 "heap_verification",
             },
         )
@@ -98,6 +108,7 @@ class StressReplayTests(unittest.TestCase):
         self.assertIn("wasm_tiering_memory", builder_names)
         self.assertIn("wasm_aggressive_inlining", builder_names)
         self.assertIn("wasm_stack_switching", builder_names)
+        self.assertIn("wasm_staging_checks", builder_names)
         self.assertIn("undefined_behavior", builder_names)
         self.assertIn("uninitialized_memory", builder_names)
         self.assertEqual(
@@ -108,6 +119,26 @@ class StressReplayTests(unittest.TestCase):
                 "experimental_regexp",
             },
         )
+
+    def test_seed_variants_are_stable_distinct_and_recorded_in_flags(self) -> None:
+        profile = StressProfile(
+            name="seeded",
+            build_profile="asan",
+            flags=("--fuzzing", "--stress-marking=100"),
+            markers=(b"",),
+            seed_variants=3,
+        )
+
+        first = profile.flag_variants("a" * 64)
+        second = profile.flag_variants("a" * 64)
+
+        self.assertEqual(first, second)
+        self.assertEqual(len(set(first)), 3)
+        for flags in first:
+            self.assertTrue(any(flag.startswith("--random-seed=") for flag in flags))
+            self.assertTrue(
+                any(flag.startswith("--fuzzer-random-seed=") for flag in flags)
+            )
 
 
 if __name__ == "__main__":

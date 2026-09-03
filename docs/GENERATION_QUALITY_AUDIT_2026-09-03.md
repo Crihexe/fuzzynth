@@ -472,3 +472,22 @@ builds the 8,000-program replay plan in about four seconds. A 19,320-execution
 matrix is running across 8,066 preserved programs, including 8,064 MSan runs
 and 2,449 aggressive Wasm-inlining runs; only native diagnostics on stderr with
 nonzero termination are candidates.
+
+## Experimental-tier follow-up
+
+Source-level diversity is now complemented by reproducible scheduler diversity.
+Every new primary execution derives `--random-seed` and
+`--fuzzer-random-seed` from the worker identity and exact program bytes; the
+resolved values are preserved in the execution record. Stress profiles can also
+request multiple deterministic seed variants without losing deduplication or
+reproduction.
+
+Four independent native-path profiles were smoke-tested on the pinned images:
+optdebug Maglev future/object-tracking checks, optdebug Turbolev future with
+Turboshaft verification, ASan MinorMS plus randomized young-generation
+collection, and ASan Wasm staging with type assertions and code-GC stress. A
+newest-first, worker-filtered priority queue contains 1,200 compiler executions,
+314 advanced-Wasm executions, and 1,102 memory/buffer executions. It is ordered
+after the already-running 19,320-case matrix; the much larger 48,901-case full
+historical expansion is intentionally deferred until these 2,616 higher-yield
+cases finish.

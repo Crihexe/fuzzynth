@@ -14,7 +14,7 @@ from fuzzynth.campaign_config import (
     SessionPlan,
     load_campaign_configuration,
 )
-from fuzzynth.campaign_turn import CampaignTurnRunner
+from fuzzynth.campaign_turn import CampaignTurnRunner, resolve_execution_flags
 from fuzzynth.catalog import EvidenceCatalog
 from fuzzynth.execution_service import RecordedExecution
 from fuzzynth.responses import CreateResult, ResponsesError, StreamResult
@@ -87,9 +87,11 @@ class CampaignTurnTests(unittest.TestCase):
             corpus_pair_id=base.corpus_pair_id,
         )
         self.executed_generation_id = None
+        self.executed_flags = None
 
     def executor(self, program, **kwargs):
         self.executed_generation_id = kwargs["generation_id"]
+        self.executed_flags = kwargs["flags"]
         return RecordedExecution(
             execution_id="exec-test",
             profile="release_symbolized",
@@ -177,6 +179,15 @@ class CampaignTurnTests(unittest.TestCase):
 
         self.assertEqual(result.program, b"print('ok');")
         self.assertEqual(self.executed_generation_id, result.generation_id)
+        self.assertTrue(
+            any(flag.startswith("--random-seed=") for flag in self.executed_flags)
+        )
+        self.assertTrue(
+            any(
+                flag.startswith("--fuzzer-random-seed=")
+                for flag in self.executed_flags
+            )
+        )
         self.assertIsNotNone(result.feedback)
         self.assertIsNone(result.pause_reason)
         self.assertTrue(client.request.stream)
@@ -200,6 +211,25 @@ class CampaignTurnTests(unittest.TestCase):
         self.assertEqual(
             parameters["prompt_sha256"],
             hashlib.sha256(b"code only").hexdigest(),
+        )
+
+    def test_execution_seed_flags_are_stable_and_do_not_override_explicit(self) -> None:
+        first = resolve_execution_flags(
+            ("--fuzzing",), worker_id="worker", program=b"print(1)"
+        )
+        second = resolve_execution_flags(
+            ("--fuzzing",), worker_id="worker", program=b"print(1)"
+        )
+        explicit = resolve_execution_flags(
+            ("--fuzzing", "--random-seed=7", "--fuzzer-random-seed=8"),
+            worker_id="worker",
+            program=b"print(1)",
+        )
+
+        self.assertEqual(first, second)
+        self.assertEqual(
+            explicit,
+            ("--fuzzing", "--random-seed=7", "--fuzzer-random-seed=8"),
         )
 
     def test_official_provider_uses_complete_json_with_supported_controls(self) -> None:

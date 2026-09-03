@@ -1,0 +1,36 @@
+[Unit]
+Description=Fuzzynth prioritized experimental V8 replay lanes
+After=docker.service fuzzynth-stress-replay.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/fuzzynth
+Environment=PYTHONPATH=/root/fuzzynth/src
+ExecStart=/usr/bin/python3 /root/fuzzynth/scripts/replay_stress_matrix.py --repo-root /root/fuzzynth --state-root /root/fuzzynth/state --jobs 12 --newest-first --max-programs 600 --profile maglev_future_checks --profile turbolev_future_checks --worker luna-custom-low-compiler-optdebug-explicit-v3
+ExecStart=/usr/bin/python3 /root/fuzzynth/scripts/replay_stress_matrix.py --repo-root /root/fuzzynth --state-root /root/fuzzynth/state --jobs 12 --newest-first --max-programs 600 --profile wasm_staging_checks --worker luna-custom-low-wasm-builder-advanced-asan-v1 --worker terra-custom-high-wasm-builder-advanced-asan-v1
+ExecStart=/usr/bin/python3 /root/fuzzynth/scripts/replay_stress_matrix.py --repo-root /root/fuzzynth --state-root /root/fuzzynth/state --jobs 12 --newest-first --max-programs 600 --profile minor_ms_randomized --worker luna-custom-low-memory-asan-explicit-v3 --worker luna-custom-low-buffers-asan-focused-v1
+TimeoutStartSec=infinity
+UMask=0077
+SyslogIdentifier=fuzzynth-priority-replay
+
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=read-only
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+ReadWritePaths=/root/fuzzynth/state
+InaccessiblePaths=/root/red-sailor
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+SystemCallArchitectures=native

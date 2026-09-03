@@ -5,18 +5,19 @@ This is the living operational memory for the project. Read it together with
 
 ## Current state
 
-- Phase: M4 iterative campaign controller is complete offline; dataset integration
-  and live campaign startup remain gated.
+- Phase: custom-only subsystem campaign and native replay oracles are live.
 - Implementation authorization: granted by owner on 2026-09-01.
 - Repository: initialized from `git@github.com:Crihexe/fuzzynth.git`.
-- Provider calls made: six bounded, redacted standalone capability/usage probes;
-  no multi-turn or campaign requests.
-- V8 source: exact Chrome 152 V8 revision checked out with dependencies; release,
-  optdebug, and ASAN are built, smoke-tested, and packaged as isolated workers.
-- Fuzzing campaigns running: none.
+- Provider calls: sustained alternate-endpoint Luna/Terra campaign with exact
+  per-response usage accounting; official-provider workers remain disabled.
+- V8 source: exact Chrome 152 revision checked out; release, optdebug, ASan,
+  UBSan+vptr, TSan, and MSan builds are packaged as isolated workers.
+- Fuzzing campaigns: 12 custom-only subsystem workers plus a feature-routed
+  sanitizer/check replay matrix; no genuine V8 candidate has been verified yet.
 - Telegram development notifier, crash/pause alerts, and authenticated command
   control are implemented; the hardened long-polling service is active.
-- Historical PoC dataset available: no; owner is preparing it.
+- Historical PoC dataset: preview-v3 SQLite index loaded read-only with 9,830
+  eligible deduplicated JavaScript sources and exact per-generation provenance.
 - Remote status: implementation checkpoints are pushed frequently to
   `origin/main`; verify the exact head at each resume.
 
@@ -322,6 +323,19 @@ This is the living operational memory for the project. Read it together with
   avoidable priming and preventing a meaningful prompt comparison. The new
   design isolates prompt effects while preserving reproducibility and exposes a
   broad randomly sampled context-poisoning pool instead of a hand-selected set.
+
+### D-032 — Reproducible experimental-tier replay
+
+- Status: accepted by crash-search continuation on 2026-09-03.
+- Decision: derive and record deterministic V8/fuzzer seeds from every generated
+  program, then prioritize valid recent programs under optdebug Maglev-future,
+  optdebug Turbolev-future/Turboshaft verification, ASan MinorMS randomized GC,
+  and ASan Wasm-staging/type-assertion profiles. Run the 2,616-case priority set
+  immediately after the already-active replay before expanding to all history.
+- Why: unique source hashes did not imply unique engine paths. Experimental tier
+  checks and per-program schedule variation add native-path diversity without
+  another provider request, while exact recorded seeds keep every result
+  reproducible.
 
 ## Work completed
 
@@ -1246,3 +1260,11 @@ This is the living operational memory for the project. Read it together with
   successful result remains roughly nine times higher for Terra (0.822 credits
   versus 0.089 for Luna), supporting its use as a depth rather than throughput
   lane.
+- Added deterministic per-program `--random-seed` and
+  `--fuzzer-random-seed` flags to primary campaign execution. Added four
+  feature-routed replay oracles for Maglev future features, Turbolev future plus
+  Turboshaft verification, randomized MinorMS/young-generation GC, and Wasm
+  staging with type assertions. A selective newest-first replay CLI and queued
+  2,616-case priority service put these higher-yield checks ahead of the full
+  48,901-case historical expansion. All 206 tests pass and all new flag vectors
+  passed smoke execution on their pinned images.
