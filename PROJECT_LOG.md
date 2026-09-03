@@ -1015,3 +1015,13 @@ This is the living operational memory for the project. Read it together with
 - The full offline suite passes with 159 tests. Actual preview-v3 index loading
   yields 9,830 verified sources; smoke-built uniform and stratified windows each
   contain eight distinct references and fit the context boundary.
+- Froze an early 126-generation audit in
+  `docs/ADAPTIVE_CAMPAIGN_EARLY_AUDIT_2026-09-03.md`. Explicit v2 reached 87.1%
+  exit 0 versus 76.8% for lean v2, with all hashes unique and zero candidates.
+  However, every program in both variants used JIT intrinsics; mixed eight-source
+  context caused subsystem mode collapse despite high textual diversity.
+- Added immutable v3 prompts and homogeneous random focus pools for compiler,
+  Wasm, memory/GC, pure ECMAScript, and security sources. Added `--jit-fuzzing`,
+  focused Wasm tier/memory stress, and focused GC compaction/incremental stress.
+  The focused campaign retains exact prompt pairing, custom Luna only, ASan as
+  the main oracle, and optdebug for the compiler pair.

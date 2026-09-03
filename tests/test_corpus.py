@@ -156,6 +156,37 @@ class CorpusPoolTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "strategy"):
             pool.build_window(seed=1, size=1, strategy="biased")
 
+    def test_focused_windows_only_draw_from_requested_area(self) -> None:
+        samples = (
+            CorpusSample(
+                "wasm-a.js",
+                "0" * 64,
+                b"new WebAssembly.Module(bytes)",
+                contains_wasm_markers=True,
+            ),
+            CorpusSample(
+                "wasm-b.js",
+                "1" * 64,
+                b"WebAssembly.validate(bytes)",
+                engine_family="WebAssembly/V8",
+            ),
+            CorpusSample("plain-a.js", "2" * 64, b"print(new Proxy({}, {}))"),
+            CorpusSample("plain-b.js", "3" * 64, b"print(/x/.test('x'))"),
+        )
+        pool = CorpusPool(samples)
+
+        wasm = pool.build_window(seed=1, size=2, strategy="focus_wasm")
+        language = pool.build_window(seed=1, size=2, strategy="focus_language")
+
+        self.assertEqual(
+            {item.name for item in extract_corpus_references(wasm)},
+            {"wasm-a.js", "wasm-b.js"},
+        )
+        self.assertEqual(
+            {item.name for item in extract_corpus_references(language)},
+            {"plain-a.js", "plain-b.js"},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

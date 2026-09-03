@@ -21,7 +21,7 @@ class SessionLedgerTests(unittest.TestCase):
         self.addCleanup(self.ledger.close)
         config = load_campaign_configuration(Path("config/campaign-workers.toml"))
         self.worker = config.workers[
-            "luna-custom-low-asan-stratified-explicit-v2"
+            "luna-custom-low-compiler-optdebug-explicit-v3"
         ]
 
     @staticmethod

@@ -203,7 +203,15 @@ def load_campaign_configuration(path: Path, *, repo_root: Path = Path(".")) -> C
             corpus_pair_id=_optional_string(raw, "corpus_pair_id") or worker_id,
             corpus_strategy=_optional_string(raw, "corpus_strategy") or "uniform",
         )
-        if worker.corpus_strategy not in {"uniform", "stratified_v8"}:
+        if worker.corpus_strategy not in {
+            "uniform",
+            "stratified_v8",
+            "focus_compiler",
+            "focus_language",
+            "focus_memory",
+            "focus_security",
+            "focus_wasm",
+        }:
             raise CampaignConfigurationError(
                 f"invalid corpus strategy: {worker_id}"
             )

@@ -57,7 +57,7 @@ class FakeClient:
 
 
 class CampaignServiceTests(unittest.TestCase):
-    worker_id = "luna-custom-low-asan-stratified-explicit-v2"
+    worker_id = "luna-custom-low-compiler-optdebug-explicit-v3"
 
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -198,7 +198,7 @@ class CampaignServiceTests(unittest.TestCase):
 
     def test_no_reasoning_custom_sessions_are_bounded(self) -> None:
         session = self.service.start_session(
-            "luna-custom-none-asan-stratified-explicit-v2",
+            "luna-custom-none-language-asan-explicit-v3",
             seed=101,
             corpus_window=None,
             allow_unconditioned=True,

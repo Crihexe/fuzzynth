@@ -31,10 +31,10 @@ class SupervisorSeedTests(unittest.TestCase):
             Path("config/campaign-workers.toml")
         )
         rich = configuration.workers[
-            "luna-custom-low-asan-stratified-explicit-v2"
+            "luna-custom-low-compiler-optdebug-explicit-v3"
         ]
         lean = configuration.workers[
-            "luna-custom-low-asan-stratified-lean-v2"
+            "luna-custom-low-compiler-optdebug-lean-v3"
         ]
 
         self.assertEqual(rich.corpus_pair_id, lean.corpus_pair_id)

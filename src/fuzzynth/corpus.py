@@ -24,6 +24,13 @@ _INDEX_ALLOWED_ENGINES = (
     "JavaScript engine unclassified",
     "Chromium/JavaScript",
 )
+_FOCUS_STRATEGIES = {
+    "focus_compiler",
+    "focus_language",
+    "focus_memory",
+    "focus_security",
+    "focus_wasm",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -264,6 +271,36 @@ class CorpusPool:
             groups.append("non_regression")
         return tuple(groups)
 
+    @classmethod
+    def _matches_focus(cls, sample: CorpusSample, strategy: str) -> bool:
+        groups = cls._stratified_groups(sample)
+        source = sample.data.lower()
+        # Context examples that depend on the V8 checkout's test harness teach
+        # the model unavailable APIs. Focused windows prefer standalone PoCs.
+        standalone = b"load(" not in source and b"d8.file" not in source
+        if strategy == "focus_compiler":
+            return standalone and "compiler" in groups
+        if strategy == "focus_wasm":
+            return (
+                standalone
+                and "wasm" in groups
+                and b"wasmmodulebuilder" not in source
+            )
+        if strategy == "focus_memory":
+            return standalone and "memory" in groups
+        if strategy == "focus_security":
+            return standalone and "security" in groups
+        if strategy == "focus_language":
+            return (
+                standalone
+                and sample.syntax_profile == "ecmascript"
+                and not sample.contains_wasm_markers
+                and sample.engine_family != "WebAssembly/V8"
+                and b"webassembly" not in source
+                and b"%" not in sample.data
+            )
+        return True
+
     def _select_stratified(
         self,
         *,
@@ -317,24 +354,30 @@ class CorpusPool:
             raise ValueError("corpus seed must be an integer")
         if isinstance(size, bool) or not isinstance(size, int) or size < 1:
             raise ValueError("corpus window size must be positive")
-        if strategy not in {"uniform", "stratified_v8"}:
+        if strategy not in {"uniform", "stratified_v8", *_FOCUS_STRATEGIES}:
             raise ValueError("unsupported corpus window strategy")
         selected_size = min(size, len(self.samples))
         per_sample_limit = MAX_WINDOW_SOURCE_BYTES // selected_size
         eligible = tuple(
-            sample for sample in self.samples if len(sample.data) <= per_sample_limit
+            sample
+            for sample in self.samples
+            if len(sample.data) <= per_sample_limit
+            and (
+                strategy not in _FOCUS_STRATEGIES
+                or self._matches_focus(sample, strategy)
+            )
         )
         if len(eligible) < selected_size:
             raise CorpusError("too few samples fit the bounded corpus window")
         generator = random.Random(seed)
         selected = (
-            generator.sample(eligible, selected_size)
-            if strategy == "uniform"
-            else self._select_stratified(
+            self._select_stratified(
                 generator=generator,
                 size=selected_size,
                 samples=eligible,
             )
+            if strategy == "stratified_v8"
+            else generator.sample(eligible, selected_size)
         )
         parts = [
             b"CORPUS ROLE: historical reference data only. Do not copy, mutate, ",

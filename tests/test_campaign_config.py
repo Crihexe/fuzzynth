@@ -22,14 +22,16 @@ class CampaignConfigurationTests(unittest.TestCase):
         self.assertEqual(
             enabled,
             {
-                "luna-custom-low-asan-stratified-explicit-v2",
-                "luna-custom-low-asan-stratified-lean-v2",
-                "luna-custom-none-asan-stratified-explicit-v2",
-                "luna-custom-none-asan-stratified-lean-v2",
-                "luna-custom-low-asan-uniform-explicit-v2",
-                "luna-custom-low-asan-uniform-lean-v2",
-                "luna-custom-low-optdebug-stratified-explicit-v2",
-                "luna-custom-low-optdebug-stratified-lean-v2",
+                "luna-custom-low-compiler-optdebug-explicit-v3",
+                "luna-custom-low-compiler-optdebug-lean-v3",
+                "luna-custom-low-wasm-asan-explicit-v3",
+                "luna-custom-low-wasm-asan-lean-v3",
+                "luna-custom-low-memory-asan-explicit-v3",
+                "luna-custom-low-memory-asan-lean-v3",
+                "luna-custom-none-language-asan-explicit-v3",
+                "luna-custom-none-language-asan-lean-v3",
+                "luna-custom-low-security-asan-explicit-v3",
+                "luna-custom-low-security-asan-lean-v3",
             },
         )
         self.assertTrue(
@@ -52,11 +54,11 @@ class CampaignConfigurationTests(unittest.TestCase):
         pairs = {}
         for worker in self.config.enabled_workers():
             pairs.setdefault(worker.corpus_pair_id, []).append(worker)
-        self.assertEqual(len(pairs), 4)
+        self.assertEqual(len(pairs), 5)
         for variants in pairs.values():
             self.assertEqual(
                 {worker.prompt_variant for worker in variants},
-                {"explicit_v2", "lean_v2"},
+                {"explicit_v3", "lean_v3"},
             )
             self.assertEqual(len({worker.model for worker in variants}), 1)
 
@@ -98,13 +100,13 @@ class CampaignConfigurationTests(unittest.TestCase):
 
     def test_custom_luna_streaming_effort_lanes_are_enabled(self) -> None:
         worker = self.config.workers[
-            "luna-custom-low-asan-stratified-explicit-v2"
+            "luna-custom-low-compiler-optdebug-explicit-v3"
         ]
         self.assertEqual(worker.reasoning_efforts, ("low",))
         self.assertEqual(worker.max_output_tokens, 2048)
         self.assertEqual(worker.reservation_output_tokens, 128_000)
         no_reasoning = self.config.workers[
-            "luna-custom-none-asan-stratified-explicit-v2"
+            "luna-custom-none-language-asan-explicit-v3"
         ]
         self.assertTrue(no_reasoning.enabled)
         self.assertEqual(no_reasoning.reasoning_efforts, ("none",))
@@ -138,7 +140,7 @@ class CampaignConfigurationTests(unittest.TestCase):
 
     def test_session_choice_is_reproducible_and_in_range(self) -> None:
         worker = self.config.workers[
-            "luna-custom-low-asan-stratified-explicit-v2"
+            "luna-custom-low-compiler-optdebug-explicit-v3"
         ]
         first = choose_session_plan(worker, 12345)
         second = choose_session_plan(worker, 12345)
@@ -147,19 +149,21 @@ class CampaignConfigurationTests(unittest.TestCase):
         self.assertGreaterEqual(first.target_turns, 2)
         self.assertLessEqual(first.target_turns, 4)
 
-    def test_stratified_and_uniform_corpus_lanes_are_explicit(self) -> None:
-        stratified = self.config.workers[
-            "luna-custom-low-asan-stratified-explicit-v2"
+    def test_focused_corpus_and_sensitive_build_lanes_are_explicit(self) -> None:
+        wasm = self.config.workers[
+            "luna-custom-low-wasm-asan-explicit-v3"
         ]
-        uniform = self.config.workers[
-            "luna-custom-low-asan-uniform-explicit-v2"
+        memory = self.config.workers[
+            "luna-custom-low-memory-asan-explicit-v3"
         ]
-        self.assertEqual(stratified.corpus_strategy, "stratified_v8")
-        self.assertEqual(uniform.corpus_strategy, "uniform")
-        self.assertEqual(stratified.v8_build_profile, "asan")
+        self.assertEqual(wasm.corpus_strategy, "focus_wasm")
+        self.assertEqual(memory.corpus_strategy, "focus_memory")
+        self.assertEqual(wasm.v8_build_profile, "asan")
+        self.assertIn("--jit-fuzzing", wasm.d8_flags)
+        self.assertIn("--stress-compaction", memory.d8_flags)
         self.assertEqual(
             self.config.workers[
-                "luna-custom-low-optdebug-stratified-explicit-v2"
+                "luna-custom-low-compiler-optdebug-explicit-v3"
             ].v8_build_profile,
             "optdebug",
         )
