@@ -13,7 +13,7 @@ import uuid
 
 from fuzzynth.budgets import BudgetLimitError
 from fuzzynth.campaign_service import CampaignService, CampaignServiceError
-from fuzzynth.control import ControlStateError
+from fuzzynth.control import ControlStateError, is_supervisor_provider_pause
 from fuzzynth.corpus import CorpusPool
 from fuzzynth.credentials import CredentialStore
 from fuzzynth.notifications import TelegramCampaignNotifier
@@ -24,6 +24,8 @@ from fuzzynth.sessions import SessionRecord, SessionStateError
 
 EventSink = Callable[[dict[str, object]], None]
 OperationalAlert = Callable[[str], None]
+
+_TRANSIENT_PROVIDER_RETRY_DELAYS = (5.0, 15.0, 60.0)
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,6 +107,19 @@ def adaptive_session_reset_reason(
     return None
 
 
+def transient_provider_retry_delay(
+    pause_reason: str | None,
+    prior_retries: int,
+) -> float | None:
+    """Return bounded retry delay for a generic transient provider failure."""
+
+    if pause_reason != "provider_error" or prior_retries < 0:
+        return None
+    if prior_retries >= len(_TRANSIENT_PROVIDER_RETRY_DELAYS):
+        return None
+    return _TRANSIENT_PROVIDER_RETRY_DELAYS[prior_retries]
+
+
 class CampaignSupervisor:
     def __init__(
         self,
@@ -181,6 +196,7 @@ class CampaignSupervisor:
     ) -> WorkerRunSummary:
         turns = 0
         sessions_started = 0
+        transient_provider_retries = 0
         startup_delay = (
             self.worker_ids.index(worker_id) * self.startup_stagger_seconds
         )
@@ -205,21 +221,76 @@ class CampaignSupervisor:
                         worker_id, turns, sessions_started,
                         service.control.effective_state(worker_id), "turn_limit",
                     )
-                state = service.control.effective_state(worker_id)
-                if state != "running":
-                    if exit_when_blocked:
-                        return WorkerRunSummary(
-                            worker_id, turns, sessions_started, state, "control_blocked"
-                        )
-                    self.stop_event.wait(self.idle_seconds)
-                    continue
                 worker_sessions = tuple(
                     session
                     for session in service.sessions.list_sessions()
                     if session.worker_id == worker_id
                 )
                 session = self._open_session(worker_sessions)
+                state = service.control.effective_state(worker_id)
+                if state != "running":
+                    latest_change = service.control.latest_change(worker_id)
+                    retry_delay = transient_provider_retry_delay(
+                        session.pause_reason if session is not None else None,
+                        transient_provider_retries,
+                    )
+                    recoverable_supervisor_pause = bool(
+                        state == "paused"
+                        and service.control.global_state() == "running"
+                        and session is not None
+                        and session.status == "paused"
+                        and retry_delay is not None
+                        and is_supervisor_provider_pause(latest_change)
+                    )
+                    if recoverable_supervisor_pause:
+                        if self.stop_event.wait(retry_delay):
+                            break
+                        service.sessions.resume(session.session_id)
+                        service.control.set_worker(
+                            worker_id,
+                            "running",
+                            request_id=f"transient-retry:{uuid.uuid4()}",
+                            source="supervisor",
+                            actor="campaign-supervisor",
+                            command="resume after transient provider error",
+                        )
+                        transient_provider_retries += 1
+                        self.event_sink(
+                            {
+                                "event": "provider_retry",
+                                "worker_id": worker_id,
+                                "session_id": session.session_id,
+                                "attempt": transient_provider_retries,
+                                "delay_seconds": retry_delay,
+                            }
+                        )
+                        continue
+                    if exit_when_blocked:
+                        return WorkerRunSummary(
+                            worker_id, turns, sessions_started, state, "control_blocked"
+                        )
+                    self.stop_event.wait(self.idle_seconds)
+                    continue
                 if session is not None and session.status == "paused":
+                    retry_delay = transient_provider_retry_delay(
+                        session.pause_reason,
+                        transient_provider_retries,
+                    )
+                    if retry_delay is not None:
+                        if self.stop_event.wait(retry_delay):
+                            break
+                        service.sessions.resume(session.session_id)
+                        transient_provider_retries += 1
+                        self.event_sink(
+                            {
+                                "event": "provider_retry",
+                                "worker_id": worker_id,
+                                "session_id": session.session_id,
+                                "attempt": transient_provider_retries,
+                                "delay_seconds": retry_delay,
+                            }
+                        )
+                        continue
                     self._pause_worker(service, worker_id, "paused_session")
                     self._alert(
                         "FUZZYNTH SUPERVISOR — worker remains paused\n"
@@ -291,6 +362,8 @@ class CampaignSupervisor:
                 if result.turns:
                     turns += 1
                     turn = result.turns[0]
+                    if turn.pause_reason is None:
+                        transient_provider_retries = 0
                     diagnostic = (
                         diagnose_harness_misuse(
                             turn.program or b"",
@@ -329,6 +402,25 @@ class CampaignSupervisor:
                         }
                     )
                 if result.session.status == "paused":
+                    retry_delay = transient_provider_retry_delay(
+                        result.session.pause_reason,
+                        transient_provider_retries,
+                    )
+                    if retry_delay is not None:
+                        if self.stop_event.wait(retry_delay):
+                            break
+                        service.sessions.resume(result.session.session_id)
+                        transient_provider_retries += 1
+                        self.event_sink(
+                            {
+                                "event": "provider_retry",
+                                "worker_id": worker_id,
+                                "session_id": result.session.session_id,
+                                "attempt": transient_provider_retries,
+                                "delay_seconds": retry_delay,
+                            }
+                        )
+                        continue
                     self._pause_worker(
                         service,
                         worker_id,

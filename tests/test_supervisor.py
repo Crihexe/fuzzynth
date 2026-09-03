@@ -5,7 +5,11 @@ from pathlib import Path
 
 from fuzzynth.campaign_config import load_campaign_configuration
 from fuzzynth.session_context import TurnContext
-from fuzzynth.supervisor import _stable_seed, adaptive_session_reset_reason
+from fuzzynth.supervisor import (
+    _stable_seed,
+    adaptive_session_reset_reason,
+    transient_provider_retry_delay,
+)
 
 
 class SupervisorSeedTests(unittest.TestCase):
@@ -81,6 +85,20 @@ class AdaptiveSessionTests(unittest.TestCase):
     def test_keeps_session_after_single_recoverable_error(self):
         history = (self.turn(1, b"a", stderr_tail="ReferenceError: x"),)
         self.assertIsNone(adaptive_session_reset_reason(history))
+
+
+class ProviderRetryTests(unittest.TestCase):
+    def test_generic_provider_errors_receive_bounded_backoff(self):
+        self.assertEqual(transient_provider_retry_delay("provider_error", 0), 5.0)
+        self.assertEqual(transient_provider_retry_delay("provider_error", 1), 15.0)
+        self.assertEqual(transient_provider_retry_delay("provider_error", 2), 60.0)
+        self.assertIsNone(transient_provider_retry_delay("provider_error", 3))
+
+    def test_quota_and_other_pauses_are_never_retried(self):
+        self.assertIsNone(
+            transient_provider_retry_delay("provider_quota_or_rate_limit", 0)
+        )
+        self.assertIsNone(transient_provider_retry_delay("unknown_usage", 0))
 
 
 if __name__ == "__main__":
