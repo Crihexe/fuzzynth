@@ -67,6 +67,14 @@ _REFERENCE_TAG = re.compile(
     rb'sha256="([0-9a-f]{64})">'
 )
 _GLOBAL_LOAD_CALL = re.compile(rb"(?<![A-Za-z0-9_$.])load\s*\(")
+_WASM_STAGING_MARKERS = {
+    "wasmfx": (b".addcont(", b"kexprcontnew", b"kexprresume", b"kexprswitch"),
+    "stringref": (b"kwasmstringref", b"kexprstring"),
+    "fp16": (b"f16x8",),
+    "shared_types": (b".addsharedtype(", b"kwasmshared"),
+    "memory64": (b".addmemory64(", b"memory64"),
+    "wide_arithmetic": (b"kexpri64add128", b"wide-arithmetic"),
+}
 
 
 def extract_corpus_references(window: bytes | None) -> tuple[CorpusReference, ...]:
@@ -353,21 +361,8 @@ class CorpusPool:
                 and b"new wasmmodulebuilder" in source
                 and any(
                     marker in source
-                    for marker in (
-                        b".addcont(",
-                        b"kexprcontnew",
-                        b"kexprresume",
-                        b"kexprswitch",
-                        b"kwasmstringref",
-                        b"kexprstring",
-                        b"f16x8",
-                        b".addsharedtype(",
-                        b"kwasmshared",
-                        b".addmemory64(",
-                        b"memory64",
-                        b"kexpri64add128",
-                        b"wide-arithmetic",
-                    )
+                    for markers in _WASM_STAGING_MARKERS.values()
+                    for marker in markers
                 )
                 and b"sandbox." not in source
                 and b"%" not in sample.data
@@ -458,6 +453,38 @@ class CorpusPool:
         generator.shuffle(selected)
         return selected
 
+    @staticmethod
+    def _select_wasm_staging(
+        *,
+        generator: random.Random,
+        size: int,
+        samples: tuple[CorpusSample, ...],
+    ) -> list[CorpusSample]:
+        """Randomize within proposal families without starving rare features."""
+
+        selected: list[CorpusSample] = []
+        selected_hashes: set[str] = set()
+        families = list(_WASM_STAGING_MARKERS.values())
+        generator.shuffle(families)
+        for markers in families:
+            candidates = [
+                sample
+                for sample in samples
+                if sample.sha256 not in selected_hashes
+                and any(marker in sample.data.lower() for marker in markers)
+            ]
+            if candidates and len(selected) < size:
+                choice = generator.choice(candidates)
+                selected.append(choice)
+                selected_hashes.add(choice.sha256)
+        remaining = [
+            sample for sample in samples if sample.sha256 not in selected_hashes
+        ]
+        if len(selected) < size:
+            selected.extend(generator.sample(remaining, size - len(selected)))
+        generator.shuffle(selected)
+        return selected
+
     def build_window(
         self,
         *,
@@ -492,6 +519,12 @@ class CorpusPool:
                 samples=eligible,
             )
             if strategy == "stratified_v8"
+            else self._select_wasm_staging(
+                generator=generator,
+                size=selected_size,
+                samples=eligible,
+            )
+            if strategy == "focus_wasm_staging_builder"
             else generator.sample(eligible, selected_size)
         )
         parts = [

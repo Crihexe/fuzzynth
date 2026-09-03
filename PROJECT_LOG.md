@@ -1296,3 +1296,7 @@ This is the living operational memory for the project. Read it together with
   proposal flags; historical assertion/d8 harness calls remain context-only.
   Proposal families now contribute to semantic novelty, and the priority ASan
   replay profile enables the same independent feature flags.
+- Stratified staging-window sampling now selects a random member of all six
+  proposal families before filling the remaining two random positions. This
+  preserves corpus randomization while preventing the four wide-arithmetic and
+  five fp16 examples from being statistically starved by larger subsets.

@@ -543,3 +543,8 @@ separate Chrome 152 proposal flags enabled explicitly rather than assuming
 `--wasm-staging` covers every family. Staging families are now first-class
 semantic-fingerprint mechanisms, avoiding the prior false equivalence between
 programs whose builder method lists matched but whose proposal opcodes differed.
+Windows remain seeded and random, but sampling is stratified by proposal family:
+each eight-example context contains one randomly chosen example from every
+available family before filling the remaining slots. This prevents the 4-wide
+and 5-fp16 subsets from being drowned out by the 20-plus WasmFX, stringref, and
+memory64 subsets.

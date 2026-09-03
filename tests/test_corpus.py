@@ -296,6 +296,37 @@ class CorpusPoolTests(unittest.TestCase):
             {"staging.js"},
         )
 
+    def test_staging_wasm_focus_stratifies_rare_proposal_families(self) -> None:
+        markers = (
+            b"new WasmModuleBuilder().addCont(kSig_v_v);",
+            b"new WasmModuleBuilder(); kWasmStringRef;",
+            b"new WasmModuleBuilder(); kExprF16x8Add;",
+            b"new WasmModuleBuilder().addSharedType(0);",
+            b"new WasmModuleBuilder().addMemory64(1, 2);",
+            b"new WasmModuleBuilder(); kExprI64Add128;",
+        )
+        samples = tuple(
+            CorpusSample(
+                f"family-{index}.js",
+                f"{index:x}" * 64,
+                source,
+                contains_wasm_markers=True,
+            )
+            for index, source in enumerate(markers)
+        )
+        pool = CorpusPool(samples)
+
+        window = pool.build_window(
+            seed=42,
+            size=6,
+            strategy="focus_wasm_staging_builder",
+        )
+
+        self.assertEqual(
+            {item.name for item in extract_corpus_references(window)},
+            {sample.name for sample in samples},
+        )
+
     def test_buffer_and_regexp_focus_exclude_unrelated_samples(self) -> None:
         samples = (
             CorpusSample(
