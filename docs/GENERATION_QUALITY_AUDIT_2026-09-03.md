@@ -491,3 +491,10 @@ newest-first, worker-filtered priority queue contains 1,200 compiler executions,
 after the already-running 19,320-case matrix; the much larger 48,901-case full
 historical expansion is intentionally deferred until these 2,616 higher-yield
 cases finish.
+
+Each normal turn now also emits a bounded semantic fingerprint built from
+engine mechanism families, builtin/intrinsic operation names, constructor
+families, and coarse control-flow shape. Local identifiers do not affect it.
+The next-turn message treats a repeated fingerprint as template reuse, so the
+model receives a direct signal when textual novelty failed to create semantic
+novelty.

@@ -1268,3 +1268,9 @@ This is the living operational memory for the project. Read it together with
   2,616-case priority service put these higher-yield checks ahead of the full
   48,901-case historical expansion. All 206 tests pass and all new flag vectors
   passed smoke execution on their pinned images.
+- Added a compact semantic fingerprint to every next-turn observation. It hashes
+  bounded engine mechanisms, builtin/intrinsic operations, constructors, and
+  coarse control-flow shape while ignoring local identifier names. Iterative
+  feedback now explicitly identifies renamed copies of the same engine-facing
+  template, addressing the gap between 100% unique source hashes and much lower
+  behavioral diversity without adding a second model call.

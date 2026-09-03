@@ -130,8 +130,11 @@ def _render_turn(turn: TurnContext) -> tuple[ConversationMessage, ConversationMe
             "<execution-observation-json>\n"
             f"{_decode(turn.feedback, 'execution feedback')}\n"
             "</execution-observation-json>\n"
-            "Use this result as feedback. Produce the next standalone d8 JavaScript "
-            "program now; output only its source code."
+            "Use this result as feedback. A repeated semantic_profile.signature "
+            "means the engine-facing template did not change even if identifiers "
+            "did; after a successful run, change a mechanism or operation family. "
+            "Produce the next standalone d8 JavaScript program now; output only "
+            "its source code."
         ),
     )
     return program, feedback

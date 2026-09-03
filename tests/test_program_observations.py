@@ -6,6 +6,54 @@ from fuzzynth.program_observations import observe_program
 
 
 class ProgramObservationTests(unittest.TestCase):
+    def test_semantic_profile_ignores_local_names_but_tracks_mechanisms(self) -> None:
+        first = observe_program(
+            prompt_variant="language_v1",
+            program=(
+                b"function alpha(x){return proxy.valueOf()+x;}"
+                b"const proxy=new Proxy({valueOf(){return 1;}},{}); alpha(2);"
+            ),
+            outcome="ok",
+            stdout=b"",
+            stderr=b"",
+        )["semantic_profile"]
+        renamed = observe_program(
+            prompt_variant="language_v1",
+            program=(
+                b"function beta(y){return holder.valueOf()+y;}"
+                b"const holder=new Proxy({valueOf(){return 1;}},{}); beta(2);"
+            ),
+            outcome="ok",
+            stdout=b"",
+            stderr=b"",
+        )["semantic_profile"]
+
+        self.assertEqual(first["signature"], renamed["signature"])
+        self.assertIn("proxy_traps", first["mechanisms"])
+        self.assertIn("coercion_hooks", first["mechanisms"])
+        self.assertIn("valueOf", first["operations"])
+
+    def test_semantic_profile_changes_for_a_different_engine_interaction(self) -> None:
+        proxy = observe_program(
+            prompt_variant="language_v1",
+            program=b"new Proxy({}, {get(){return 1;}}).x;",
+            outcome="ok",
+            stdout=b"",
+            stderr=b"",
+        )["semantic_profile"]
+        buffer = observe_program(
+            prompt_variant="language_v1",
+            program=(
+                b"const b=new ArrayBuffer(8,{maxByteLength:16});"
+                b"new Uint8Array(b); b.resize(12);"
+            ),
+            outcome="ok",
+            stdout=b"",
+            stderr=b"",
+        )["semantic_profile"]
+
+        self.assertNotEqual(proxy["signature"], buffer["signature"])
+
     def test_wasm_success_requires_static_boundary_and_exit_zero(self) -> None:
         observation = observe_program(
             prompt_variant="wasm_boundary_v1",

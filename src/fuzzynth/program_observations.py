@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 
 
@@ -21,6 +23,78 @@ _WASM_COMPILED_FUNCTION = re.compile(
     r"Compiled function .*? using ([A-Za-z0-9_+-]+)", re.IGNORECASE
 )
 _WASM_COMPILED_WRAPPER = re.compile(r"Compiled WasmToJS wrapper", re.IGNORECASE)
+
+_MECHANISM_PATTERNS = (
+    ("accessor_side_effects", r"\b(?:get|set)\s+[A-Za-z_$[]|__defineGetter__"),
+    ("async_promises", r"\b(?:async|await|Promise)\b"),
+    ("bigint", r"\bBigInt\b|\d+n\b|Big(?:Int64|Uint64)Array"),
+    ("classes_private_fields", r"\bclass\b|#[A-Za-z_$][\w$]*"),
+    ("coercion_hooks", r"Symbol\.toPrimitive|\b(?:valueOf|toString)\s*\("),
+    ("collections", r"\b(?:Map|Set|WeakMap|WeakSet)\b"),
+    ("dynamic_code", r"\b(?:eval|Function)\s*\("),
+    ("generators_iterators", r"\bfunction\s*\*|Symbol\.iterator|\.next\s*\("),
+    ("optimization_intrinsics", r"%(?:Prepare|Optimize|Deoptimize|NeverOptimize)"),
+    ("prototypes_shapes", r"__proto__|Object\.(?:setPrototypeOf|definePropert|create)|delete\s+"),
+    ("proxy_traps", r"\b(?:new\s+Proxy|Proxy\.revocable)\s*\("),
+    ("regexp", r"\bRegExp\b|/(?:[^/\\\n]|\\.)+/[dgimsuvy]*"),
+    ("resizable_transferable_buffers", r"maxByteLength|\.resize\s*\(|\.transfer(?:ToFixedLength)?\s*\("),
+    ("shared_memory_atomics", r"SharedArrayBuffer|Atomics\."),
+    ("species", r"Symbol\.species"),
+    ("typed_views", r"\b(?:DataView|(?:Big)?(?:Int|Uint|Float)\w*Array)\b"),
+    ("wasm", r"WebAssembly|WasmModuleBuilder"),
+    ("weak_lifetimes", r"\b(?:WeakRef|FinalizationRegistry)\b"),
+    ("workers", r"\bnew\s+Worker\s*\("),
+)
+
+
+def _count_bucket(count: int) -> str:
+    if count < 3:
+        return str(count)
+    if count < 5:
+        return "3-4"
+    if count < 9:
+        return "5-8"
+    return "9+"
+
+
+def _semantic_profile(source: str) -> dict[str, object]:
+    mechanisms = [
+        name
+        for name, pattern in _MECHANISM_PATTERNS
+        if re.search(pattern, source)
+    ]
+    operations = sorted(
+        set(
+            re.findall(r"\.\s*([A-Za-z_$][\w$]*)\s*\(", source)
+            + re.findall(r"%([A-Za-z_$][\w$]*)\s*\(", source)
+        )
+    )[:24]
+    constructors = sorted(
+        set(re.findall(r"\bnew\s+([A-Za-z_$][\w$]*)", source))
+    )[:16]
+    shape = {
+        "branches": _count_bucket(
+            len(re.findall(r"\b(?:if|switch|case|catch)\b|\?", source))
+        ),
+        "functions": _count_bucket(
+            len(re.findall(r"\bfunction\b|(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>", source))
+        ),
+        "loops": _count_bucket(len(re.findall(r"\b(?:for|while|do)\b", source))),
+    }
+    signature_input = {
+        "constructors": constructors,
+        "mechanisms": mechanisms,
+        "operations": operations,
+        "shape": shape,
+    }
+    signature = hashlib.sha256(
+        json.dumps(
+            signature_input,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+    ).hexdigest()[:16]
+    return {**signature_input, "signature": signature}
 
 
 def _decode(data: bytes) -> str:
@@ -73,6 +147,7 @@ def observe_program(
     features = _base_features(source)
     observation: dict[str, object] = {
         "static_features": features,
+        "semantic_profile": _semantic_profile(source),
     }
 
     optimized = len(_OPTIMIZED.findall(process_output))
