@@ -187,6 +187,28 @@ class CorpusPoolTests(unittest.TestCase):
             {"plain-a.js", "plain-b.js"},
         )
 
+    def test_concurrency_focus_draws_only_from_standalone_shared_memory(self) -> None:
+        samples = (
+            CorpusSample(
+                "shared.js",
+                "0" * 64,
+                b"const x = new SharedArrayBuffer(8); Atomics.load(new Int32Array(x), 0);",
+            ),
+            CorpusSample("plain.js", "1" * 64, b"print(1)"),
+        )
+        pool = CorpusPool(samples)
+
+        window = pool.build_window(
+            seed=1,
+            size=1,
+            strategy="focus_concurrency",
+        )
+
+        self.assertEqual(
+            {item.name for item in extract_corpus_references(window)},
+            {"shared.js"},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -207,6 +207,7 @@ def load_campaign_configuration(path: Path, *, repo_root: Path = Path(".")) -> C
             "uniform",
             "stratified_v8",
             "focus_compiler",
+            "focus_concurrency",
             "focus_language",
             "focus_memory",
             "focus_security",

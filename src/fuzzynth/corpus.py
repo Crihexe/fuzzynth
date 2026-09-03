@@ -26,6 +26,7 @@ _INDEX_ALLOWED_ENGINES = (
 )
 _FOCUS_STRATEGIES = {
     "focus_compiler",
+    "focus_concurrency",
     "focus_language",
     "focus_memory",
     "focus_security",
@@ -60,6 +61,7 @@ _REFERENCE_TAG = re.compile(
     rb'<historical-js-example name="([A-Za-z0-9._-]{1,128})" '
     rb'sha256="([0-9a-f]{64})">'
 )
+_GLOBAL_LOAD_CALL = re.compile(rb"(?<![A-Za-z0-9_$.])load\s*\(")
 
 
 def extract_corpus_references(window: bytes | None) -> tuple[CorpusReference, ...]:
@@ -277,9 +279,13 @@ class CorpusPool:
         source = sample.data.lower()
         # Context examples that depend on the V8 checkout's test harness teach
         # the model unavailable APIs. Focused windows prefer standalone PoCs.
-        standalone = b"load(" not in source and b"d8.file" not in source
+        # Do not mistake APIs such as Atomics.load(...) for the d8 test
+        # harness's global load(...) helper.
+        standalone = _GLOBAL_LOAD_CALL.search(source) is None and b"d8.file" not in source
         if strategy == "focus_compiler":
             return standalone and "compiler" in groups
+        if strategy == "focus_concurrency":
+            return standalone and "concurrency" in groups
         if strategy == "focus_wasm":
             return (
                 standalone

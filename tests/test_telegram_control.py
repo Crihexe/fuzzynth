@@ -80,14 +80,11 @@ class TelegramControlServiceTests(unittest.TestCase):
             self.assertNotIn("secret", reply)
         self.assertEqual(reply, "FUZZYNTH LAST CRASH\nnone")
 
-    def test_workers_distinguishes_config_control_and_effective_state(self) -> None:
+    def test_workers_omits_disabled_workers_and_reports_count(self) -> None:
         reply = self.service.handle_update(update(4, "/workers"))
 
-        self.assertIn(
-            "terra-custom-xhigh-tool-investigator: config=disabled, "
-            "control=running, effective=disabled",
-            reply,
-        )
+        self.assertNotIn("terra-custom-xhigh-tool-investigator", reply)
+        self.assertIn("disabled_omitted=", reply)
 
     def test_each_authorized_command_reloads_worker_configuration(self) -> None:
         current = self.service.configuration

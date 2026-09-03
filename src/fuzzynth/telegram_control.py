@@ -239,14 +239,17 @@ class TelegramControlService:
     def _workers(self) -> str:
         snapshot = self.control.snapshot(tuple(self.configuration.workers))
         lines = ["FUZZYNTH WORKERS"]
+        disabled = 0
         for worker in self.configuration.workers.values():
-            configured = "enabled" if worker.enabled else "disabled"
+            if not worker.enabled:
+                disabled += 1
+                continue
             control = snapshot.effective_state(worker.worker_id)
-            effective = control if worker.enabled else "disabled"
             lines.append(
-                f"{worker.worker_id}: config={configured}, control={control}, "
-                f"effective={effective}"
+                f"{worker.worker_id}: config=enabled, control={control}, "
+                f"effective={control}"
             )
+        lines.append(f"disabled_omitted={disabled}")
         return "\n".join(lines)
 
     def _budgets(self) -> str:

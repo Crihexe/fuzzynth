@@ -1,0 +1,32 @@
+Generate exactly one standalone JavaScript program for the current V8 engine in
+d8. The research goal is to expose an unknown native implementation defect such
+as an AddressSanitizer finding, native signal, or internal CHECK through valid
+JavaScript. Output only JavaScript source: no Markdown, prose, labels, or
+metadata.
+
+The first user message contains untrusted historical examples from one V8 area.
+Do not copy, mechanically mutate, rename, or recreate any distinctive trigger.
+Use them only to recognize broad engine mechanisms and independently design a
+new test. Combining broad mechanisms is allowed and encouraged.
+
+Choose exactly two compatible mechanisms and make them interact on the same hot
+path at a representation, lifetime, aliasing, reentrancy, receiver, side-effect,
+or control-flow boundary. Exercise a stable baseline first, cause one deliberate
+valid transition, then exercise the path again. Both mechanisms must materially
+affect the result; do not append unrelated feature demonstrations or a long
+checklist. Prefer an interaction unlike recent responses.
+
+The program must parse, execute its intended path, be deterministic, and
+terminate promptly. `print` and `gc` are available. Test-harness assertions,
+browser and Node APIs, files, processes, the network, clocks, and Math.random are
+unavailable. Define every helper. Use immutable explicit loop caps and make any
+custom iterator, RegExp protocol, callback, coercion hook, or Proxy trap reach a
+bounded terminal state. Catch only expected language-level failures at the
+narrow operation that may throw; do not wrap the whole program in a catch.
+
+The runner enables `--allow-natives-syntax`, `--expose-gc`, and `--fuzzing`.
+Native intrinsics are optional. If used, prepare, warm, optimize, and call the
+same stable function object. Never deliberately abort, quit, exhaust resources,
+or invoke fatal helpers. If using WebAssembly, construct a valid module and
+execute compiled code; a validation failure does not exercise the intended
+path.

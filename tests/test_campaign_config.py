@@ -34,6 +34,11 @@ class CampaignConfigurationTests(unittest.TestCase):
                 "luna-custom-low-security-asan-lean-v3",
                 "terra-custom-high-security-asan-explicit-v3",
                 "terra-custom-high-wasm-asan-explicit-v3",
+                "luna-custom-low-compiler-optdebug-interaction-v1",
+                "luna-custom-low-wasm-asan-interaction-v1",
+                "luna-custom-low-memory-asan-interaction-v1",
+                "luna-custom-low-security-asan-interaction-v1",
+                "luna-custom-low-concurrency-asan-interaction-v1",
             },
         )
         self.assertTrue(
@@ -70,6 +75,36 @@ class CampaignConfigurationTests(unittest.TestCase):
             {
                 "terra-custom-high-security-asan-explicit-v3",
                 "terra-custom-high-wasm-asan-explicit-v3",
+                "luna-custom-low-compiler-optdebug-interaction-v1",
+                "luna-custom-low-wasm-asan-interaction-v1",
+                "luna-custom-low-memory-asan-interaction-v1",
+                "luna-custom-low-security-asan-interaction-v1",
+                "luna-custom-low-concurrency-asan-interaction-v1",
+            },
+        )
+
+    def test_interaction_experiment_is_one_turn_and_focused(self) -> None:
+        workers = [
+            worker
+            for worker in self.config.enabled_workers()
+            if worker.prompt_variant == "interaction_v1"
+        ]
+        self.assertEqual(len(workers), 5)
+        self.assertTrue(
+            all(
+                (worker.min_turns_per_session, worker.max_turns_per_session)
+                == (1, 1)
+                for worker in workers
+            )
+        )
+        self.assertEqual(
+            {worker.corpus_strategy for worker in workers},
+            {
+                "focus_compiler",
+                "focus_wasm",
+                "focus_memory",
+                "focus_security",
+                "focus_concurrency",
             },
         )
 

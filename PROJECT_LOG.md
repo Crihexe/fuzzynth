@@ -1039,3 +1039,35 @@ This is the living operational memory for the project. Read it together with
   250M cached-input, and 4M output-token ceilings. The lanes use `high` rather
   than `xhigh` to avoid the observed upstream long-request timeout regime and
   focus on security and Wasm under ASan. No official API budget is used.
+
+### 2026-09-03 — semantic-depth audit and interaction experiment
+
+- Audited the first 497 focused-v3 primary executions. Explicit v3 reached
+  87.1% exit 0 versus 79.1% for lean v3. Across 219 turns sharing the exact
+  focus, corpus window, and turn index, explicit-only success occurred 35 times
+  versus 15 lean-only successes. All 497 program hashes were unique.
+- Textual diversity was not semantic diversity. Lean v3 nearly always emitted
+  Proxy, TypedArray, Reflect, GC, and assorted language features together;
+  explicit v3 heavily favored prepare/optimize sequences. The focused corpus
+  was rotating correctly: 195 sessions had used 747 distinct source PoCs, and
+  exact eight-token source/output overlap remained below 10% for every result.
+- Found that context windows containing SharedArrayBuffer/Atomics almost never
+  caused generated programs to exercise concurrency. Added a dedicated
+  `focus_concurrency` pool and fixed its standalone-source filter: the old
+  byte-substring check for global `load(...)` also rejected valid
+  `Atomics.load(...)` examples. The corrected pool has 155 standalone samples
+  below 15 KiB and produces valid 8- and 16-source windows.
+- Added `interaction_v1`, a third prompt which permits independent
+  recombination while requiring exactly two compatible mechanisms on one
+  central path. Five bounded one-turn Luna workers cover compiler, Wasm,
+  memory, security, and concurrency. They will produce 50 outputs with eight
+  examples and 50 with sixteen, making context quantity directly observable in
+  immutable generation metadata.
+- Completed the initial feature-routed stress replay: 13,669 executions across
+  compiler verification, concurrent compilation, forced deoptimization, GC,
+  Wasm tiering/memory, and experimental RegExp profiles. It completed with zero
+  infrastructure errors and zero bug candidates.
+- Compacted Telegram `/workers` output to enabled workers plus a disabled count;
+  this avoids stale disabled lanes exhausting Telegram's message limit while
+  retaining full local configuration status. The full offline suite passes with
+  165 tests.

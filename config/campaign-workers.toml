@@ -827,6 +827,124 @@ v8_build_profile = "asan"
 v8_worker_profile = "standard"
 d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing"]
 
+# Bounded one-turn interaction-prompt experiment. These workers are omitted
+# from the continuous systemd campaign and are disabled again after the exact
+# 8-context/16-context comparison completes.
+[[workers]]
+id = "luna-custom-low-compiler-optdebug-interaction-v1"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_interaction_v1.txt"
+prompt_variant = "interaction_v1"
+corpus_pair_id = "interaction-v1-compiler"
+corpus_strategy = "focus_compiler"
+reasoning_efforts = ["low"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 1
+max_turns_per_session = 1
+history_turns = 0
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "optdebug"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing"]
+
+[[workers]]
+id = "luna-custom-low-wasm-asan-interaction-v1"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_interaction_v1.txt"
+prompt_variant = "interaction_v1"
+corpus_pair_id = "interaction-v1-wasm"
+corpus_strategy = "focus_wasm"
+reasoning_efforts = ["low"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 1
+max_turns_per_session = 1
+history_turns = 0
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "asan"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-sync-tier-up", "--stress-wasm-memory-moving"]
+
+[[workers]]
+id = "luna-custom-low-memory-asan-interaction-v1"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_interaction_v1.txt"
+prompt_variant = "interaction_v1"
+corpus_pair_id = "interaction-v1-memory"
+corpus_strategy = "focus_memory"
+reasoning_efforts = ["low"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 1
+max_turns_per_session = 1
+history_turns = 0
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "asan"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing", "--stress-compaction", "--stress-incremental-marking"]
+
+[[workers]]
+id = "luna-custom-low-security-asan-interaction-v1"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_interaction_v1.txt"
+prompt_variant = "interaction_v1"
+corpus_pair_id = "interaction-v1-security"
+corpus_strategy = "focus_security"
+reasoning_efforts = ["low"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 1
+max_turns_per_session = 1
+history_turns = 0
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "asan"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing"]
+
+[[workers]]
+id = "luna-custom-low-concurrency-asan-interaction-v1"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_interaction_v1.txt"
+prompt_variant = "interaction_v1"
+corpus_pair_id = "interaction-v1-concurrency"
+corpus_strategy = "focus_concurrency"
+reasoning_efforts = ["low"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 1
+max_turns_per_session = 1
+history_turns = 0
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "asan"
+v8_worker_profile = "standard"
+d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing"]
+
 # Two small high-reasoning custom Terra lanes add a qualitatively different
 # generator while remaining inside a separate owner-authorized hard budget.
 [[workers]]
