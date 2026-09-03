@@ -136,6 +136,54 @@ class ProgramObservationTests(unittest.TestCase):
             "wasm_simd_lane_immediate_missing",
         )
 
+    def test_builder_direct_call_alias_has_exact_hint(self) -> None:
+        observation = observe_program(
+            prompt_variant="wasm_builder_advanced_v1",
+            program=b"b.addBody([kExprCall, f])",
+            outcome="js_exception",
+            stdout=b"ReferenceError: kExprCall is not defined",
+            stderr=b"",
+        )
+
+        self.assertEqual(
+            observation["corrective_hint"]["code"],
+            "wasm_direct_call_opcode_alias",
+        )
+
+    def test_builder_object_body_entry_has_exact_hint(self) -> None:
+        observation = observe_program(
+            prompt_variant="wasm_builder_advanced_v1",
+            program=b"b.addBody([kExprCallFunction, f])",
+            outcome="nonzero_exit",
+            stdout=(
+                b"Error: invalid body (entries must be 8 bit numbers): "
+                b"16,[object Object]"
+            ),
+            stderr=b"",
+        )
+
+        self.assertEqual(
+            observation["corrective_hint"]["code"],
+            "wasm_builder_object_in_body",
+        )
+
+    def test_builder_call_indirect_stack_failure_has_exact_hint(self) -> None:
+        observation = observe_program(
+            prompt_variant="wasm_builder_advanced_v1",
+            program=b"b.addBody([kExprCallIndirect, sig, table.index])",
+            outcome="nonzero_exit",
+            stdout=(
+                b"CompileError: WebAssembly.Module(): not enough arguments on "
+                b"the stack for call_indirect (need 1, got 0)"
+            ),
+            stderr=b"",
+        )
+
+        self.assertEqual(
+            observation["corrective_hint"]["code"],
+            "wasm_call_indirect_stack_or_immediates",
+        )
+
     def test_wasm_export_alias_call_is_recognized(self) -> None:
         observation = observe_program(
             prompt_variant="wasm_boundary_v1",

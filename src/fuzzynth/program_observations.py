@@ -188,6 +188,76 @@ def observe_program(
                     "...SimdInstr(kExprI32x4ExtractLane), 0."
                 ),
             }
+        elif builder_assisted and re.search(
+            r"ReferenceError: kExprCall is not defined",
+            process_output,
+        ):
+            observation["corrective_hint"] = {
+                "code": "wasm_direct_call_opcode_alias",
+                "guidance": (
+                    "The direct-call opcode is kExprCallFunction, not kExprCall. "
+                    "Its following immediate is a numeric function index: use the "
+                    "number returned by addImport(), or functionBuilder.index."
+                ),
+            }
+        elif builder_assisted and re.search(
+            r"ReferenceError: kExprV128(?:Load|Store) is not defined",
+            process_output,
+        ):
+            observation["corrective_hint"] = {
+                "code": "wasm_simd_memory_opcode_alias",
+                "guidance": (
+                    "The builder names SIMD memory opcodes kExprS128LoadMem and "
+                    "kExprS128StoreMem. Emit them through ...SimdInstr(opcode), "
+                    "followed by the alignment and offset immediates."
+                ),
+            }
+        elif builder_assisted and re.search(
+            r"ReferenceError: wasmSimdConst is not defined",
+            process_output,
+        ):
+            observation["corrective_hint"] = {
+                "code": "wasm_simd_const_helper_alias",
+                "guidance": (
+                    "The official helper is wasmS128Const(), not wasmSimdConst(). "
+                    "Spread its returned bytes into addBody()."
+                ),
+            }
+        elif builder_assisted and re.search(
+            r"not enough arguments on the stack for call_indirect|"
+            r"table index \d+ exceeds number of tables",
+            process_output,
+        ):
+            observation["corrective_hint"] = {
+                "code": "wasm_call_indirect_stack_or_immediates",
+                "guidance": (
+                    "Before kExprCallIndirect, push all callee arguments and then "
+                    "one i32 table-slot operand. After the opcode emit the numeric "
+                    "signature index followed by table.index; do not swap function, "
+                    "signature, table, or stack-slot indices."
+                ),
+            }
+        elif builder_assisted and "undeclared reference to function" in process_output:
+            observation["corrective_hint"] = {
+                "code": "wasm_undeclared_function_reference",
+                "guidance": (
+                    "A ref.func target must be declared by an element segment. "
+                    "Reuse an already declared function index, or avoid ref.func and "
+                    "use kExprCallFunction with functionBuilder.index."
+                ),
+            }
+        elif builder_assisted and (
+            "invalid body (entries must be 8 bit numbers)" in process_output
+            and "[object Object]" in process_output
+        ):
+            observation["corrective_hint"] = {
+                "code": "wasm_builder_object_in_body",
+                "guidance": (
+                    "addBody() received a builder object. Opcode immediates must be "
+                    "bytes or numeric indices: use functionBuilder.index, while an "
+                    "addImport() result is already a numeric index."
+                ),
+            }
         elif "CompileError: WebAssembly.Module()" in process_output:
             observation["corrective_hint"] = {
                 "code": "wasm_binary_rejected_before_compiled_execution",
