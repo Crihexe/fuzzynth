@@ -14,6 +14,7 @@ import subprocess
 import sys
 
 from fuzzynth.execution_service import execute_program
+from fuzzynth.campaign_config import load_campaign_configuration
 from fuzzynth.stress_replay import applicable_profiles
 
 
@@ -31,13 +32,13 @@ def _load_programs(
     state_root: Path,
     *,
     max_programs: int | None,
-) -> list[tuple[str, str, bytes]]:
+) -> list[tuple[str, str, str, bytes]]:
     catalog_path = state_root / "catalog.sqlite3"
     artifacts_root = state_root / "artifacts"
     with sqlite3.connect(f"file:{catalog_path}?mode=ro", uri=True) as connection:
         rows = connection.execute(
             """
-            SELECT g.id, g.program_sha256, a.relative_path
+            SELECT g.id, g.campaign_id, g.program_sha256, a.relative_path
             FROM generation g
             JOIN artifact a ON a.sha256 = g.program_sha256
             WHERE EXISTS (
@@ -47,16 +48,16 @@ def _load_programs(
             ORDER BY g.finished_at
             """
         ).fetchall()
-    programs: list[tuple[str, str, bytes]] = []
+    programs: list[tuple[str, str, str, bytes]] = []
     seen: set[str] = set()
-    for generation_id, sha256, relative_path in rows:
+    for generation_id, campaign_id, sha256, relative_path in rows:
         if sha256 in seen:
             continue
         data = (artifacts_root / relative_path).read_bytes()
         if hashlib.sha256(data).hexdigest() != sha256:
             raise RuntimeError("program artifact failed SHA-256 validation")
         seen.add(sha256)
-        programs.append((generation_id, sha256, data))
+        programs.append((generation_id, campaign_id, sha256, data))
         if max_programs is not None and len(programs) >= max_programs:
             break
     return programs
@@ -94,15 +95,21 @@ def main() -> int:
     repo_root = args.repo_root.resolve()
     state_root = args.state_root.resolve()
     programs = _load_programs(state_root, max_programs=args.max_programs)
+    configuration = load_campaign_configuration(
+        repo_root / "config/campaign-workers.toml",
+        repo_root=repo_root,
+    )
     existing = _existing_keys(state_root)
     work = []
     by_profile: dict[str, int] = {}
-    for generation_id, sha256, program in programs:
+    for generation_id, campaign_id, sha256, program in programs:
+        worker = configuration.workers.get(campaign_id)
+        support_files = worker.support_files if worker is not None else ()
         for profile in applicable_profiles(program):
             flags_json = json.dumps(profile.flags, separators=(",", ":"))
             if (sha256, profile.build_profile, flags_json) in existing:
                 continue
-            work.append((generation_id, program, profile))
+            work.append((generation_id, program, profile, support_files))
             by_profile[profile.name] = by_profile.get(profile.name, 0) + 1
     print(
         json.dumps(
@@ -126,7 +133,7 @@ def main() -> int:
     errors = 0
 
     def run(item):
-        generation_id, program, profile = item
+        generation_id, program, profile, support_files = item
         return profile, execute_program(
             program,
             generation_id=generation_id,
@@ -135,6 +142,7 @@ def main() -> int:
             flags=profile.flags,
             repo_root=repo_root,
             state_root=state_root,
+            support_files=support_files,
         )
 
     with ThreadPoolExecutor(max_workers=args.jobs) as executor:

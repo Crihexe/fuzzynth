@@ -1116,3 +1116,8 @@ This is the living operational memory for the project. Read it together with
   immutable detail artifact. Ten corpus-window smokes covered 73 sources, and a
   real ASan container smoke instantiated and called an export successfully.
   The suite now passes 177 tests.
+- Propagated each originating worker's allowlisted support files into the
+  feature-routed stress replay. Without this, later alternate-flag executions
+  of a valid builder-generated program would fail at `load()` instead of testing
+  V8. The idempotence key remains program/profile/flags; support provenance is
+  still captured in every replay detail artifact.
