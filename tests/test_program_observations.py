@@ -59,6 +59,25 @@ class ProgramObservationTests(unittest.TestCase):
             "wasm_prefixed_opcode_not_leb_encoded",
         )
 
+    def test_builder_invented_prefixed_helper_has_exact_hint(self) -> None:
+        observation = observe_program(
+            prompt_variant="wasm_builder_advanced_v1",
+            program=(
+                b"load('/input/wasm-module-builder.js');"
+                b"const b=new WasmModuleBuilder();"
+                b"b.addFunction('f',kSig_i_i).addBody(["
+                b"...wasmSimdInstr(kExprI32x4Splat)]).exportFunc();"
+            ),
+            outcome="js_exception",
+            stdout=b"ReferenceError: wasmSimdInstr is not defined",
+            stderr=b"",
+        )
+
+        self.assertEqual(
+            observation["corrective_hint"]["code"],
+            "unknown_wasm_prefixed_instruction_helper",
+        )
+
     def test_wasm_export_alias_call_is_recognized(self) -> None:
         observation = observe_program(
             prompt_variant="wasm_boundary_v1",

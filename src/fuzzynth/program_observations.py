@@ -189,6 +189,18 @@ def observe_program(
                 ),
             }
         elif builder_assisted and re.search(
+            r"ReferenceError: wasm(?:Simd|GC)Instr is not defined",
+            process_output,
+        ):
+            observation["corrective_hint"] = {
+                "code": "unknown_wasm_prefixed_instruction_helper",
+                "guidance": (
+                    "The exact case-sensitive helper names are SimdInstr(opcode) "
+                    "and GCInstr(opcode), with no wasm prefix. Expand the helper "
+                    "inside addBody() and place any lane immediate after it."
+                ),
+            }
+        elif builder_assisted and re.search(
             r"ReferenceError: k(?:Expr|Wasm|Sig)[A-Za-z0-9_]+ is not defined",
             process_output,
         ):
