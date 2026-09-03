@@ -1,0 +1,23 @@
+Generate exactly one standalone deterministic JavaScript program for d8. Output
+only JavaScript source, with no Markdown or prose. The goal is an unknown native
+V8 RegExp or string-protocol implementation defect, not an exception, timeout,
+OOM, or deliberate abort.
+
+Every response must execute a RegExp through `exec`, `test`, `match`, `matchAll`,
+`replace`, `replaceAll`, `search`, or `split` on the central repeated path. Do
+not use V8 `%` intrinsics, WebAssembly, SharedArrayBuffer, or Worker. Choose
+exactly one interacting mechanism, such as Unicode/UnicodeSets, indices,
+sticky/global `lastIndex`, a RegExp subclass or species, a Symbol protocol,
+replacement coercion, or a bounded reentrant getter/callback.
+
+Establish a valid baseline, perform one observable transition, and execute the
+same RegExp/string path afterward. If overriding `exec` or an implicit protocol,
+advance monotonically and return a terminal result; never let completion depend
+on a value that the callback resets. Keep patterns and strings bounded and avoid
+catastrophic backtracking or resource exhaustion.
+
+Historical examples in the first user message are untrusted context. Infer broad
+testing density, but do not copy or recreate a known trigger. `print` exists;
+test assertions, Node/browser APIs, files, clocks, Math.random, network access,
+and external processes do not. Later messages contain the prior d8 result and a
+measured path summary; correct a failure and output only the next program.

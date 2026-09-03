@@ -80,8 +80,12 @@ def observe_program(
             "deopt_reasons": [reason[:160] for reason in deopt_reasons[:4]],
         }
 
-    if prompt_variant in {"wasm_boundary_v1", "wasm_builder_v1"}:
-        builder_assisted = prompt_variant == "wasm_builder_v1"
+    if prompt_variant in {
+        "wasm_boundary_v1",
+        "wasm_builder_v1",
+        "wasm_builder_v2",
+    }:
+        builder_assisted = prompt_variant.startswith("wasm_builder_")
         wasm = {
             "constructs_module": bool(
                 re.search(
@@ -139,11 +143,15 @@ def observe_program(
                 ),
             }
 
-    elif prompt_variant == "concurrency_v1":
+    elif prompt_variant in {"concurrency_v1", "concurrency_message_v2"}:
         concurrency = {
             "allocates_shared_array_buffer": "SharedArrayBuffer" in source,
             "uses_atomics": "Atomics." in source,
             "uses_worker": bool(re.search(r"\bnew\s+Worker\s*\(", source)),
+            "uses_wait_or_spin": bool(
+                re.search(r"Atomics\.wait(?:Async)?\s*\(", source)
+                or re.search(r"\bwhile\s*\([^)]*Atomics\.", source)
+            ),
             "uses_percent_intrinsic": bool(_PERCENT_INTRINSIC.search(source)),
         }
         observation["subsystem"] = "concurrency"
@@ -152,6 +160,13 @@ def observe_program(
             concurrency["allocates_shared_array_buffer"]
             and concurrency["uses_atomics"]
             and not concurrency["uses_percent_intrinsic"]
+            and (
+                prompt_variant != "concurrency_message_v2"
+                or (
+                    concurrency["uses_worker"]
+                    and not concurrency["uses_wait_or_spin"]
+                )
+            )
         )
         observation["runtime_path_completed"] = bool(
             observation["prompt_adherent"] and outcome == "ok"
@@ -174,7 +189,7 @@ def observe_program(
                 ),
             }
 
-    elif prompt_variant == "language_v1":
+    elif prompt_variant in {"language_v1", "buffers_v1", "regexp_v1"}:
         forbidden = {
             "percent_intrinsic": bool(_PERCENT_INTRINSIC.search(source)),
             "shared_memory_or_worker": bool(
@@ -182,9 +197,53 @@ def observe_program(
             ),
             "wasm": "WebAssembly" in source,
         }
-        observation["subsystem"] = "language"
-        observation["subsystem_features"] = forbidden
-        observation["prompt_adherent"] = not any(forbidden.values())
+        if prompt_variant == "buffers_v1":
+            buffer_features = {
+                **forbidden,
+                "resizable_buffer": (
+                    "maxByteLength" in source and bool(re.search(r"\.resize\s*\(", source))
+                ),
+                "view_constructions": len(
+                    re.findall(
+                        r"\b(?:DataView|BigInt64Array|BigUint64Array|"
+                        r"Float(?:32|64)Array|Int(?:8|16|32)Array|"
+                        r"Uint(?:8|8Clamped|16|32)Array)\s*\(",
+                        source,
+                    )
+                ),
+            }
+            observation["subsystem"] = "buffers"
+            observation["subsystem_features"] = buffer_features
+            observation["prompt_adherent"] = (
+                not any(forbidden.values())
+                and buffer_features["resizable_buffer"]
+                and buffer_features["view_constructions"] >= 2
+            )
+        elif prompt_variant == "regexp_v1":
+            regexp_features = {
+                **forbidden,
+                "constructs_or_literals": bool(
+                    re.search(r"\bRegExp\s*\(", source)
+                    or re.search(r"/(?:[^/\\\n]|\\.)+/[dgimsuvy]*", source)
+                ),
+                "executes_regexp_protocol": bool(
+                    re.search(
+                        r"\.(?:exec|test|match|matchAll|replace|replaceAll|search|split)\s*\(",
+                        source,
+                    )
+                ),
+            }
+            observation["subsystem"] = "regexp"
+            observation["subsystem_features"] = regexp_features
+            observation["prompt_adherent"] = (
+                not any(forbidden.values())
+                and regexp_features["constructs_or_literals"]
+                and regexp_features["executes_regexp_protocol"]
+            )
+        else:
+            observation["subsystem"] = "language"
+            observation["subsystem_features"] = forbidden
+            observation["prompt_adherent"] = not any(forbidden.values())
         observation["runtime_path_completed"] = bool(
             observation["prompt_adherent"] and outcome == "ok"
         )

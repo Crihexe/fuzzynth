@@ -237,6 +237,34 @@ class CorpusPoolTests(unittest.TestCase):
             {"builder.js"},
         )
 
+    def test_buffer_and_regexp_focus_exclude_unrelated_samples(self) -> None:
+        samples = (
+            CorpusSample(
+                "buffer.js",
+                "0" * 64,
+                b"new ArrayBuffer(8, {maxByteLength: 16}).resize(12);",
+            ),
+            CorpusSample(
+                "regexp.js",
+                "1" * 64,
+                b"new RegExp('x').exec('x');",
+            ),
+            CorpusSample("plain.js", "2" * 64, b"print(1);"),
+        )
+        pool = CorpusPool(samples)
+
+        buffers = pool.build_window(seed=1, size=1, strategy="focus_buffers")
+        regexp = pool.build_window(seed=1, size=1, strategy="focus_regexp")
+
+        self.assertEqual(
+            {item.name for item in extract_corpus_references(buffers)},
+            {"buffer.js"},
+        )
+        self.assertEqual(
+            {item.name for item in extract_corpus_references(regexp)},
+            {"regexp.js"},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

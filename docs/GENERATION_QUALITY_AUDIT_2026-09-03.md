@@ -216,3 +216,21 @@ mount; every execution records the helper hash and revision. Its context pool is
 drawn from real builder-using examples rather than raw-byte examples. This tests
 the actual hypothesis that binary-construction precision—not lack of Wasm ideas—
 is suppressing useful executions.
+
+The first structured-feedback snapshot contains 175 turns. Compiler completed
+41/42, with a median of four optimized compilations and one deoptimization per
+successful traced run. Ordinary ECMAScript completed 48/49, with medians of
+fourteen compilations and three deoptimizations without native intrinsics. This
+confirms that a no-intrinsic language lane can still reach deep JIT behavior.
+Raw Wasm completed 9/32 and builder Wasm 5/14; builder assistance removes binary
+length arithmetic but does not prevent invalid opcode/stack construction.
+Concurrency completed 19/38; 28/40 inspected programs used wait/waitAsync and
+nine deadlocked.
+
+The next matrix revision therefore uses message barriers without atomic waits,
+and makes builder Wasm start with a straight-line function before adding one
+advanced feature after measured success. It also adds dedicated Resizable
+ArrayBuffer and RegExp lanes. The generic language lane had become mostly
+Proxy/iterator output and never used TypedArrays in the inspected 52-program
+snapshot, so these additional lanes expand semantic coverage rather than merely
+increasing worker count.

@@ -71,6 +71,51 @@ class ProgramObservationTests(unittest.TestCase):
         self.assertTrue(observation["prompt_adherent"])
         self.assertTrue(observation["runtime_path_completed"])
 
+    def test_message_concurrency_rejects_wait_even_after_exit_zero(self) -> None:
+        observation = observe_program(
+            prompt_variant="concurrency_message_v2",
+            program=b"""
+              const s = new SharedArrayBuffer(8);
+              const v = new Int32Array(s);
+              const w = new Worker('postMessage(1)', {type:'string'});
+              Atomics.wait(v, 0, 0);
+            """,
+            outcome="ok",
+            stdout=b"",
+            stderr=b"",
+        )
+
+        self.assertFalse(observation["prompt_adherent"])
+
+    def test_buffer_lane_requires_resize_and_two_views(self) -> None:
+        observation = observe_program(
+            prompt_variant="buffers_v1",
+            program=b"""
+              const b = new ArrayBuffer(8, {maxByteLength: 16});
+              const a = new Uint8Array(b);
+              const d = new DataView(b);
+              b.resize(12);
+            """,
+            outcome="ok",
+            stdout=b"",
+            stderr=b"",
+        )
+
+        self.assertTrue(observation["prompt_adherent"])
+        self.assertTrue(observation["runtime_path_completed"])
+
+    def test_regexp_lane_requires_construct_and_execution(self) -> None:
+        observation = observe_program(
+            prompt_variant="regexp_v1",
+            program=b"const r = new RegExp('x', 'g'); r.exec('xx');",
+            outcome="ok",
+            stdout=b"",
+            stderr=b"",
+        )
+
+        self.assertTrue(observation["prompt_adherent"])
+        self.assertTrue(observation["runtime_path_completed"])
+
     def test_concurrency_wrong_notify_view_has_actionable_hint(self) -> None:
         observation = observe_program(
             prompt_variant="concurrency_v1",

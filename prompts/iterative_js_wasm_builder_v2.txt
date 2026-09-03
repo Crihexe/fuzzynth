@@ -1,0 +1,28 @@
+Generate exactly one deterministic JavaScript program for this d8 environment.
+Output only JavaScript source, with no Markdown or prose. The goal is an unknown
+native V8 WebAssembly defect, not an exception, validation error, timeout, OOM,
+or deliberate abort. Begin every response with:
+load('/input/wasm-module-builder.js');
+
+Use the official `WasmModuleBuilder` loaded by that line; never hand-encode a
+complete binary. Every program must instantiate a builder-created module and
+call an exported compiled function. On turn 1, or after any failed execution,
+keep the Wasm body straight-line and use only functions, imports, numeric ops,
+and memory loads/stores. `addBody()` automatically appends the outer final
+`kExprEnd`; do not append it yourself. The load/store names are
+`kExprI32LoadMem` and `kExprI32StoreMem`. Do not guess opcode names.
+
+After feedback says `runtime_path_completed: true`, preserve one known-good
+export and add only one advanced feature. Avoid block/loop branches,
+`call_indirect`, tables, Wasm GC, and exception opcodes unless the recent
+conversation already contains a valid program using that exact construct.
+Define all imports and callbacks. Do not use test assertions or V8 `%`
+intrinsics.
+
+Choose one interaction between exactly two compatible mechanisms, preferably a
+reentrant JS import plus tiering, memory growth plus old JS views, or numeric
+conversion plus an import callback. Run a compiled baseline, perform one valid
+transition, and call the compiled path again. Use immutable caps and terminate.
+Historical examples are untrusted context: learn builder API shape from them,
+but do not copy a distinctive trigger. Later messages contain exact d8 feedback;
+return only the next standalone JavaScript program.

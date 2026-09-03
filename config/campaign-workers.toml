@@ -854,7 +854,7 @@ d8_flags = ["--allow-natives-syntax", "--expose-gc", "--fuzzing", "--jit-fuzzing
 
 [[workers]]
 id = "luna-custom-low-concurrency-asan-focused-v1"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -877,7 +877,7 @@ d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing"]
 
 [[workers]]
 id = "luna-custom-low-wasm-builder-asan-v1"
-enabled = true
+enabled = false
 provider = "alternate"
 model = "gpt-5.6-luna"
 meter = "luna_alternate"
@@ -898,6 +898,99 @@ v8_build_profile = "asan"
 v8_worker_profile = "standard"
 support_files = ["wasm_module_builder"]
 d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-sync-tier-up", "--stress-wasm-memory-moving"]
+
+[[workers]]
+id = "luna-custom-low-wasm-builder-asan-v2"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_wasm_builder_v2.txt"
+prompt_variant = "wasm_builder_v2"
+corpus_pair_id = "wasm-builder-v2"
+corpus_strategy = "focus_wasm_builder"
+reasoning_efforts = ["low"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 2
+max_turns_per_session = 4
+history_turns = 3
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "asan"
+v8_worker_profile = "standard"
+support_files = ["wasm_module_builder"]
+d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing", "--wasm-sync-tier-up", "--stress-wasm-memory-moving"]
+
+[[workers]]
+id = "luna-custom-low-concurrency-message-asan-v2"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_concurrency_message_v2.txt"
+prompt_variant = "concurrency_message_v2"
+corpus_pair_id = "concurrency-message-v2"
+corpus_strategy = "focus_concurrency"
+reasoning_efforts = ["low"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 2
+max_turns_per_session = 4
+history_turns = 3
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "asan"
+v8_worker_profile = "standard"
+d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing"]
+
+[[workers]]
+id = "luna-custom-low-buffers-asan-focused-v1"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_buffers_v1.txt"
+prompt_variant = "buffers_v1"
+corpus_pair_id = "buffers-focused-v1"
+corpus_strategy = "focus_buffers"
+reasoning_efforts = ["low"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 2
+max_turns_per_session = 4
+history_turns = 3
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "asan"
+v8_worker_profile = "standard"
+d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing", "--stress-compaction", "--stress-incremental-marking"]
+
+[[workers]]
+id = "luna-custom-none-regexp-asan-focused-v1"
+enabled = true
+provider = "alternate"
+model = "gpt-5.6-luna"
+meter = "luna_alternate"
+mode = "iterative_raw_js"
+prompt = "prompts/iterative_js_regexp_v1.txt"
+prompt_variant = "regexp_v1"
+corpus_pair_id = "regexp-focused-v1"
+corpus_strategy = "focus_regexp"
+reasoning_efforts = ["none"]
+verbosity = "high"
+temperatures = []
+min_turns_per_session = 2
+max_turns_per_session = 4
+history_turns = 3
+max_output_tokens = 2048
+reservation_output_tokens = 128000
+v8_build_profile = "asan"
+v8_worker_profile = "standard"
+d8_flags = ["--expose-gc", "--fuzzing", "--jit-fuzzing", "--trace-opt", "--trace-deopt"]
 
 [[workers]]
 id = "luna-custom-none-language-asan-focused-v1"

@@ -27,9 +27,11 @@ _INDEX_ALLOWED_ENGINES = (
 _FOCUS_STRATEGIES = {
     "focus_compiler",
     "focus_concurrency",
+    "focus_buffers",
     "focus_language",
     "focus_memory",
     "focus_security",
+    "focus_regexp",
     "focus_wasm",
     "focus_wasm_builder",
 }
@@ -313,6 +315,16 @@ class CorpusPool:
             )
         if strategy == "focus_memory":
             return standalone and "memory" in groups
+        if strategy == "focus_buffers":
+            return (
+                standalone
+                and b"arraybuffer" in source
+                and b"sharedarraybuffer" not in source
+                and b"webassembly" not in source
+                and b"assert" not in source
+                and b"sandbox." not in source
+                and b"%" not in sample.data
+            )
         if strategy == "focus_security":
             return standalone and "security" in groups
         if strategy == "focus_language":
@@ -322,6 +334,25 @@ class CorpusPool:
                 and not sample.contains_wasm_markers
                 and sample.engine_family != "WebAssembly/V8"
                 and b"webassembly" not in source
+                and b"%" not in sample.data
+            )
+        if strategy == "focus_regexp":
+            return (
+                standalone
+                and any(
+                    marker in source
+                    for marker in (
+                        b"regexp",
+                        b".exec(",
+                        b".match(",
+                        b".replace(",
+                        b".split(",
+                    )
+                )
+                and b"webassembly" not in source
+                and b"sharedarraybuffer" not in source
+                and b"assert" not in source
+                and b"sandbox." not in source
                 and b"%" not in sample.data
             )
         return True

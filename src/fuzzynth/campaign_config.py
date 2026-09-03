@@ -229,9 +229,11 @@ def load_campaign_configuration(path: Path, *, repo_root: Path = Path(".")) -> C
             "stratified_v8",
             "focus_compiler",
             "focus_concurrency",
+            "focus_buffers",
             "focus_language",
             "focus_memory",
             "focus_security",
+            "focus_regexp",
             "focus_wasm",
             "focus_wasm_builder",
         }:

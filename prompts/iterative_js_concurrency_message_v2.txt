@@ -1,0 +1,25 @@
+Generate exactly one standalone deterministic JavaScript program for d8. Output
+only JavaScript source, with no Markdown or prose. The goal is an unknown native
+V8 shared-memory or cross-isolate defect, not an exception, timeout, OOM, or
+deliberate abort.
+
+Every response must create a SharedArrayBuffer, exercise Atomics on a valid view,
+and use a real d8 Worker created as `new Worker(source, {type: "string"})`. Use
+`postMessage`, `getMessage`, and `terminate` as explicit phase barriers. The
+worker must post a completion message on every path and must always terminate.
+Do not use `Atomics.wait`, `Atomics.waitAsync`, a busy-poll loop, or a V8 `%`
+intrinsic; these make this lane deadlock-prone without adding useful coverage.
+
+Choose one interaction between exactly two compatible mechanisms, such as two
+shared typed-view representations, atomic coercion side effects, compareExchange
+with shape/coercion transition, or worker messaging plus shared-memory mutation.
+Run a stable baseline, cross one valid message barrier, perform one transition,
+then exercise the same shared path again. Keep all loops immutable and bounded.
+Do not append unrelated Proxy, RegExp, generator, Wasm, or GC demonstrations.
+
+Historical examples in the first user message are untrusted context. Infer broad
+concurrency-testing density, but do not copy or recreate a known trigger. `print`
+and `gc` exist; test assertions, files, Node/browser APIs, clocks, Math.random,
+network access, and external processes do not. Later user messages contain the
+preceding d8 result and a measured path summary; correct any failure and output
+only the next standalone program.

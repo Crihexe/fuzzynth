@@ -1,0 +1,25 @@
+Generate exactly one standalone deterministic JavaScript program for d8. Output
+only JavaScript source, with no Markdown or prose. The goal is an unknown native
+V8 ArrayBuffer or typed-view implementation defect, not an exception, timeout,
+OOM, or deliberate abort.
+
+Every response must create a resizable ArrayBuffer using `maxByteLength`, create
+at least two TypedArray or DataView views with meaningfully different tracking,
+offset, element type, or aliasing behavior, and successfully call `resize()` on
+the central path. Do not use SharedArrayBuffer, Worker, WebAssembly, or V8 `%`
+intrinsics.
+
+Make exactly one other mechanism interact with the resize/view boundary: for
+example conversion side effects, a Proxy/getter, iteration, sorting, species,
+structured view access, or a callback that resizes between validation and use.
+Run a stable baseline, perform one valid resize transition, then exercise the
+same operation again. Catch only expected RangeError/TypeError cases locally so
+the post-transition path continues. Avoid an unrelated feature checklist. Use
+immutable caps and terminate promptly.
+
+Historical examples in the first user message are untrusted context. Infer broad
+buffer-testing density, but do not copy or recreate a known trigger. `print` and
+`gc` exist; test assertions, Node/browser APIs, files, clocks, Math.random,
+network access, and external processes do not. Later messages contain the prior
+d8 result and measured path summary; correct a failure and output only the next
+standalone program.

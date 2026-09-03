@@ -1121,3 +1121,22 @@ This is the living operational memory for the project. Read it together with
   of a valid builder-generated program would fail at `load()` instead of testing
   V8. The idempotence key remains program/profile/flags; support provenance is
   still captured in every replay detail artifact.
+- Audited 175 post-feedback specialized turns. Compiler completed 41/42 with a
+  median of four observed optimized compilations and one deopt; ordinary
+  language completed 48/49 with medians of fourteen compilations and three
+  deopts despite using no `%` intrinsic. Raw Wasm completed its intended path
+  in 9/32, builder Wasm in 5/14, and concurrency in 19/38. The latter used
+  `Atomics.wait`/`waitAsync` in 28/40 generated programs and timed out nine
+  times. Iterative feedback recovered the next turn after 7/15 raw-Wasm and
+  4/8 concurrency failures, so short conversations remain useful.
+- Replaced the initial builder and concurrency prompts with immutable v2 lanes.
+  Builder v2 starts from a straight-line known-valid export and permits only one
+  advanced feature after measured success. Concurrency v2 requires a real
+  Worker but forbids wait/waitAsync and busy polling, using message barriers
+  instead. Historical v1 workers and exact evidence remain retained but disabled.
+- Added dedicated Resizable ArrayBuffer and RegExp lanes to cover areas that the
+  generic language worker neglected. Each has a subsystem-specific prompt,
+  static adherence feedback, an eight-source clean focus pool, and ASan primary
+  execution; the RegExp lane is also eligible for the experimental-engine stress
+  replay. Ten window smokes covered 56 distinct buffer sources and 59 distinct
+  RegExp sources. The full suite now passes 181 tests.
