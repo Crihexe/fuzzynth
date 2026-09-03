@@ -26,6 +26,7 @@ class CampaignConfigurationTests(unittest.TestCase):
                 "luna-custom-low-memory-asan-explicit-v3",
                 "luna-custom-low-security-asan-explicit-v3",
                 "terra-custom-high-security-asan-explicit-v3",
+                "terra-custom-high-wasm-builder-advanced-asan-v1",
                 "luna-custom-low-wasm-asan-boundary-v1",
                 "luna-custom-low-wasm-builder-asan-v2",
                 "luna-custom-low-wasm-builder-advanced-asan-v1",
@@ -67,6 +68,7 @@ class CampaignConfigurationTests(unittest.TestCase):
             {worker.worker_id for worker in singles},
             {
                 "terra-custom-high-security-asan-explicit-v3",
+                "terra-custom-high-wasm-builder-advanced-asan-v1",
                 "luna-custom-low-compiler-optdebug-explicit-v3",
                 "luna-custom-low-memory-asan-explicit-v3",
                 "luna-custom-low-security-asan-explicit-v3",
